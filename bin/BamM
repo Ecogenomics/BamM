@@ -1,0 +1,92 @@
+#!/usr/bin/env python
+###############################################################################
+#                                                                             #
+#    BamM                                                         #
+#                                                                             #
+#    Description!!                                                            #
+#                                                                             #
+#    Copyright (C) Michael Imelfort                                           #
+#                                                                             #
+###############################################################################
+#                                                                             #
+#    This program is free software: you can redistribute it and/or modify     #
+#    it under the terms of the GNU General Public License as published by     #
+#    the Free Software Foundation, either version 3 of the License, or        #
+#    (at your option) any later version.                                      #
+#                                                                             #
+#    This program is distributed in the hope that it will be useful,          #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
+#    GNU General Public License for more details.                             #
+#                                                                             #
+#    You should have received a copy of the GNU General Public License        #
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.     #
+#                                                                             #
+###############################################################################
+
+__author__ = "Michael Imelfort"
+__copyright__ = "Copyright 2013"
+__credits__ = ["Michael Imelfort"]
+__license__ = "GPLv3"
+__version__ = "0.0.1"
+__maintainer__ = "Michael Imelfort"
+__email__ = "mike@mikeimelfort.com"
+__status__ = "Dev"
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+import argparse
+import sys
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+def doWork(args):
+    """Wrapper function to allow easy profiling"""
+    # hook into core project code here. For example:
+    from bamm.BamM import TemplateClass
+    TC = TemplateClass()
+    TC.sayHi()
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+    #parser.add_argument('positional_arg', help="Required")
+    #parser.add_argument('positional_arg2', type=int, help="Integer argument")
+    #parser.add_argument('positional_arg3', nargs='+', help="Multiple values")
+    #parser.add_argument('-X', '--optional_X', action="store_true", default=False, help="flag")
+
+    # parse the arguments
+    args = parser.parse_args()
+
+    # profiling happens here. If you'd like to track the speed your code runs at
+    # then set the following to True and voila!
+    if(False):
+        import cProfile
+        cProfile.run('doWork(args)', 'profile')
+        ##########################################
+        ##########################################
+        # Use this in python console!
+        #import pstats
+        #p = pstats.Stats('prof')
+        #p.sort_stats('cumulative').print_stats(10)
+        #p.sort_stats('time').print_stats(10)
+        ##########################################
+        ##########################################
+    else:
+        doWork(args)
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
