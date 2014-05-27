@@ -57,56 +57,56 @@ typedef struct {
     uint32_t pos_1;
     uint32_t pos_2;
     uint32_t bam_ID;
-    struct PM_link_info * next_link;
-} PM_link_info;
+    struct BMM_link_info * next_link;
+} BMM_link_info;
 
 typedef struct {
     uint32_t cid_1;
     uint32_t cid_2;
     uint32_t numLinks;
-    PM_link_info * LI;
-} PM_link_pair;
+    BMM_link_info * LI;
+} BMM_link_pair;
 
 typedef struct {
     char ** keys;
     size_t keyCount;
     size_t numKeys;
     cfuhash_table_t * linkHash;
-    PM_link_pair * pair;
-    PM_link_info * LI;
-} PM_LinkWalker;
+    BMM_link_pair * pair;
+    BMM_link_info * LI;
+} BMM_LinkWalker;
 
 """
-class PM_link_info_C(c.Structure):
+class BMM_link_info_C(c.Structure):
     pass
 
-class PM_link_info_C(c.Structure):
+class BMM_link_info_C(c.Structure):
     _fields_ = [("orient_1", c.c_uint16),
                 ("orient_2", c.c_uint16),
                 ("pos_1", c.c_uint32),
                 ("pos_2", c.c_uint32),
                 ("bam_ID", c.c_uint32),
-                ("next_link",c.POINTER(PM_link_info_C))
+                ("next_link",c.POINTER(BMM_link_info_C))
                 ]
 
-class PM_link_pair_C(c.Structure):
+class BMM_link_pair_C(c.Structure):
     _fields_ = [("cid_1", c.c_uint32),
                 ("cid_2", c.c_uint32),
                 ("numLinks", c.c_uint32),
-                ("LI",c.POINTER(PM_link_info_C))
+                ("LI",c.POINTER(BMM_link_info_C))
                 ]
 
-class PM_LinkWalker_C(c.Structure):
+class BMM_LinkWalker_C(c.Structure):
     _fields_= [("keys", c.POINTER(c.POINTER(c.c_char))),
                ("keyCount", c.c_size_t),
                ("numKeys", c.c_size_t),
                ("links",c.POINTER(cfuhash_table_t)),
-               ("pair",c.POINTER(PM_link_pair_C)),
-               ("LI",c.POINTER(PM_link_info_C))
+               ("pair",c.POINTER(BMM_link_pair_C)),
+               ("LI",c.POINTER(BMM_link_info_C))
                ]
 
 # links-associated structures "Python land"
-class PM_linkInfo(object):
+class BMM_linkInfo(object):
     def __init__(self,
                  o1,
                  o2,
@@ -125,7 +125,7 @@ class PM_linkInfo(object):
     def printMore(self, bamFileNames):
         return "    (%d,%d -> %d,%d, %s)\n" % (self.pos1, self.orient1, self.pos2, self.orient2, bamFileNames[self.bamID])
 
-class PM_linkPair(object):
+class BMM_linkPair(object):
     def __init__(self,
                  cid1,
                  cid2):
@@ -140,7 +140,7 @@ class PM_linkPair(object):
                 p1,
                 p2,
                 bid):
-        LI = PM_linkInfo(o1,
+        LI = BMM_linkInfo(o1,
                          o2,
                          p1,
                          p2,
@@ -174,9 +174,9 @@ typedef struct {
     int is_outlier_coverage;
     int is_ignore_supps;
     cfuhash_table_t * links;
-} PM_mapping_results;
+} BMM_mapping_results;
 """
-class PM_mapping_results_C(c.Structure):
+class BMM_mapping_results_C(c.Structure):
     _fields_ = [("plp_bp", c.POINTER(c.POINTER(c.c_uint32))),
                 ("contig_lengths",c.POINTER(c.c_uint32)),
                 ("contig_length_correctors",c.POINTER(c.POINTER(c.c_uint32))),
@@ -192,7 +192,7 @@ class PM_mapping_results_C(c.Structure):
                 ("links",c.POINTER(cfuhash_table_t))
                 ]
 # mapping results structure "Python land"
-class PM_mappingResults(object):
+class BMM_mappingResults(object):
     def __init__(self,
                  coverages,
                  contigLengths,
@@ -253,11 +253,11 @@ def pythonizeLinks(MR):
     """Unwrap the links-associated C structs and return a python-ized dict"""
     links = {}
     CW = CWrapper()
-    pMR = c.POINTER(PM_mapping_results_C)
+    pMR = c.POINTER(BMM_mapping_results_C)
     pMR = c.pointer(MR)
 
-    LW = PM_LinkWalker_C()
-    pLW = c.POINTER(PM_LinkWalker_C)
+    LW = BMM_LinkWalker_C()
+    pLW = c.POINTER(BMM_LinkWalker_C)
     pLW = c.pointer(LW)
     success = CW._initLW(pLW, pMR)
     if(success == 1):
@@ -266,7 +266,7 @@ def pythonizeLinks(MR):
         while(ret_val != 0):
             if ret_val == 2:
                 # need a new contig pair
-                LP = PM_linkPair(((LW.pair).contents).cid_1, ((LW.pair).contents).cid_2)
+                LP = BMM_linkPair(((LW.pair).contents).cid_1, ((LW.pair).contents).cid_2)
                 key = "%d,%d" % (((LW.pair).contents).cid_1, ((LW.pair).contents).cid_2)
                 links[key] = LP
             # add a link
@@ -310,7 +310,7 @@ def externalParseWrapper(bAMpARSER, bamFile, _MR, doContigNames):
     else:
         links = {}
 
-    MRR = PM_mappingResults(coverages,
+    MRR = BMM_mappingResults(coverages,
                             contig_lengths,
                             MR.num_bams,
                             MR.num_contigs,
@@ -320,7 +320,7 @@ def externalParseWrapper(bAMpARSER, bamFile, _MR, doContigNames):
     _MR.append(MRR)
 
     # we need to call some C on this guy
-    pMR = c.POINTER(PM_mapping_results_C)
+    pMR = c.POINTER(BMM_mapping_results_C)
     pMR = c.pointer(MR)
     CW = CWrapper()
     CW._destroy_MR(pMR)
@@ -355,7 +355,7 @@ class CWrapper:
         @discussion MR_B remains unchanged.
         MR_A is updated to include all the info contained in MR_B
 
-        void merge_MRs(PM_mapping_results_C * MR_A, PM_mapping_results_C * MR_B);
+        void merge_MRs(BMM_mapping_results_C * MR_A, BMM_mapping_results_C * MR_B);
         """
 
         self._destroy_MR = self.libPMBam.destroy_MR
@@ -365,7 +365,7 @@ class CWrapper:
         @param  MR  mapping results struct to destroy
         @return void
 
-        void destroy_MR(PM_mapping_results_C * MR)
+        void destroy_MR(BMM_mapping_results_C * MR)
         """
 
         self._parseCoverageAndLinks = self.libPMBam.parseCoverageAndLinks
@@ -395,7 +395,7 @@ class CWrapper:
                                   int ignoreSuppAlignments,
                                   int doOutlierCoverage,
                                   char* bamFiles[],
-                                  PM_mapping_results_C * MR
+                                  BMM_mapping_results_C * MR
                                  )
         """
 
@@ -412,7 +412,7 @@ class CWrapper:
         @discussion This function expects MR to be initialised.
         it can change the values of contig_length_correctors and plp_bp
 
-        void adjustPlpBp(PM_mapping_results_C * MR,
+        void adjustPlpBp(BMM_mapping_results_C * MR,
                          uint32_t ** position_holder,
                          int tid)
         """
@@ -428,7 +428,7 @@ class CWrapper:
         NOTE: YOU are responsible for freeing the return value
         recommended method is to use destroyCoverages
 
-        float ** calculateCoverages(PM_mapping_results_C * MR);
+        float ** calculateCoverages(BMM_mapping_results_C * MR);
         """
 
         self._destroyCoverages = self.libPMBam.destroyCoverages
@@ -448,7 +448,7 @@ class CWrapper:
 
         @param  MR  mapping results struct containing links
         @return pointer to LinkHolder if links exist or NULL
-        PM_LinkWalker * initLW(PM_mapping_results * MR);
+        BMM_LinkWalker * initLW(BMM_mapping_results * MR);
         """
 
         self._stepLW = self.libPMBam.stepLW
@@ -458,7 +458,7 @@ class CWrapper:
         @param  walker   pointer to LinkHolder.
         @return 1 for step within current contig pair, 2 for new pair, 0 for end walk
 
-        int stepLW(PM_LinkWalker * walker);
+        int stepLW(BMM_LinkWalker * walker);
         """
 
         self._destroyLW = self.libPMBam.destroyLW
@@ -468,7 +468,7 @@ class CWrapper:
         @param  walker   pointer to LinkHolder.
         @return void
 
-        void destroyLW(PM_LinkWalker * walker);
+        void destroyLW(BMM_LinkWalker * walker);
         """
 
         self._print_MR = self.libPMBam.print_MR
@@ -477,7 +477,7 @@ class CWrapper:
 
         @param  MR   mapping results struct with mapping info
 
-        void print_MR(PM_mapping_results_C * MR)
+        void print_MR(BMM_mapping_results_C * MR)
         """
 
 class BamParser:
@@ -537,8 +537,8 @@ class BamParser:
 
     def _parseOneBam(self, bamFile):
         """Parse a single BAM file and append the result to the internal mapping results list"""
-        MR = PM_mapping_results_C()
-        pMR = c.POINTER(PM_mapping_results_C)
+        MR = BMM_mapping_results_C()
+        pMR = c.POINTER(BMM_mapping_results_C)
         pMR = c.pointer(MR)
         bamfiles_c_array = (c.c_char_p * 1)()
         bamfiles_c_array[:] = [bamFile]
@@ -558,7 +558,7 @@ class BamParser:
         """Clean up c-malloc'd memory"""
         if self.MR is not None:
             CW = CWrapper()
-            pMR = c.POINTER(PM_mapping_results_C)
+            pMR = c.POINTER(BMM_mapping_results_C)
             pMR = c.pointer(self.MR)
             CW._destroy_MR(pMR)
 
@@ -566,7 +566,7 @@ class BamParser:
         """print a mapping results structure"""
         if self.MR is not None:
             CW = CWrapper()
-            pMR = c.POINTER(PM_mapping_results_C)
+            pMR = c.POINTER(BMM_mapping_results_C)
             pMR = c.pointer(self.MR)
             CW._print_MR(pMR)
 
