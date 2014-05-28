@@ -29,7 +29,7 @@
                         '/usr/share/aclocal-1.11/strip.m4',
                         '/usr/share/aclocal-1.11/substnot.m4',
                         '/usr/share/aclocal-1.11/tar.m4',
-                        '/home/uqmimelf/working/sw/ParseM/c/bam/m4/ax_libcfu.m4',
+                        '/home/uqmimelf/working/sw/BamM/c/bam/m4/ax_libcfu.m4',
                         'configure.ac'
                       ],
                       {
@@ -78,7 +78,7 @@
                       1,
                       [
                         '/usr/share/autoconf',
-                        '/home/uqmimelf/working/sw/ParseM/c/bam/m4'
+                        '/home/uqmimelf/working/sw/BamM/c/bam/m4'
                       ],
                       [
                         '/usr/share/autoconf/autoconf/autoconf.m4f',

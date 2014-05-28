@@ -8,13 +8,13 @@
 #define PACKAGE_BUGREPORT "mike@mikeimelfort.com"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME "ParseM_bam"
+#define PACKAGE_NAME "BamM_C"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "ParseM_bam 0.1"
+#define PACKAGE_STRING "BamM_C 0.1"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "parsem_bam"
+#define PACKAGE_TARNAME "BamM_C"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""

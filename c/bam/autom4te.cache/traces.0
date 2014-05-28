@@ -609,7 +609,7 @@ AC_MSG_RESULT([$am_cv_prog_tar_$1])])
 AC_SUBST([am__tar])
 AC_SUBST([am__untar])
 ])
-m4trace:/home/uqmimelf/working/sw/ParseM/c/bam/m4/ax_libcfu.m4:42: -1- AC_DEFUN([AX_LIBCFU], [
+m4trace:/home/uqmimelf/working/sw/BamM/c/bam/m4/ax_libcfu.m4:42: -1- AC_DEFUN([AX_LIBCFU], [
     AC_ARG_WITH([libcfu],
         AS_HELP_STRING([--with-libcfu=@<:@ARG@:>@],
             [use libcfu from given prefix (ARG=path); check standard prefixes (ARG=yes); disable (ARG=no)]

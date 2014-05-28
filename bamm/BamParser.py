@@ -45,6 +45,14 @@ import numpy as np
 ###############################################################################
 ###############################################################################
 
+class BamMException(BaseException): pass
+class InvalidCoverageModeException(BamMException): pass
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 # fields defined in cfuhash.c but not accessed at this level
 class cfuhash_table_t(c.Structure):
     pass
@@ -171,7 +179,7 @@ typedef struct {
     char ** contig_names;
     char ** bam_file_names;
     int is_links_included;
-    int is_outlier_coverage;
+    char * coverage_mode;
     int is_ignore_supps;
     cfuhash_table_t * links;
 } BMM_mapping_results;
@@ -187,7 +195,7 @@ class BMM_mapping_results_C(c.Structure):
                 ("contig_name_lengths",c.POINTER(c.c_uint16)),
                 ("bam_file_name_lengths",c.POINTER(c.c_uint16)),
                 ("is_links_included",c.c_int),
-                ("is_outlier_coverage",c.c_int),
+                ("coverage_mode",c.POINTER(c.c_char)),
                 ("is_ignore_supps",c.c_int),
                 ("links",c.POINTER(cfuhash_table_t))
                 ]
@@ -289,7 +297,7 @@ def externalParseWrapper(bAMpARSER, bamFile, _MR, doContigNames):
     plp_bp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*MR.num_bams)).contents] for i in c.cast(MR.plp_bp,c.POINTER(c.POINTER(c.c_uint32*MR.num_bams)*MR.num_contigs)).contents])
 
     coverages = np.zeros((MR.num_contigs, MR.num_bams))
-    if MR.is_outlier_coverage:
+    if bAMpARSER.coverageMode == 'outlier':
         contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*MR.num_bams)).contents] for i in c.cast(MR.contig_length_correctors,c.POINTER(c.POINTER(c.c_uint32*MR.num_bams)*MR.num_contigs)).contents])
         for c_idx in range(int(MR.num_contigs)):
             for b_idx in range(int(MR.num_bams)):
@@ -311,12 +319,12 @@ def externalParseWrapper(bAMpARSER, bamFile, _MR, doContigNames):
         links = {}
 
     MRR = BMM_mappingResults(coverages,
-                            contig_lengths,
-                            MR.num_bams,
-                            MR.num_contigs,
-                            contig_names,
-                            bamFile,
-                            links)
+                             contig_lengths,
+                             MR.num_bams,
+                             MR.num_contigs,
+                             contig_names,
+                             bamFile,
+                             links)
     _MR.append(MRR)
 
     # we need to call some C on this guy
@@ -372,15 +380,15 @@ class CWrapper:
         """
         @abstract Initialise the mapping results struct <- read in the BAM files
 
-        @param numBams  number of BAM files to parse
-        @param baseQ  base quality threshold
-        @param mapQ  mapping quality threshold
-        @param minLen  min query length
-        @param doLinks  1 if links should be calculated
+        @param numBams               number of BAM files to parse
+        @param baseQ                 base quality threshold
+        @param mapQ                  mapping quality threshold
+        @param minLen                min query length
+        @param doLinks               1 if links should be calculated
         @param ignoreSuppAlignments  only use primary alignments
-        @param doOutlierCoverage  set to 1 if should initialise contig_length_correctors
-        @param bamFiles  filenames of BAM files to parse
-        @param MR  mapping results struct to write to
+        @param coverageMode          type of coverage to be calculated
+        @param bamFiles              filenames of BAM files to parse
+        @param MR                    mapping results struct to write to
         @return 0 for success
 
         @discussion This function expects MR to be a null pointer. It calls
@@ -393,7 +401,7 @@ class CWrapper:
                                   int minLen,
                                   int doLinks,
                                   int ignoreSuppAlignments,
-                                  int doOutlierCoverage,
+                                  char* coverageMode,
                                   char* bamFiles[],
                                   BMM_mapping_results_C * MR
                                  )
@@ -406,7 +414,6 @@ class CWrapper:
         @param  MR  mapping results struct to write to
         @param  position_holder  array of pileup depths
         @param  tid  contig currently being processed
-        @param  doOutlierCoverage  remove effects fo very high or very low regions
         @return void
 
         @discussion This function expects MR to be initialised.
@@ -484,11 +491,11 @@ class BamParser:
     """Main class for reading in and parsing contigs"""
     def __init__(self,
                  baseQuality,
-                 mappingQuality,
                  minLength,
-                 doLinks,
-                 ignoreSuppAlignments,
-                 doOutliers
+                 mappingQuality=0,
+                 coverageMode='vanilla',
+                 doLinks=False,
+                 ignoreSuppAlignments=True
                  ):
         #---------------------------------
         # information about how the parser will be used
@@ -496,9 +503,20 @@ class BamParser:
         self.baseQuality = baseQuality
         self.mappingQuality = mappingQuality
         self.minLength = minLength
-        self.doLinks = doLinks
-        self.ignoreSuppAlignments = ignoreSuppAlignments
-        self.doOutliers = doOutliers
+
+        if doLinks:
+            self.doLinks = 1
+        else:
+            self.doLinks = 0
+
+        if ignoreSuppAlignments:
+            self.ignoreSuppAlignments = 1
+        else:
+            self.ignoreSuppAlignments = 0
+
+        if coverageMode not in ['vanilla', 'outlier']:
+             raise InvalidCoverageModeException("Unknown coverage mode '%s' supplied" % coverageMode)
+        self.coverageMode = coverageMode
 
         #---------------------------------
         # internal variables
@@ -510,7 +528,6 @@ class BamParser:
 
         stores results in internal mapping results list
         """
-
         global _MR
         _MR = Manager().list()
         pool = Pool(processes=numThreads)
@@ -537,7 +554,7 @@ class BamParser:
 
     def _parseOneBam(self, bamFile):
         """Parse a single BAM file and append the result to the internal mapping results list"""
-        MR = BMM_mapping_results_C()
+        MR = BMM_mapping_results_C()        # destroy needs to be called on this -> it should be called by the calling function
         pMR = c.POINTER(BMM_mapping_results_C)
         pMR = c.pointer(MR)
         bamfiles_c_array = (c.c_char_p * 1)()
@@ -549,27 +566,10 @@ class BamParser:
                                   self.minLength,
                                   self.doLinks,
                                   self.ignoreSuppAlignments,
-                                  self.doOutliers,
+                                  self.coverageMode,
                                   bamfiles_c_array,
                                   pMR)
         return MR
-
-    def destroy(self):
-        """Clean up c-malloc'd memory"""
-        if self.MR is not None:
-            CW = CWrapper()
-            pMR = c.POINTER(BMM_mapping_results_C)
-            pMR = c.pointer(self.MR)
-            CW._destroy_MR(pMR)
-
-    def printMappings(self):
-        """print a mapping results structure"""
-        if self.MR is not None:
-            CW = CWrapper()
-            pMR = c.POINTER(BMM_mapping_results_C)
-            pMR = c.pointer(self.MR)
-            CW._print_MR(pMR)
-
 
 
 ###############################################################################

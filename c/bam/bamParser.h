@@ -63,19 +63,19 @@ typedef struct {                    //
 
 /*! @typedef
  @abstract Structure for returning mapping results
- @field plp_bp number of bases piled up on each contig
- @field contig_lengths lengths of the referene sequences
- @field contig_length_correctors corrections to contig lengths used when doing outlier coverage
- @field num_bams number of BAM files parsed
- @field num_contigs number of reference sequences
- @field contig_names names of the reference sequences
- @field bam_file_names names of the bam files used in this mapping result
- @field contig_name_lengths lengths of the names of the reference sequences
- @field bam_file_name_lengths lengths of the names of the bam files used in this mapping result
- @field is_links_included are links being calculated
- @field is_outlier_coverage is outlier adjusted coverage being calculated
- @field is_ignore_supps are supplementary alignments being ignored
- @field links linking pairs
+ @field plp_bp                      number of bases piled up on each contig
+ @field contig_lengths              lengths of the referene sequences
+ @field contig_length_correctors    corrections to contig lengths used when doing outlier coverage
+ @field num_bams                    number of BAM files parsed
+ @field num_contigs                 number of reference sequences
+ @field contig_names                names of the reference sequences
+ @field bam_file_names              names of the bam files used in this mapping result
+ @field contig_name_lengths         lengths of the names of the reference sequences
+ @field bam_file_name_lengths       lengths of the names of the bam files used in this mapping result
+ @field is_links_included           are links being calculated
+ @field coverage_mode               type of coverage to be calculate ['vanilla', 'outlier']
+ @field is_ignore_supps             are supplementary alignments being ignored
+ @field links                       linking pairs
  */
 typedef struct {
     uint32_t ** plp_bp;
@@ -88,7 +88,7 @@ typedef struct {
     uint16_t * contig_name_lengths;
     uint16_t * bam_file_name_lengths;
     int is_links_included;
-    int is_outlier_coverage;
+    char * coverage_mode;
     int is_ignore_supps;
     cfuhash_table_t * links;
 } BMM_mapping_results;
@@ -115,12 +115,12 @@ BMM_mapping_results * create_MR(void);
 /*!
  * @abstract Initialise the mapping results struct
  *
- * @param MR  mapping results struct to initialise
- * @param BAM_header  htslib BAM header
- * @param numBams  number of BAM files to parse
- * @param bamFiles  filenames of BAMs parsed
- * @param doOutlierCoverage  set to 1 if should initialise contig_length_correctors
- * @param doLinks  1 if links should be calculated
+ * @param MR                    mapping results struct to initialise
+ * @param BAM_header            htslib BAM header
+ * @param numBams               number of BAM files to parse
+ * @param bamFiles              filenames of BAMs parsed
+ * @param doLinks               set to 1 if should initialise contig_length_correctors
+ * @param coverageMode          type of coverage to be calculated
  * @param ignoreSuppAlignments  only use primary alignments
  * @return void
  *
@@ -132,7 +132,7 @@ void init_MR(BMM_mapping_results * MR,
              int numBams,
              char * bamFiles[],
              int doLinks,
-             int doOutlierCoverage,
+             char * coverageMode,
              int ignoreSuppAlignments
 );
 
@@ -163,15 +163,15 @@ void destroy_MR(BMM_mapping_results * MR);
 /*!
  * @abstract Initialise the mapping results struct <- read in the BAM files
  *
- * @param numBams  number of BAM files to parse
- * @param baseQ  base quality threshold
- * @param mapQ  mapping quality threshold
- * @param minLen  min query length
- * @param doLinks  1 if links should be calculated
+ * @param numBams               number of BAM files to parse
+ * @param baseQ                 base quality threshold
+ * @param mapQ                  mapping quality threshold
+ * @param minLen                min query length
+ * @param doLinks               1 if links should be calculated
  * @param ignoreSuppAlignments  only use primary alignments
- * @param doOutlierCoverage  set to 1 if should initialise contig_length_correctors
- * @param bamFiles  filenames of BAM files to parse
- * @param MR  mapping results struct to write to
+ * @param coverageMode          type of coverage to be calculated
+ * @param bamFiles              filenames of BAM files to parse
+ * @param MR                    mapping results struct to write to
  * @return 0 for success
  *
  * @discussion This function expects MR to be a null pointer. It calls
@@ -185,7 +185,7 @@ int parseCoverageAndLinks(int numBams,
                           int minLen,
                           int doLinks,
                           int ignoreSuppAlignments,
-                          int doOutlierCoverage,
+                          char* coverageMode,
                           char* bamFiles[],
                           BMM_mapping_results * MR);
 
@@ -195,7 +195,6 @@ int parseCoverageAndLinks(int numBams,
  * @param  MR  mapping results struct to write to
  * @param  position_holder  array of pileup depths
  * @param  tid  contig currently being processed
- * @param  doOutlierCoverage  remove effects fo very high or very low regions
  * @return void
  *
  * @discussion This function expects MR to be initialised.

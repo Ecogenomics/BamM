@@ -56,18 +56,30 @@ void init_MR(BMM_mapping_results * MR,
              int numBams,
              char * bamFiles[],
              int doLinks,
-             int doOutlierCoverage,
+             char * coverageMode,
              int ignoreSuppAlignments
 )
 {
     //----
     // initialise the MR object
     //
+    // check for a valid coverage mode
+    int valid_coverage_mode = strcmp(coverageMode, "vanilla");
+    if(valid_coverage_mode != 0)
+    { valid_coverage_mode = strcmp(coverageMode, "outlier"); }
+    if(valid_coverage_mode != 0)
+    {
+        char str[80];
+        sprintf(str, "Invalid coverage mode '%s'", coverageMode);
+        printError(str, __LINE__);
+        return;
+    }
+
     int i = 0;
     MR->num_contigs = BAM_header->n_targets;
     MR->num_bams = numBams;
     MR->is_links_included = doLinks;
-    MR->is_outlier_coverage = doOutlierCoverage;
+    MR->coverage_mode = strdup(coverageMode);
     MR->is_ignore_supps = ignoreSuppAlignments;
 
     if(MR->num_contigs != 0 && MR->num_bams != 0) {
@@ -98,7 +110,7 @@ void init_MR(BMM_mapping_results * MR,
         //----------------------------
         // only allocate if we NEED to
         //----------------------------
-        if (MR->is_outlier_coverage) {
+        if (strcmp(MR->coverage_mode, "outlier") == 0) {
             MR->contig_length_correctors = calloc(MR->num_contigs, sizeof(uint32_t*));
             for(i = 0; i < MR->num_contigs; ++i) {
                 MR->contig_length_correctors[i] = calloc(MR->num_bams, sizeof(uint32_t));
@@ -214,7 +226,7 @@ void merge_MRs(BMM_mapping_results * MR_A, BMM_mapping_results * MR_B)
     //-----
     // Contig length correctors
     //
-    if (MR_A->is_outlier_coverage) {
+    if (strcmp(MR_A->coverage_mode, "outlier") == 0) {
         MR_A->contig_length_correctors = calloc(MR_A->num_contigs, sizeof(uint32_t*));
         for(i = 0; i < MR_A->num_contigs; ++i) {
             MR_A->contig_length_correctors[i] = calloc(MR_A->num_bams, sizeof(uint32_t));
@@ -315,6 +327,8 @@ void destroy_MR(BMM_mapping_results * MR)
         }
     }
 
+    free(MR->coverage_mode);
+
     // destroy paired links
     if(MR->is_links_included)
     {
@@ -343,7 +357,7 @@ int parseCoverageAndLinks(int numBams,
                           int minLen,
                           int doLinks,
                           int ignoreSuppAlignments,
-                          int doOutlierCoverage,
+                          char* coverageMode,
                           char* bamFiles[],
                           BMM_mapping_results * MR
 ) {
@@ -383,7 +397,7 @@ int parseCoverageAndLinks(int numBams,
             numBams,
             bamFiles,
             doLinks,
-            doOutlierCoverage,
+            coverageMode,
             ignoreSuppAlignments
            );
 
@@ -481,7 +495,7 @@ void adjustPlpBp(BMM_mapping_results * MR,
     uint32_t num_bams = MR->num_bams;
     uint32_t * plp_sum = calloc(num_bams, sizeof(uint32_t));
     int pos = 0, i = 0;
-    if(MR->is_outlier_coverage) {
+    if(strcmp(MR->coverage_mode, "outlier") == 0) {
         uint32_t * drops = calloc(num_bams, sizeof(uint32_t));
         for(i = 0; i < num_bams; ++i) {
             // set the cut off at a stdev either side of the mean
@@ -522,7 +536,7 @@ float ** calculateCoverages(BMM_mapping_results * MR) {
                 ret_matrix[i] = calloc(MR->num_bams, sizeof(float));
                 for(j = 0; j < MR->num_bams; ++j) {
                     // print average coverages
-                    if(MR->is_outlier_coverage) {
+                    if(strcmp(MR->coverage_mode, "outlier") == 0) {
                         // the counts are reduced so we should reduce the contig length accordingly
                         ret_matrix[i][j] = (float)MR->plp_bp[i][j]/(float)(MR->contig_lengths[i]-MR->contig_length_correctors[i][j]);
                     } else {
