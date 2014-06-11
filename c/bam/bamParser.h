@@ -21,8 +21,8 @@
 //
 //#############################################################################
 
-#ifndef BMM_BAM_PARSER_H
-  #define BMM_BAM_PARSER_H
+#ifndef BM_BAM_PARSER_H
+  #define BM_BAM_PARSER_H
 
 // system includes
 #include <stdlib.h>
@@ -47,6 +47,8 @@ typedef BGZF bamFile;
 extern "C" {
 #endif
 
+// Orientation types
+typedef enum {OT_OUT, OT_SAME, OT_IN, OT_NONE, OT_ERROR} OT;
 
 /*! @typedef
  @abstract Auxiliary data structure used in read_bam
@@ -62,36 +64,63 @@ typedef struct {                    //
 } aux_t;
 
 /*! @typedef
- @abstract Structure for returning mapping results
- @field plp_bp                      number of bases piled up on each contig
- @field contig_lengths              lengths of the referene sequences
- @field contig_length_correctors    corrections to contig lengths used when doing outlier coverage
- @field num_bams                    number of BAM files parsed
- @field num_contigs                 number of reference sequences
- @field contig_names                names of the reference sequences
- @field bam_file_names              names of the bam files used in this mapping result
+ @abstract Structure for storing information about the orientation type and insert sizes for a given bam file
+ @field orientationType     orientation of the reads in this mapping
+ @field insertSize          insert size of the reads (outer)
+ @field insertStdev         standard deviation measured for the insert size
+ @field numTested           number of reads tested to get these stats
+ */
+ typedef struct {
+    int orientationType;                // actually going to use the ENUM, but worried about how to get around this with python ctypes
+    float insertSize;
+    float insertStdev;
+    int supporting;
+ } BM_bamType;
+
+
+/*! @typedef
+ @abstract Structure for storing information about a single BAM file
+ @field fileName            filename of the BAM
+ @field fileNameLength      length of the filename
+ @field types               the orientation types and insert sizes accociated with the bam file
+ @field numTypes            the number of orientation types for the bam file
+ */
+ typedef struct {
+    char * fileName;
+    uint16_t fileNameLength;
+    BM_bamType ** types;
+    int numTypes;
+ } BM_bamFile;
+
+/*! @typedef
+ @abstract Structure for returning  mapping results
+ @field plpBp                       number of bases piled up on each contig
+ @field contigLengths               lengths of the referene sequences
+ @field contigLengthCorrectors      corrections to contig lengths used when doing outlier coverage
+ @field numBams                     number of BAM files parsed
+ @field numContigs                  number of reference sequences
+ @field bamFiles                    array of pointers to BM_bamFile's used in this mapping result
+ @field contigNames                 names of the reference sequences
  @field contig_name_lengths         lengths of the names of the reference sequences
- @field bam_file_name_lengths       lengths of the names of the bam files used in this mapping result
- @field is_links_included           are links being calculated
+ @field isLinks                     are links being calculated
  @field coverage_mode               type of coverage to be calculate ['vanilla', 'outlier']
- @field is_ignore_supps             are supplementary alignments being ignored
+ @field isIgnoreSupps               are supplementary alignments being ignored
  @field links                       linking pairs
  */
 typedef struct {
-    uint32_t ** plp_bp;
-    uint32_t * contig_lengths;
-    uint32_t ** contig_length_correctors;
-    uint32_t num_bams;
-    uint32_t num_contigs;
-    char ** contig_names;
-    char ** bam_file_names;
+    uint32_t ** plpBp;
+    uint32_t * contigLengths;
+    uint32_t ** contigLengthCorrectors;
+    uint32_t numBams;
+    uint32_t numContigs;
+    BM_bamFile ** bamFiles;
+    char ** contigNames;
     uint16_t * contig_name_lengths;
-    uint16_t * bam_file_name_lengths;
-    int is_links_included;
+    int isLinks;
     char * coverage_mode;
-    int is_ignore_supps;
+    int isIgnoreSupps;
     cfuhash_table_t * links;
-} BMM_mapping_results;
+} BM_mappingResults;
 
 //#############################################################################
 // BAM parsing functions
@@ -101,16 +130,15 @@ typedef struct {
 int read_bam(void *data,
              bam1_t *b);
 
-
 /*!
  * @abstract Allocate space for a new MR struct
  *
- * @return BMM_mapping_results *
+ * @return BM_mappingResults *
  *
  * @discussion Allocates the memore which should be initialised at some point in time.
  * You call destroy_MR to free this memory
  */
-BMM_mapping_results * create_MR(void);
+BM_mappingResults * create_MR(void);
 
 /*!
  * @abstract Initialise the mapping results struct
@@ -119,7 +147,7 @@ BMM_mapping_results * create_MR(void);
  * @param BAM_header            htslib BAM header
  * @param numBams               number of BAM files to parse
  * @param bamFiles              filenames of BAMs parsed
- * @param doLinks               set to 1 if should initialise contig_length_correctors
+ * @param links                 array of OT counts per bam or 0
  * @param coverageMode          type of coverage to be calculated
  * @param ignoreSuppAlignments  only use primary alignments
  * @return void
@@ -127,11 +155,11 @@ BMM_mapping_results * create_MR(void);
  * @discussion If you call this function then you MUST call destroy_MR
  * when you're done.
  */
-void init_MR(BMM_mapping_results * MR,
+void init_MR(BM_mappingResults * MR,
              bam_hdr_t * BAM_header,
              int numBams,
              char * bamFiles[],
-             int doLinks,
+             int * links,
              char * coverageMode,
              int ignoreSuppAlignments
 );
@@ -150,7 +178,7 @@ void init_MR(BMM_mapping_results * MR,
  * are not, if contigs have been removed etc, then doom will swiftly follow.
  * Also, we assume that flags like do_links, do_outlier match... ...or DOOM!
  */
-void merge_MRs(BMM_mapping_results * MR_A, BMM_mapping_results * MR_B);
+void merge_MRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B);
 
 /*!
  * @abstract Free all the memory calloced in init_MR
@@ -158,7 +186,7 @@ void merge_MRs(BMM_mapping_results * MR_A, BMM_mapping_results * MR_B);
  * @param  MR  mapping results struct to destroy
  * @return void
  */
-void destroy_MR(BMM_mapping_results * MR);
+void destroy_MR(BM_mappingResults * MR);
 
 /*!
  * @abstract Initialise the mapping results struct <- read in the BAM files
@@ -167,7 +195,7 @@ void destroy_MR(BMM_mapping_results * MR);
  * @param baseQ                 base quality threshold
  * @param mapQ                  mapping quality threshold
  * @param minLen                min query length
- * @param doLinks               1 if links should be calculated
+ * @param links                 0 if no links, otherwise should point to an array of ints.
  * @param ignoreSuppAlignments  only use primary alignments
  * @param coverageMode          type of coverage to be calculated
  * @param bamFiles              filenames of BAM files to parse
@@ -178,16 +206,31 @@ void destroy_MR(BMM_mapping_results * MR);
  * init_MR and stores info accordingly. TL;DR If you call this function
  * then you MUST call destroy_MR when you're done.
  *
+ * Each item in the links array is the number of orienation types for the corresponding bam
+ *
  */
 int parseCoverageAndLinks(int numBams,
                           int baseQ,
                           int mapQ,
                           int minLen,
-                          int doLinks,
+                          int * links,
                           int ignoreSuppAlignments,
                           char* coverageMode,
                           char* bamFiles[],
-                          BMM_mapping_results * MR);
+                          BM_mappingResults * MR);
+
+
+
+/*!
+ * @abstract work out the orientation type and insert size for given bam files
+ *
+ * @param  MR  mapping results struct containing BM_bamFile structs
+ * @return void
+ *
+ * @discussion This function expects MR to be initialised.
+ */
+#define BM_PAIRS_FOR_TYPE 10000    // only need to parse this many pairs to infer the type of the bam file
+void typeBamFiles(BM_mappingResults * MR);
 
 /*!
  * @abstract Adjust (reduce) the number of piled-up bases along a contig
@@ -198,9 +241,9 @@ int parseCoverageAndLinks(int numBams,
  * @return void
  *
  * @discussion This function expects MR to be initialised.
- * it can change the values of contig_length_correctors and plp_bp
+ * it can change the values of contigLengthCorrectors and plpBp
  */
-void adjustPlpBp(BMM_mapping_results * MR,
+void adjustPlpBp(BM_mappingResults * MR,
                  uint32_t ** position_holder,
                  int tid);
 
@@ -214,7 +257,7 @@ void adjustPlpBp(BMM_mapping_results * MR,
  * NOTE: YOU are responsible for freeing the return value
  * recommended method is to use destroyCoverages
  */
-float ** calculateCoverages(BMM_mapping_results * MR);
+float ** calculateCoverages(BM_mappingResults * MR);
 
 /*!
  * @abstract Destroy the coverages structure made in  calculateCoverages
@@ -235,7 +278,7 @@ void destroyCoverages(float ** covs, int numContigs);
  * @param  MR  mapping results struct containing links
  * @return 1 if links OK or 0 otherwise
  */
-int initLW(BMM_LinkWalker * walker, BMM_mapping_results * MR);
+int initLW(BM_LinkWalker * walker, BM_mappingResults * MR);
 
 /*!
  * @abstract Move to the next LinkInfo or LinkPair
@@ -243,7 +286,7 @@ int initLW(BMM_LinkWalker * walker, BMM_mapping_results * MR);
  * @param  walker   pointer to LinkHolder.
  * @return 1 for step within current contig pair, 2 for new pair, 0 for end walk
  */
-int stepLW(BMM_LinkWalker * walker);
+int stepLW(BM_LinkWalker * walker);
 
 /*!
  * @abstract Start moving through all of the links
@@ -251,7 +294,29 @@ int stepLW(BMM_LinkWalker * walker);
  * @param  walker   pointer to LinkHolder.
  * @return void
  */
-void destroyLW(BMM_LinkWalker * walker);
+void destroyLW(BM_LinkWalker * walker);
+
+
+    /***********************
+    ***     BAMFILES     ***
+    ***********************/
+
+/*!
+ * @abstract Free all the memory used to store bamFile structs
+ *
+ * @param  BFs      Malloc'd array of BF structs
+ * @return void
+ */
+ void destroyBamFiles(BM_bamFile ** BFs, int numBams);
+
+
+/*!
+ * @abstract Human readable orientation type
+ *
+ * @param  type         Orientation type
+ * @return char *       Human readable string
+ */
+char * OT2Str(OT type);
 
     /***********************
     *** PRINTING AND I/O ***
@@ -271,11 +336,20 @@ void destroyLW(BMM_LinkWalker * walker);
  * @param  MR  mapping results struct to print
  * @return void
  */
-void print_MR(BMM_mapping_results * MR);
+void print_MR(BM_mappingResults * MR);
+
+
+/*!
+ * @abstract Print the bamFile-ish info
+ *
+ * @param  BF  bam file struct to print
+ * @return void
+ */
+void printBamFileInfo(BM_bamFile * BF);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif // BMM_BAM_PARSER_H
+#endif // BM_BAM_PARSER_H
 

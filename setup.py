@@ -49,11 +49,12 @@ setup(
     author='Michael Imelfort',
     author_email='mike@mikeimelfort.com',
     packages=['bamm'],
+    scripts=['bin/bamm'],
     url='http://pypi.python.org/pypi/BamM/',
     license='GPLv3',
     description='BamM',
     long_description=open('README.md').read(),
     install_requires=[],
-#    data_files=[('', ['c/bam/libPMBam.a'])]
+    data_files=[('', ['c/bam/libBamM.a'])]
 )
 

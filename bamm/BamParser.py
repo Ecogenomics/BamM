@@ -34,11 +34,14 @@ __email__ = "mike@mikeimelfort.com"
 __status__ = "Dev"
 
 ###############################################################################
+
 import os
 import ctypes as c
 import pkg_resources
 from multiprocessing import Pool, Manager
 import numpy as np
+from string import maketrans as s_maketrans
+from re import sub as re_sub
 
 ###############################################################################
 ###############################################################################
@@ -53,6 +56,94 @@ class InvalidCoverageModeException(BamMException): pass
 ###############################################################################
 ###############################################################################
 
+#------------------------------------------------------------------------------
+# Managing orientation and linking types
+
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    return type('Enum', (), enums)
+
+# Read orientations
+# type 0 <--- --->
+# type 1 ---> --->
+# type 2 ---> <---
+global OT
+OT = enum('OUT', 'SAME', 'IN', 'NONE', 'ERROR')
+
+# Links are stored as triples (contig1, contig2, linktype)
+# There are 4 linktypes:
+# SS  <--1--- ---2-->
+# SE  <--1--- <--2---
+# ES  ---1--> ---2-->
+# EE  ---1--> <--2---
+global LT
+LT = enum('SS','SE','ES','EE','ERROR')
+
+def OT2Str(OT):
+    """For the humans!"""
+    if OT == OT.OUT:
+        return 'OUT'
+    if OT == OT.SAME:
+        return 'SAME'
+    if OT == OT.IN:
+        return 'IN'
+    if OT == OT.NONE:
+        return 'NONE'
+
+    return 'ERROR'
+
+def LT2Str(cid1, cid2, gap, linkType, terse=False):
+    """For the humans!"""
+    if terse:
+        if linkType == LT.SS:
+            return "SS"
+        if linkType == LT.SE:
+            return "SE"
+        if linkType == LT.ES:
+            return "ES"
+        if linkType == LT.EE:
+            return "EE"
+        return "??"
+    if linkType == LT.SS:
+        return str(cid1) + " lies before " + str(cid2) + " in the opposite direction with gap "+str(gap)
+    if linkType == LT.SE:
+        return str(cid1) + " lies after " + str(cid2) + " in the same direction with gap "+str(gap)
+    if linkType == LT.ES:
+        return str(cid1) + " lies before " + str(cid2) + " in the same direction with gap "+str(gap)
+    if linkType == LT.EE:
+        return str(cid1) + " lies after " + str(cid2) + " in the opposite direction with gap "+str(gap)
+
+    return 'Who knows?'
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+class BamFile(object):
+    """Store information about a BAM file"""
+    def __init__(self,
+                 bid,
+                 fileName,
+                 orientationType = OT.NONE,
+                 insertSize = 0.,
+                 insertStdev = 0.):
+         self.bid = bid,
+         self.fileName = fileName
+         self.orientationType = orientationType
+         self.insertSize = insertSize
+         self.insertStdev = insertStdev
+
+    def __str__(self):
+        return "FileName: %s Orientation: %s Insert mean: %0.4f Stdev: %0.4f" % (self.fileName, OT2Str(OT), self.insertSize, self.insertStdev)
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+
 # fields defined in cfuhash.c but not accessed at this level
 class cfuhash_table_t(c.Structure):
     pass
@@ -60,48 +151,52 @@ class cfuhash_table_t(c.Structure):
 # links-associated structures "C land"
 """
 typedef struct {
-    uint16_t orient_1;
-    uint16_t orient_2;
-    uint32_t pos_1;
-    uint32_t pos_2;
+    uint16_t reversed1;
+    uint16_t reversed2;
+    uint16_t readLength1;
+    uint16_t readLength2;
+    uint32_t pos1;
+    uint32_t pos2;
     uint32_t bam_ID;
-    struct BMM_link_info * next_link;
-} BMM_link_info;
+    struct BMM_linkInfo * nextLink;
+} BMM_linkInfo;
 
 typedef struct {
-    uint32_t cid_1;
-    uint32_t cid_2;
+    uint32_t cid1;
+    uint32_t cid2;
     uint32_t numLinks;
-    BMM_link_info * LI;
-} BMM_link_pair;
+    BMM_linkInfo * LI;
+} BMM_linkPair;
 
 typedef struct {
     char ** keys;
     size_t keyCount;
     size_t numKeys;
     cfuhash_table_t * linkHash;
-    BMM_link_pair * pair;
-    BMM_link_info * LI;
+    BMM_linkPair * pair;
+    BMM_linkInfo * LI;
 } BMM_LinkWalker;
 
 """
-class BMM_link_info_C(c.Structure):
+class BMM_linkInfo_C(c.Structure):
     pass
 
-class BMM_link_info_C(c.Structure):
-    _fields_ = [("orient_1", c.c_uint16),
-                ("orient_2", c.c_uint16),
-                ("pos_1", c.c_uint32),
-                ("pos_2", c.c_uint32),
+class BMM_linkInfo_C(c.Structure):
+    _fields_ = [("reversed1", c.c_uint16),
+                ("reversed2", c.c_uint16),
+                ("readLength1", c.c_uint16),
+                ("readLength2", c.c_uint16),
+                ("pos1", c.c_uint32),
+                ("pos2", c.c_uint32),
                 ("bam_ID", c.c_uint32),
-                ("next_link",c.POINTER(BMM_link_info_C))
+                ("nextLink",c.POINTER(BMM_linkInfo_C))
                 ]
 
-class BMM_link_pair_C(c.Structure):
-    _fields_ = [("cid_1", c.c_uint32),
-                ("cid_2", c.c_uint32),
+class BMM_linkPair_C(c.Structure):
+    _fields_ = [("cid1", c.c_uint32),
+                ("cid2", c.c_uint32),
                 ("numLinks", c.c_uint32),
-                ("LI",c.POINTER(BMM_link_info_C))
+                ("LI",c.POINTER(BMM_linkInfo_C))
                 ]
 
 class BMM_LinkWalker_C(c.Structure):
@@ -109,29 +204,33 @@ class BMM_LinkWalker_C(c.Structure):
                ("keyCount", c.c_size_t),
                ("numKeys", c.c_size_t),
                ("links",c.POINTER(cfuhash_table_t)),
-               ("pair",c.POINTER(BMM_link_pair_C)),
-               ("LI",c.POINTER(BMM_link_info_C))
+               ("pair",c.POINTER(BMM_linkPair_C)),
+               ("LI",c.POINTER(BMM_linkInfo_C))
                ]
 
 # links-associated structures "Python land"
 class BMM_linkInfo(object):
     def __init__(self,
-                 o1,
-                 o2,
+                 r1,
+                 r2,
                  p1,
                  p2,
-                 bid):
-        self.orient1 = o1
-        self.orient2 = o2
+                 ot,
+                 gap = 0,
+                 bid = None):
+        self.reversed1 = r1
+        self.reversed2 = r2
         self.pos1 = p1
         self.pos2 = p2
+        self.orientationType = ot
+        self.gap = gap
         self.bamID = bid
 
     def __str__(self):
-        return "    (%d,%d -> %d,%d, %s)\n" % (self.pos1, self.orient1, self.pos2, self.orient2, self.bamID)
+        return "    (%d,%d -> %d,%d, (%s, %d), %s)\n" % (self.pos1, self.reversed1, self.pos2, self.reversed2, LT2Str(self.orientationType), self.gap, self.bamID)
 
     def printMore(self, bamFileNames):
-        return "    (%d,%d -> %d,%d, %s)\n" % (self.pos1, self.orient1, self.pos2, self.orient2, bamFileNames[self.bamID])
+        return "    (%d,%d -> %d,%d, (%s, %d), %s)\n" % (self.pos1, self.reversed1, self.pos2, self.reversed2, LT2Str(self.orientationType), self.gap, bamFileNames[self.bamID])
 
 class BMM_linkPair(object):
     def __init__(self,
@@ -143,18 +242,186 @@ class BMM_linkPair(object):
         self.links = []
 
     def addLink(self,
-                o1,
-                o2,
+                r1,
+                r2,
                 p1,
                 p2,
-                bid):
-        LI = BMM_linkInfo(o1,
-                         o2,
-                         p1,
-                         p2,
-                         bid)
-        self.links.append(LI)
-        self.numLinks += 1
+                rl,
+                contigLengths,
+                bamFile):
+
+        LI = BMM_linkInfo(r1,
+                          r2,
+                          p1,
+                          p2,
+                          bamFile.bid)
+        # work out the gap and the orientation type of this link
+        (gap, ot) = self.determineOTDifferentRefs(LI, rl, bamFile, contigLengths)
+
+        if ot != LT.ERROR:
+            LI.gap = gap
+            LI.orientationType = ot
+            self.links.append(LI)
+            self.numLinks += 1
+
+    def determineOTDifferentRefs(self, LI, rl, bamFile, contigLengths):
+        """Determine the orientation type and insert size of two reads
+
+        We assume that:
+           1. both reads are on different references
+           2. ar1 is the first read in the pair
+
+        I swear this is the last time I write this code!
+        """
+        # first check to see if the start read lies in the right position
+        # max_ins should* be: mean + 3 * stdev but assemblers like SaSSY and Velvet
+        # can produce nodes which overlap at the ends. So we need to account for negative gaps
+        # thus we choose max ins = mean + 3 * stdev + rl
+        max_ins = bamFile.insertSize + (3 * bamFile.insertStdev) + rl
+        gap = bamFile.insertSize
+
+        #print max_ins, cid1, LI.pos1, contigLengths[cid1], LI.reversed1, cid2, LI.pos2, contigLengths[cid2], LI.reversed2
+        if LI.pos1 <= ( max_ins - 2 * rl ):
+            # read 1 lies at the start of its contig
+            r1_at_start = True
+            gap -= (LI.pos1 + rl)
+            max_ins -= (LI.pos1 + rl)
+        elif LI.pos1 >= (contigLengths[cid1] - max_ins + rl ):
+            # read 1 lies at the end of its contig
+            r1_at_start = False
+            gap -= (contigLengths[cid1] - LI.pos1)
+            max_ins -= (contigLengths[cid1] - LI.pos1)
+        else:
+            # read 1 lies in the middle of its contig
+            return (0, LT.ERROR)
+        #print gap, ( max_ins - rl ), (contigLengths[cid2] - max_ins)
+
+        # now check read 2
+        if LI.pos2 <= ( max_ins - rl ):
+            # read 2 lies at the start of its contig
+            r2_at_start = True
+            gap -= (LI.pos2 + rl)
+        elif LI.pos2 >= (contigLengths[cid2] - max_ins ):
+            # read 2 lies at the end of its contig
+            r2_at_start = False
+            gap -= (contigLengths[cid2] - LI.pos2)
+        else:
+            # read 2 lies in the middle of its contig
+            return (0, LT.ERROR)
+        #print gap, max_ins
+
+        # now put it all together!
+        # print r1_at_start, LI.pos1, LI.reversed1, "|", r2_at_start, LI.pos2, LI.reversed2, "|",
+        if r1_at_start:
+            # -x-1-->
+            if LI.reversed1:
+                # -<-1-->
+                if r2_at_start:
+                    # <--1->- -x-2-->
+                    if LI.reversed2:
+                        # <--1->- -<-2--> ==> IN + SS
+                        if bamFile.orientationType == OT.IN:
+                            #print "0 IN + SS"
+                            return (gap, LT.SS)
+                    else:
+                        # <--1->- ->-2--> ==> SAME + SS
+                        if bamFile.orientationType == OT.SAME:
+                            #print "1 SAME + SS"
+                            return (gap, LT.SS)
+                else:
+                    # <--1->- <x-2---
+                    if LI.reversed2:
+                        # <--1->- <>-2--- ==> SAME + SE
+                        if bamFile.orientationType == OT.SAME:
+                            #print "2 SAME + SE"
+                            return (gap, LT.SE)
+                    else:
+                        # <--1->- <<-2--- ==> IN + SE
+                        if bamFile.orientationType == OT.IN:
+                            #print "3 IN + SE"
+                            return (gap, LT.SE)
+            else: # r1 agrees
+                # ->-1-->
+                if r2_at_start:
+                    # <--2-x- ->-1-->
+                    if LI.reversed2:
+                        # <--2->- ->-1--> ==> SAME + SS
+                        if bamFile.orientationType == OT.SAME:
+                            #print "4 SAME + SS"
+                            return (gap, LT.SS)
+                    else:
+                        # <--2-<- ->-1--> ==> OUT + SS
+                        if bamFile.orientationType == OT.OUT:
+                            #print "5 OUT + SS"
+                            return (gap, LT.SS)
+                else:
+                    # ---2-x> ->-1-->
+                    if LI.reversed2:
+                        # ---2-<> ->-1--> ==> OUT + SE
+                        if bamFile.orientationType == OT.OUT:
+                            #print "6 OUT + SE"
+                            return (gap, LT.SE)
+                    else:
+                        # ---2->> ->-1--> ==> SAME + SE
+                        if bamFile.orientationType == OT.SAME:
+                            #print "7 SAME + SE"
+                            return (gap, LT.SE)
+        else: # r1 at end
+            # ---1-x>
+            if LI.reversed1:
+                # ---1-<>
+                if r2_at_start:
+                    # ---1-<>- -x-2-->
+                    if LI.reversed2:
+                        # ---1-<> -<-2--> ==> SAME + ES
+                        if bamFile.orientationType == OT.SAME:
+                            #print "8 SAME + ES"
+                            return (gap, LT.ES)
+                    else:
+                        # ---1-<> ->-2--> ==> OUT + ES
+                        if bamFile.orientationType == OT.OUT:
+                            #print "9 OUT + ES"
+                            return (gap, LT.ES)
+                else:
+                    # ---1-<> <x-2---
+                    if LI.reversed2:
+                        # ---1-<> <>-2--- ==> OUT + EE
+                        if bamFile.orientationType == OT.OUT:
+                            #print "a OUT + EE"
+                            return (gap, LT.EE)
+                    else:
+                        # ---1-<> <<-2--- ==> SAME + EE
+                        if bamFile.orientationType == OT.SAME:
+                            #print "b SAME + EE"
+                            return (gap, LT.EE)
+            else: # r1 agrees
+                # ---1->>
+                if r2_at_start:
+                    # ---1->> -x-2-->
+                    if LI.reversed2:
+                        # ---1->> -<-2--> ==> IN + ES
+                        if bamFile.orientationType == OT.IN:
+                            #print "c IN + SS"
+                            return (gap, LT.ES)
+                    else:
+                        # ---1->> ->-2--> ==> SAME + ES
+                        if bamFile.orientationType == OT.SAME:
+                            #print "d SAME + ES"
+                            return (gap, LT.ES)
+                else:
+                    # ---1->> <x-2---
+                    if LI.reversed2:
+                        # ---1->> <>-2--- ==> SAME + EE
+                        if bamFile.orientationType == OT.SAME:
+                            #print "e SAME + EE"
+                            return (gap, LT.EE)
+                    else:
+                        # ---1->> <<-2--- ==> IN + EE
+                        if bamFile.orientationType == OT.IN:
+                            #print "f IN + EE"
+                            return (gap, LT.EE)
+        #print
+        return (0, LT.ERROR)
 
     def __str__(self):
         str = "  (%d, %d, %d links)\n" % (self.cid1, self.cid2, len(self.links))
@@ -171,32 +438,32 @@ class BMM_linkPair(object):
 # mapping results structure "C land"
 """
 typedef struct {
-    uint32_t ** plp_bp;
-    uint32_t * contig_lengths;
-    uint32_t ** contig_length_correctors;
-    uint32_t num_bams;
-    uint32_t num_contigs;
-    char ** contig_names;
-    char ** bam_file_names;
-    int is_links_included;
+    uint32_t ** plpBp;
+    uint32_t * contigLengths;
+    uint32_t ** contigLengthCorrectors;
+    uint32_t numBams;
+    uint32_t numContigs;
+    char ** contigNames;
+    char ** bamFileNames;
+    int isLinks;
     char * coverage_mode;
-    int is_ignore_supps;
+    int isIgnoreSupps;
     cfuhash_table_t * links;
-} BMM_mapping_results;
+} BM_mappingResults;
 """
-class BMM_mapping_results_C(c.Structure):
-    _fields_ = [("plp_bp", c.POINTER(c.POINTER(c.c_uint32))),
-                ("contig_lengths",c.POINTER(c.c_uint32)),
-                ("contig_length_correctors",c.POINTER(c.POINTER(c.c_uint32))),
-                ("num_bams",c.c_uint32),
-                ("num_contigs",c.c_uint32),
-                ("contig_names",c.POINTER(c.POINTER(c.c_char))),
-                ("bam_file_names",c.POINTER(c.POINTER(c.c_char))),
+class BM_mappingResults_C(c.Structure):
+    _fields_ = [("plpBp", c.POINTER(c.POINTER(c.c_uint32))),
+                ("contigLengths",c.POINTER(c.c_uint32)),
+                ("contigLengthCorrectors",c.POINTER(c.POINTER(c.c_uint32))),
+                ("numBams",c.c_uint32),
+                ("numContigs",c.c_uint32),
+                ("contigNames",c.POINTER(c.POINTER(c.c_char))),
+                ("bamFileNames",c.POINTER(c.POINTER(c.c_char))),
                 ("contig_name_lengths",c.POINTER(c.c_uint16)),
                 ("bam_file_name_lengths",c.POINTER(c.c_uint16)),
-                ("is_links_included",c.c_int),
+                ("isLinks",c.c_int),
                 ("coverage_mode",c.POINTER(c.c_char)),
-                ("is_ignore_supps",c.c_int),
+                ("isIgnoreSupps",c.c_int),
                 ("links",c.POINTER(cfuhash_table_t))
                 ]
 # mapping results structure "Python land"
@@ -257,11 +524,11 @@ class BMM_mappingResults(object):
 ###############################################################################
 ###############################################################################
 
-def pythonizeLinks(MR):
+def pythonizeLinks(MR, bamFile, contigLengths):
     """Unwrap the links-associated C structs and return a python-ized dict"""
     links = {}
     CW = CWrapper()
-    pMR = c.POINTER(BMM_mapping_results_C)
+    pMR = c.POINTER(BM_mappingResults_C)
     pMR = c.pointer(MR)
 
     LW = BMM_LinkWalker_C()
@@ -274,61 +541,71 @@ def pythonizeLinks(MR):
         while(ret_val != 0):
             if ret_val == 2:
                 # need a new contig pair
-                LP = BMM_linkPair(((LW.pair).contents).cid_1, ((LW.pair).contents).cid_2)
-                key = "%d,%d" % (((LW.pair).contents).cid_1, ((LW.pair).contents).cid_2)
+                LP = BMM_linkPair(((LW.pair).contents).cid1, ((LW.pair).contents).cid2)
+                key = "%d,%d" % (((LW.pair).contents).cid1, ((LW.pair).contents).cid2)
                 links[key] = LP
             # add a link
             LI = (LW.LI).contents
-            LP.addLink(LI.orient_1, LI.orient_2, LI.pos_1, LI.pos_2, LI.bam_ID)
+            LP.addLink(LI.reversed1,
+                       LI.reversed2,
+                       LI.pos1,
+                       LI.pos2,
+                       readLength,
+                       contigLengths,
+                       bamFile)
             ret_val = CW._stepLW(pLW)
         CW._destroyLW(pLW)
 
     return links
 
-def externalParseWrapper(bAMpARSER, bamFile, _MR, doContigNames):
+def externalParseWrapper(bAMpARSER, bamFileName, bid, _MR, doContigNames):
     """ctypes pointers are unpickleable -- what we need is a hack!
 
     See BamParser._parseOneBam for what this function should be doing
     """
-    MR = bAMpARSER._parseOneBam(bamFile)
+    print "HHH"
+    MR = bAMpARSER._parseOneBam(bamFileName)
+    print "HHsH"
+
 
     contig_names = []
-    contig_lengths = np.array([int(i) for i in c.cast(MR.contig_lengths, c.POINTER(c.c_uint32*MR.num_contigs)).contents])
-    plp_bp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*MR.num_bams)).contents] for i in c.cast(MR.plp_bp,c.POINTER(c.POINTER(c.c_uint32*MR.num_bams)*MR.num_contigs)).contents])
+    contig_lengths = np.array([int(i) for i in c.cast(MR.contigLengths, c.POINTER(c.c_uint32*MR.numContigs)).contents])
+    plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*MR.numBams)).contents] for i in c.cast(MR.plpBp,c.POINTER(c.POINTER(c.c_uint32*MR.numBams)*MR.numContigs)).contents])
 
-    coverages = np.zeros((MR.num_contigs, MR.num_bams))
+    coverages = np.zeros((MR.numContigs, MR.numBams))
     if bAMpARSER.coverageMode == 'outlier':
-        contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*MR.num_bams)).contents] for i in c.cast(MR.contig_length_correctors,c.POINTER(c.POINTER(c.c_uint32*MR.num_bams)*MR.num_contigs)).contents])
-        for c_idx in range(int(MR.num_contigs)):
-            for b_idx in range(int(MR.num_bams)):
-                coverages[c_idx,b_idx] = float(plp_bp[c_idx,b_idx])/float(contig_lengths[c_idx] - contig_length_correctors[c_idx])
+        contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*MR.numBams)).contents] for i in c.cast(MR.contigLengthCorrectors,c.POINTER(c.POINTER(c.c_uint32*MR.numBams)*MR.numContigs)).contents])
+        for c_idx in range(int(MR.numContigs)):
+            for b_idx in range(int(MR.numBams)):
+                coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx] - contig_length_correctors[c_idx])
     else:
-        for c_idx in range(MR.num_contigs):
-            for b_idx in range(MR.num_bams):
-                coverages[c_idx,b_idx] = float(plp_bp[c_idx,b_idx])/float(contig_lengths[c_idx])
+        for c_idx in range(MR.numContigs):
+            for b_idx in range(MR.numBams):
+                coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
 
     if doContigNames:
-        contig_name_lengths = np.array([int(i) for i in c.cast(MR.contig_name_lengths, c.POINTER(c.c_uint16*MR.num_contigs)).contents])
-        contig_name_array = c.cast(MR.contig_names, c.POINTER(c.POINTER(c.c_char)*MR.num_contigs)).contents
-        for i in range(MR.num_contigs):
+        contig_name_lengths = np.array([int(i) for i in c.cast(MR.contig_name_lengths, c.POINTER(c.c_uint16*MR.numContigs)).contents])
+        contig_name_array = c.cast(MR.contigNames, c.POINTER(c.POINTER(c.c_char)*MR.numContigs)).contents
+        for i in range(MR.numContigs):
             contig_names.append("".join([j for j in c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents]))
 
+    BF = BamFile(bid, bamFileName)
     if bAMpARSER.doLinks:
-        links = pythonizeLinks(MR)
+        links = pythonizeLinks(MR, BF, contig_lengths)
     else:
         links = {}
 
     MRR = BMM_mappingResults(coverages,
                              contig_lengths,
-                             MR.num_bams,
-                             MR.num_contigs,
+                             MR.numBams,
+                             MR.numContigs,
                              contig_names,
-                             bamFile,
+                             BF,
                              links)
     _MR.append(MRR)
 
     # we need to call some C on this guy
-    pMR = c.POINTER(BMM_mapping_results_C)
+    pMR = c.POINTER(BM_mappingResults_C)
     pMR = c.pointer(MR)
     CW = CWrapper()
     CW._destroy_MR(pMR)
@@ -346,8 +623,7 @@ class CWrapper:
         #---------------------------------
         package_dir, filename = os.path.split(__file__)
         package_dir = os.path.abspath(package_dir)
-        package_dir = package_dir.replace("bamm","" )
-        c_lib = os.path.join(package_dir, 'c', 'bam', 'libPMBam.a')
+        c_lib = os.path.join(package_dir, 'c', 'bam', 'libBamM.a')
         self.libPMBam = c.cdll.LoadLibrary(c_lib)
 
         #---------------------------------
@@ -363,7 +639,7 @@ class CWrapper:
         @discussion MR_B remains unchanged.
         MR_A is updated to include all the info contained in MR_B
 
-        void merge_MRs(BMM_mapping_results_C * MR_A, BMM_mapping_results_C * MR_B);
+        void merge_MRs(BM_mappingResults_C * MR_A, BM_mappingResults_C * MR_B);
         """
 
         self._destroy_MR = self.libPMBam.destroy_MR
@@ -373,7 +649,7 @@ class CWrapper:
         @param  MR  mapping results struct to destroy
         @return void
 
-        void destroy_MR(BMM_mapping_results_C * MR)
+        void destroy_MR(BM_mappingResults_C * MR)
         """
 
         self._parseCoverageAndLinks = self.libPMBam.parseCoverageAndLinks
@@ -403,7 +679,7 @@ class CWrapper:
                                   int ignoreSuppAlignments,
                                   char* coverageMode,
                                   char* bamFiles[],
-                                  BMM_mapping_results_C * MR
+                                  BM_mappingResults_C * MR
                                  )
         """
 
@@ -417,9 +693,9 @@ class CWrapper:
         @return void
 
         @discussion This function expects MR to be initialised.
-        it can change the values of contig_length_correctors and plp_bp
+        it can change the values of contigLengthCorrectors and plpBp
 
-        void adjustPlpBp(BMM_mapping_results_C * MR,
+        void adjustPlpBp(BM_mappingResults_C * MR,
                          uint32_t ** position_holder,
                          int tid)
         """
@@ -435,7 +711,7 @@ class CWrapper:
         NOTE: YOU are responsible for freeing the return value
         recommended method is to use destroyCoverages
 
-        float ** calculateCoverages(BMM_mapping_results_C * MR);
+        float ** calculateCoverages(BM_mappingResults_C * MR);
         """
 
         self._destroyCoverages = self.libPMBam.destroyCoverages
@@ -455,7 +731,7 @@ class CWrapper:
 
         @param  MR  mapping results struct containing links
         @return pointer to LinkHolder if links exist or NULL
-        BMM_LinkWalker * initLW(BMM_mapping_results * MR);
+        BMM_LinkWalker * initLW(BM_mappingResults * MR);
         """
 
         self._stepLW = self.libPMBam.stepLW
@@ -484,7 +760,7 @@ class CWrapper:
 
         @param  MR   mapping results struct with mapping info
 
-        void print_MR(BMM_mapping_results_C * MR)
+        void print_MR(BM_mappingResults_C * MR)
         """
 
 class BamParser:
@@ -523,6 +799,50 @@ class BamParser:
         #---------------------------------
         self.MR = None          # internal mapping results object
 
+        LTInverter = {LT.SS:LT.SS,
+                           LT.SE:LT.ES,
+                           LT.ES:LT.SE,
+                           LT.EE:LT.EE,
+                           LT.ERROR:LT.ERROR}
+
+        self.compl = s_maketrans('ACGT', 'TGCA')
+
+#------------------------------------------------------------------------------
+# Orientation stuffz
+
+    def determineOTSameRef(self, ar1, ar2):
+        """Determine the orientation type and insert size of two reads
+
+        We assume that:
+           1. both reads are on the same reference
+           2. ar1 comes before ar2
+        """
+        isize = LI.pos2 - LI.pos1 + ar1.rlen
+        if LI.reversed1:
+            # <-1--
+            if LI.reversed2:
+                # <-1-- <-2--
+                return (OT.SAME, isize)
+            else:
+                # <-1-- -2-->
+                return (OT.OUT, isize)
+        else:
+            # -->
+            if LI.reversed2:
+                # --1-> <-2--
+                return (OT.IN, isize)
+            else:
+                # --1-> --2->
+                return (OT.SAME, isize)
+
+    def revComp(self, seq):
+        """Return the reverse complement of a sequence"""
+        # build a dictionary to know what letter to switch to
+        return seq.translate(self.compl)[::-1]
+
+#------------------------------------------------------------------------------
+# Bam parseratering
+
     def parseBams(self, bamFiles, numThreads=1):
         """Parse bam files to get coverage and linking reads
 
@@ -532,8 +852,10 @@ class BamParser:
         _MR = Manager().list()
         pool = Pool(processes=numThreads)
         do_contig_names = True
+        bid = 0
         for bamFile in bamFiles:
-            pool.apply_async(func=externalParseWrapper, args=(self, bamFile, _MR, do_contig_names))
+            pool.apply_async(func=externalParseWrapper, args=(self, bamFile, bid, _MR, do_contig_names))
+            bid += 1
             if do_contig_names:
                 # we only need to parse the contig names once
                 do_contig_names = False
@@ -554,8 +876,8 @@ class BamParser:
 
     def _parseOneBam(self, bamFile):
         """Parse a single BAM file and append the result to the internal mapping results list"""
-        MR = BMM_mapping_results_C()        # destroy needs to be called on this -> it should be called by the calling function
-        pMR = c.POINTER(BMM_mapping_results_C)
+        MR = BM_mappingResults_C()        # destroy needs to be called on this -> it should be called by the calling function
+        pMR = c.POINTER(BM_mappingResults_C)
         pMR = c.pointer(MR)
         bamfiles_c_array = (c.c_char_p * 1)()
         bamfiles_c_array[:] = [bamFile]
@@ -566,11 +888,23 @@ class BamParser:
                                   self.minLength,
                                   self.doLinks,
                                   self.ignoreSuppAlignments,
-                                  self.coverageMode,
+                                  c.create_string_buffer(self.coverageMode),
                                   bamfiles_c_array,
                                   pMR)
         return MR
 
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+def makeSurePathExists(path):
+    try:
+        os_makedirs(path)
+    except OSError as exception:
+        if exception.errno != errno.EEXIST:
+            raise
 
 ###############################################################################
 ###############################################################################

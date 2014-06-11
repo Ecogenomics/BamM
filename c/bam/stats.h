@@ -26,7 +26,7 @@
 #include <math.h> 
 
 /*find and print the average*/ 
-float BMM_mean(uint32_t * values, uint32_t size) 
+float BM_mean(uint32_t * values, uint32_t size) 
 { 
     uint32_t sum = 0; 
     int i = 0; 
@@ -36,19 +36,19 @@ float BMM_mean(uint32_t * values, uint32_t size)
     return (float)sum/(float)size; 
 } 
 
-float BMM_stdDev(uint32_t * values, uint32_t size, float m) 
+float BM_stdDev(uint32_t * values, uint32_t size, float m) 
 { 
     float sum = 0; 
     int i = 0; 
     if(m == -1)
-        m = BMM_mean(values, size); 
+        m = BM_mean(values, size); 
     for(i = 0; i < size; ++i) {
         sum += pow((float)*(values + i) - m, 2); 
     }
     return sqrt(sum/(float)size); 
 } 
 
-float BMM_fakeStdDev(uint32_t * values, uint32_t size) 
+float BM_fakeStdDev(uint32_t * values, uint32_t size) 
 { 
     // everything is 3 stdevs from the mean right?
     uint32_t max = 0, min = 1<<30; 

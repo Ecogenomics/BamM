@@ -1,0 +1,176 @@
+#!/usr/bin/env python
+###############################################################################
+#                                                                             #
+#    BamM.py                                                                  #
+#                                                                             #
+#    Get info from the BAM                                                    #
+#                                                                             #
+#    Copyright (C) Michael Imelfort                                           #
+#                                                                             #
+###############################################################################
+#                                                                             #
+#    This program is free software: you can redistribute it and/or modify     #
+#    it under the terms of the GNU General Public License as published by     #
+#    the Free Software Foundation, either version 3 of the License, or        #
+#    (at your option) any later version.                                      #
+#                                                                             #
+#    This program is distributed in the hope that it will be useful,          #
+#    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
+#    GNU General Public License for more details.                             #
+#                                                                             #
+#    You should have received a copy of the GNU General Public License        #
+#    along with this program. If not, see <http://www.gnu.org/licenses/>.     #
+#                                                                             #
+###############################################################################
+
+__author__ = "Michael Imelfort"
+__copyright__ = "Copyright 2014"
+__credits__ = ["Michael Imelfort"]
+__license__ = "GPLv3"
+__version__ = "0.1.0"
+__maintainer__ = "Michael Imelfort"
+__email__ = "mike@mikeimelfort.com"
+__status__ = "Beta"
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+import argparse
+import sys
+
+from bamm.BamParser import BamParser
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+def doWork( args ):
+    """ Main wrapper"""
+    if(args.subparser_name == 'type'):
+        pass
+    elif(args.subparser_name == 'parse'):
+        BP = BamParser(args.base_quality,
+                       args.length,
+                       mappingQuality=args.mapping_quality,
+                       coverageMode=args.coverage_mode,
+                       doLinks=args.links)
+
+        BP.parseBams(args.bamfiles, numThreads=3)
+        print BP.MR
+    elif(args.subparser_name == 'extract'):
+        pass
+    else:
+        print "ERROR: Unknown mode '%s'" % args.subparser_name
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+def printHelp():
+    print '''\
+
+              ...::: BamM :::...
+
+    Working with the BAM, not against it...
+
+   -----------------------------------------
+                version: %s
+   -----------------------------------------
+
+    bamm type      -> Parse BAM files and determine read orientation type
+    bamm parse     -> Parse BAM files and get coverage and/or linking reads
+    bamm extract   -> Extract reads from BAM files
+
+    USE: bamm OPTION -h to see detailed options
+    ''' % __version__
+
+if __name__ == '__main__':
+    print
+    #-------------------------------------------------
+    # intialise the options parser
+    parser = argparse.ArgumentParser(add_help=False)
+    subparsers = parser.add_subparsers(help="--", dest='subparser_name')
+
+    #-------------------------------------------------
+    # determine read type / stats based on BAM mappings
+    type_parser = subparsers.add_parser('type',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='parse BAM files and determine reads type',
+                                        description='------------------------------------------------------------------------------\nParse BAM files and determine reads type\n------------------------------------------------------------------------------')
+    type_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+
+    #-------------------------------------------------
+    # determine linking reads
+    parse_parser = subparsers.add_parser('parse',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='get coverage information and/or linking reads',
+                                        description='------------------------------------------------------------------------------\nGet coverage information and/or linking reads\n------------------------------------------------------------------------------')
+
+    parse_parser.add_argument('bamfiles', nargs='+', help="BAM files to parse")
+    parse_parser.add_argument('--links', '-L', help="find pairing links", action='store_true', default=False)
+    parse_parser.add_argument('--length', '-l', help="minimum Q length", type=int, default=50)
+    parse_parser.add_argument('--base_quality', '-q', help="base quality threshold (Qscore)", type=int, default=20)
+    parse_parser.add_argument('--mapping_quality', '-Q', help="mapping quality threshold", type=int, default=0)
+    parse_parser.add_argument('--coverage_mode' ,'-m', help="how to calculate coverage [vanilla, outlier]", default='vanilla')
+
+    #-------------------------------------------------
+    # read extractor
+    extract_parser = subparsers.add_parser('extract',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='extract reads from bamfile(s)',
+                                        description='------------------------------------------------------------------------------\nExtract reads which hit the given references\n------------------------------------------------------------------------------')
+    extract_parser.add_argument('list', help="file containing reference names. 1 per line")
+    extract_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+
+    extract_parser.add_argument('--prefix', help="prefix to apply to output files")
+    extract_parser.add_argument('-d', '--dont_trust_sam_flags', action="store_true", default=False, help="do not trust sam flags")
+    extract_parser.add_argument('-p', '--pairs_only', action="store_true", default=False, help="ignore unpaired reads")
+    extract_parser.add_argument('-b', '--no_separate_bams', action="store_true", default=False, help="use the same file for all reads")
+    extract_parser.add_argument('-c', '--combine_reads', action="store_true", default=False, help="write paired and unpaired to the same files")
+    extract_parser.add_argument('-s', '--shuffle', action="store_true", default=False, help="shuffle paired reads in ouput files")
+    extract_parser.add_argument('-g', '--no_gzip', action="store_true", default=False, help="do not gzip output files")
+    extract_parser.add_argument('-o', '--out_folder', default="", help="write to this folder (None for current dir)")
+    extract_parser.add_argument('-H', '--headers_only', action="store_true", default=False, help="extract only (unique) headers")
+
+    #-------------------------------------------------
+    # get and check options
+    args = None
+    if(len(sys.argv) == 1):
+        printHelp()
+        sys.exit(0)
+    elif(sys.argv[1] == '-v' or sys.argv[1] == '--version'):
+        print "BamTyper: version %s %s %s" % (__version__, __copyright__, __author__)
+        sys.exit(0)
+    elif(sys.argv[1] == '-h' or sys.argv[1] == '--help'):
+        printHelp()
+        sys.exit(0)
+    else:
+        args = parser.parse_args()
+
+    # profiling happens here. If you'd like to track the speed your code runs at
+    # then set the following to True and voila!
+    if(False):
+        import cProfile
+        cProfile.run('doWork(args)', 'profile')
+        ##########################################
+        ##########################################
+        # Use this in python console!
+        #import pstats
+        #p = pstats.Stats('prof')
+        #p.sort_stats('cumulative').print_stats(10)
+        #p.sort_stats('time').print_stats(10)
+        ##########################################
+        ##########################################
+    else:
+        doWork(args)
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+

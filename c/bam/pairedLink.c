@@ -32,50 +32,56 @@
 // local includes
 #include "pairedLink.h"
 
-void makeContigKey(char* keyStore, int cid_1, int cid_2)
+void makeContigKey(char* keyStore, int cid1, int cid2)
 {
-    // force cid_1 < cid_2 for consistent keys
-    if(cid_1 < cid_2) {sprintf(keyStore, "%d,%d", cid_1, cid_2);}
-    else {sprintf(keyStore, "%d,%d",cid_2, cid_1);}
+    // force cid1 < cid2 for consistent keys
+    if(cid1 < cid2) {sprintf(keyStore, "%d,%d", cid1, cid2);}
+    else {sprintf(keyStore, "%d,%d",cid2, cid1);}
 }
 
 void addLink(cfuhash_table_t * linkHash,
-             int cid_1,
-             int cid_2,
-             int pos_1,
-             int pos_2,
-             int orient_1,
-             int orient_2,
-             int bam_ID
+             int cid1,
+             int cid2,
+             int pos1,
+             int pos2,
+             int reversed1,
+             int reversed2,
+             int bid,
+             LT type
             )
 {
-    // store the link info, swap order of cid_1 and cid_2 if needed
-    BMM_link_info* LI = (BMM_link_info*) calloc(1, sizeof(BMM_link_info));
-    if(cid_1 < cid_2){
-        LI->orient_1 = orient_1;
-        LI->orient_2 = orient_2;
-        LI->pos_1 = pos_1;
-        LI->pos_2 = pos_2;
+    // store the link info, swap order of cid1 and cid2 if needed
+    BM_linkInfo* LI = (BM_linkInfo*) calloc(1, sizeof(BM_linkInfo));
+    if(cid1 < cid2){
+        LI->reversed1 = reversed1;
+        LI->reversed2 = reversed2;
+        LI->pos1 = pos1;
+        LI->pos2 = pos2;
+        LI->type = type;
     }
     else
     {
-        LI->orient_1 = orient_2;
-        LI->orient_2 = orient_1;
-        LI->pos_1 = pos_2;
-        LI->pos_2 = pos_1;
+        LI->reversed1 = reversed2;
+        LI->reversed2 = reversed1;
+        LI->pos1 = pos2;
+        LI->pos2 = pos1;
+        // take care of the types if we're swapping...
+        if(type == LT_SE) { LI->type = LT_ES; }
+        else if(type == LT_ES) { LI->type = LT_SE; }
+        else { LI->type = type; }
     }
-    LI->bam_ID = bam_ID;
+    LI->bid = bid;
 
-    BMM_link_info** next_link_ptr = (BMM_link_info**) &LI->next_link;
+    BM_linkInfo** nextLink_ptr = (BM_linkInfo**) &LI->nextLink;
 
     // see if the key is in the hash already
     char * key = calloc(30, sizeof(char)); // allocate room for the key
-    makeContigKey(key, cid_1, cid_2);
-    BMM_link_pair * base_LP = cfuhash_get(linkHash, key);
+    makeContigKey(key, cid1, cid2);
+    BM_linkPair * base_LP = cfuhash_get(linkHash, key);
     if (base_LP != NULL)
     {
         // exists in the hash -> daisy chain it on
-        *next_link_ptr = base_LP->LI;
+        *nextLink_ptr = base_LP->LI;
         base_LP->LI = LI;
         base_LP->numLinks++;
     }
@@ -83,20 +89,20 @@ void addLink(cfuhash_table_t * linkHash,
     {
         // we'll need to build a bit of infrastructure
         // store the contig ids once only
-        BMM_link_pair * LP = (BMM_link_pair*) calloc(1, sizeof(BMM_link_pair));
-        if(cid_1 < cid_2)
+        BM_linkPair * LP = (BM_linkPair*) calloc(1, sizeof(BM_linkPair));
+        if(cid1 < cid2)
         {
-            LP->cid_1 = cid_1;
-            LP->cid_2 = cid_2;
+            LP->cid1 = cid1;
+            LP->cid2 = cid2;
         }
         else
         {
-            LP->cid_1 = cid_2;
-            LP->cid_2 = cid_1;
+            LP->cid1 = cid2;
+            LP->cid2 = cid1;
         }
         LP->LI = LI;
         LP->numLinks = 1;
-        *next_link_ptr = LI; // point to self means end of list
+        *nextLink_ptr = LI; // point to self means end of list
 
         // finally, add the lot to the hash
         cfuhash_put(linkHash, key, LP);
@@ -104,19 +110,19 @@ void addLink(cfuhash_table_t * linkHash,
     free(key);
 }
 
-int destroyLinkInfo_andNext(BMM_link_info** LI_ptr)
+int destroyLinkInfo_andNext(BM_linkInfo** LI_ptr)
 {
-    BMM_link_info* next_link = (BMM_link_info*) (*LI_ptr)->next_link;
-    if(*LI_ptr ==  next_link) // at the end of the chain
+    BM_linkInfo* nextLink = (BM_linkInfo*) (*LI_ptr)->nextLink;
+    if(*LI_ptr ==  nextLink) // at the end of the chain
     {
         free(*LI_ptr);
         return 0;
     }
     else // not done yet
     {
-        BMM_link_info* tmp_link = *LI_ptr;
+        BM_linkInfo* tmp_link = *LI_ptr;
         free(tmp_link);
-        *LI_ptr = next_link;
+        *LI_ptr = nextLink;
         return 1;
     }
 }
@@ -130,10 +136,10 @@ void destroyLinks(cfuhash_table_t * linkHash)
     keys = (char **)cfuhash_keys_data(linkHash, &key_count, &key_sizes, 0);
 
     for (i = 0; i < (int)key_count; i++) {
-        BMM_link_pair * base_LP = cfuhash_get(linkHash, keys[i]);
+        BM_linkPair * base_LP = cfuhash_get(linkHash, keys[i]);
         if(keys[i] != 0)
             free(keys[i]);
-        BMM_link_info* LI = base_LP->LI;
+        BM_linkInfo* LI = base_LP->LI;
         while(destroyLinkInfo_andNext(&LI));
         if(base_LP !=0)
             free(base_LP);
@@ -145,10 +151,10 @@ void destroyLinks(cfuhash_table_t * linkHash)
         free(key_sizes);
 }
 
-int initLinkWalker(BMM_LinkWalker * walker, cfuhash_table_t * linkHash)
+int initLinkWalker(BM_LinkWalker * walker, cfuhash_table_t * linkHash)
 {
     // get some memory
-    //BMM_LinkWalker * walker = calloc(1, sizeof(BMM_LinkWalker));
+    //BM_LinkWalker * walker = calloc(1, sizeof(BM_LinkWalker));
     walker->linkHash = linkHash;
     walker->keyCount = 0;
     walker->numKeys = 0;
@@ -174,7 +180,7 @@ int initLinkWalker(BMM_LinkWalker * walker, cfuhash_table_t * linkHash)
     return 0;
 }
 
-int stepLinkWalker(BMM_LinkWalker * walker)
+int stepLinkWalker(BM_LinkWalker * walker)
 {
     if(getNextLinkInfo(&(walker->LI)))
     {
@@ -196,7 +202,7 @@ int stepLinkWalker(BMM_LinkWalker * walker)
     return 0;
 }
 
-void destroyLinkWalker(BMM_LinkWalker * walker)
+void destroyLinkWalker(BM_LinkWalker * walker)
 {
     if(walker != 0)
     {
@@ -209,41 +215,72 @@ void destroyLinkWalker(BMM_LinkWalker * walker)
 }
 
 
-int getNextLinkInfo(BMM_link_info** LI_ptr)
+int getNextLinkInfo(BM_linkInfo** LI_ptr)
 {
-    BMM_link_info* next_link = (BMM_link_info*) (*LI_ptr)->next_link;
-    if(*LI_ptr ==  next_link) {return 0;}
+    BM_linkInfo* nextLink = (BM_linkInfo*) (*LI_ptr)->nextLink;
+    if(*LI_ptr ==  nextLink) {return 0;}
     else
     {
-        *LI_ptr = next_link;
+        *LI_ptr = nextLink;
         return 1;
     }
 }
 
+char * LT2Str(LT type)
+{
+    switch(type)
+    {
+        case LT_NONE:
+            return "UNSET";
+            break;
+        case LT_SS:
+            return "SS";
+            break;
+        case LT_SE:
+            return "SE";
+            break;
+        case LT_ES:
+            return "ES";
+            break;
+        case LT_EE:
+            return "EE";
+            break;
+        case LT_ERROR:
+            return "ERROR";
+            break;
+    }
+    return "UNKNOWN";
+}
+
+
 void printLinks(cfuhash_table_t * linkHash, char ** bamNames, char ** contigNames)
 {
-    BMM_LinkWalker walker;
+    BM_LinkWalker walker;
     initLinkWalker(&walker, linkHash);
     int ret_val = 2;
+    printf("#cid_1\tcid_2\tpos_1\trev_1\tpos_2\trev_2\ttype\tfile\n");
     while(ret_val != 0)
     {
+        /*
         if(ret_val == 2)
         {
             // new contig pair
             printLinkPair(walker.pair, contigNames);
         }
+        */
+        printf("%s\t%s\t", contigNames[walker.pair->cid1], contigNames[walker.pair->cid2]);
         printLinkInfo(walker.LI, bamNames);
         ret_val = stepLinkWalker(&walker);
     }
     destroyLinkWalker(&walker);
 }
 
-void printLinkPair(BMM_link_pair* LP, char ** contigNames)
+void printLinkPair(BM_linkPair* LP, char ** contigNames)
 {
-    printf("  (%s, %s, %d links)\n",  contigNames[LP->cid_1], contigNames[LP->cid_2], LP->numLinks);
+    printf("#%s\t%s\t%d\n",  contigNames[LP->cid1], contigNames[LP->cid2], LP->numLinks);
 }
 
-void printLinkInfo(BMM_link_info* LI, char ** bamNames)
+void printLinkInfo(BM_linkInfo* LI, char ** bamNames)
 {
-    printf("    (%d,%d -> %d,%d, %s)\n",  LI->pos_1, LI->orient_1, LI->pos_2, LI->orient_2, bamNames[LI->bam_ID]);
+    printf("%d\t%d\t%d\t%d\t%s\t%s\n",  LI->pos1, LI->reversed1, LI->pos2, LI->reversed2, LT2Str(LI->type), bamNames[LI->bid]);
 }
