@@ -558,7 +558,7 @@ def pythonizeLinks(MR, bamFile, contigLengths):
 
     return links
 
-def externalParseWrapper(bAMpARSER, bamFileName, bid, _MR, doContigNames):
+def externalParseWrapper(bAMpARSER, bamFileName, bid, MR, doContigNames):
     """ctypes pointers are unpickleable -- what we need is a hack!
 
     See BamParser._parseOneBam for what this function should be doing
@@ -602,13 +602,13 @@ def externalParseWrapper(bAMpARSER, bamFileName, bid, _MR, doContigNames):
                              contig_names,
                              BF,
                              links)
-    _MR.append(MRR)
+    MR.append(MRR)
 
     # we need to call some C on this guy
     pMR = c.POINTER(BM_mappingResults_C)
     pMR = c.pointer(MR)
     CW = CWrapper()
-    CW._destroy_MR(pMR)
+    CW._destroyMR(pMR)
 
 ###############################################################################
 ###############################################################################
@@ -629,7 +629,7 @@ class CWrapper:
         #---------------------------------
         # import C functions
         #---------------------------------
-        self._merge_MR = self.libPMBam.merge_MRs
+        self._mergeMR = self.libPMBam.mergeMRs
         """
         @abstract Merge the contents of MR_B into MR_A
 
@@ -639,17 +639,17 @@ class CWrapper:
         @discussion MR_B remains unchanged.
         MR_A is updated to include all the info contained in MR_B
 
-        void merge_MRs(BM_mappingResults_C * MR_A, BM_mappingResults_C * MR_B);
+        void mergeMRs(BM_mappingResults_C * MR_A, BM_mappingResults_C * MR_B);
         """
 
-        self._destroy_MR = self.libPMBam.destroy_MR
+        self._destroyMR = self.libPMBam.destroyMR
         """
-        @abstract Free all the memory calloced in init_MR
+        @abstract Free all the memory calloced in initMR
 
         @param  MR  mapping results struct to destroy
         @return void
 
-        void destroy_MR(BM_mappingResults_C * MR)
+        void destroyMR(BM_mappingResults_C * MR)
         """
 
         self._parseCoverageAndLinks = self.libPMBam.parseCoverageAndLinks
@@ -668,8 +668,8 @@ class CWrapper:
         @return 0 for success
 
         @discussion This function expects MR to be a null pointer. It calls
-        init_MR and stores info accordingly. TL;DR If you call this function
-        then you MUST call destroy_MR when you're done.
+        initMR and stores info accordingly. TL;DR If you call this function
+        then you MUST call destroyMR when you're done.
 
         int parseCoverageAndLinks(int numBams,
                                   int baseQ,
@@ -754,13 +754,13 @@ class CWrapper:
         void destroyLW(BMM_LinkWalker * walker);
         """
 
-        self._print_MR = self.libPMBam.print_MR
+        self._printMR = self.libPMBam.printMR
         """
         @abstract Print the contents of the MR struct
 
         @param  MR   mapping results struct with mapping info
 
-        void print_MR(BM_mappingResults_C * MR)
+        void printMR(BM_mappingResults_C * MR)
         """
 
 class BamParser:
@@ -848,13 +848,13 @@ class BamParser:
 
         stores results in internal mapping results list
         """
-        global _MR
-        _MR = Manager().list()
+        global MR
+        MR = Manager().list()
         pool = Pool(processes=numThreads)
         do_contig_names = True
         bid = 0
         for bamFile in bamFiles:
-            pool.apply_async(func=externalParseWrapper, args=(self, bamFile, bid, _MR, do_contig_names))
+            pool.apply_async(func=externalParseWrapper, args=(self, bamFile, bid, MR, do_contig_names))
             bid += 1
             if do_contig_names:
                 # we only need to parse the contig names once
@@ -863,16 +863,16 @@ class BamParser:
         pool.join()
 
         # all the MRs are made. Only one has the contig IDs. find it's index
-        base_MR_index = 0
-        for i in range(len(_MR)):
-            if len(_MR[i].contigNames) > 0:
-                base_MR_index = i
+        baseMR_index = 0
+        for i in range(len(MR)):
+            if len(MR[i].contigNames) > 0:
+                baseMR_index = i
                 break
         # merge all the separate mapping results
-        self.MR = _MR[base_MR_index]
-        for i in range(len(_MR)):
-            if i != base_MR_index:
-                self.MR.consume(_MR[i])
+        self.MR = MR[baseMR_index]
+        for i in range(len(MR)):
+            if i != baseMR_index:
+                self.MR.consume(MR[i])
 
     def _parseOneBam(self, bamFile):
         """Parse a single BAM file and append the result to the internal mapping results list"""

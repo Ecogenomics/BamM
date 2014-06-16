@@ -2,7 +2,11 @@
 //
 //   bamParser.c
 //
-//   Determine average coverage values and linking read pairs
+//   Engine for parsing BAM files - non-parallel
+//   Functions include:
+//   Determine "type" of bam file (insert size, orientation of reads etc...)
+//   Determine average coverage values
+//   Find linking read pairs
 //
 //   Copyright (C) Michael Imelfort
 //
@@ -30,7 +34,7 @@
 
 // htslib
 //#include "htslib/bgzf.h"
-//#include "htslib/sam.h"
+#include "htslib/sam.h"
 
 // cfuhash
 #include "cfuhash.h"
@@ -38,21 +42,16 @@
 // local includes
 #include "bamParser.h"
 #include "pairedLink.h"
-#include "stats.h"
 
 // proper linking read is a properly paired, (primary alignment) of the first read in thr pair
 #define BM_BAM_FSUPP (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)
 #define BM_BAM_FMAPPED (BAM_FMUNMAP | BAM_FUNMAP)
 
-BM_mappingResults * create_MR(void)
-{
-    //-----
-    // allocate space for a new MR struct
-    //
-    return calloc(1, sizeof(BM_mappingResults));
+BM_mappingResults * createMR(void) {
+    return (BM_mappingResults*) calloc(1, sizeof(BM_mappingResults));
 }
 
-void init_MR(BM_mappingResults * MR,
+void initMR(BM_mappingResults * MR,
              bam_hdr_t * BAM_header,
              int numBams,
              char * bamFiles[],
@@ -60,15 +59,11 @@ void init_MR(BM_mappingResults * MR,
              char * coverageMode,
              int ignoreSuppAlignments
             ) {
-    //----
-    // initialise the MR object
-    //
     // check for a valid coverage mode
     int valid_coverage_mode = strcmp(coverageMode, "vanilla");
     if(valid_coverage_mode != 0)
     { valid_coverage_mode = strcmp(coverageMode, "outlier"); }
-    if(valid_coverage_mode != 0)
-    {
+    if(valid_coverage_mode != 0) {
         char str[80];
         sprintf(str, "Invalid coverage mode '%s'", coverageMode);
         printError(str, __LINE__);
@@ -91,17 +86,17 @@ void init_MR(BM_mappingResults * MR,
         }
 
         // make BAM file structs
-        MR->bamFiles = calloc(MR->numBams, sizeof(BM_bamFile*));
+        MR->bamFiles = (BM_bamFile**) calloc(MR->numBams, sizeof(BM_bamFile*));
         for (i = 0; i < numBams; ++i) {
-            BM_bamFile * BF = calloc(1, sizeof(BM_bamFile));
+            BM_bamFile * BF = (BM_bamFile*) calloc(1, sizeof(BM_bamFile));
             BF->fileName = strdup(bamFiles[i]);
             BF->fileNameLength = strlen(bamFiles[i]);
 
             // support for mixed insert sizes in one bam (i.e. shadow library)
             BF->numTypes = links[i];
-            BF->types = calloc(BF->numTypes, sizeof(BM_bamType*));
+            BF->types = (BM_bamType**) calloc(BF->numTypes, sizeof(BM_bamType*));
             for(j = 0; j < BF->numTypes; ++j) {
-                BM_bamType * BT = calloc(1, sizeof(BM_bamType));
+                BM_bamType * BT = (BM_bamType*) calloc(1, sizeof(BM_bamType));
                 BT->orientationType = OT_NONE;
                 BT->insertSize = 0;
                 BT->insertStdev = 0;
@@ -133,28 +128,21 @@ void init_MR(BM_mappingResults * MR,
             MR->contigLengthCorrectors = NULL;
         }
 
-        if(MR->isLinks)
-        {
+        if(MR->isLinks) {
             cfuhash_table_t *links = cfuhash_new_with_initial_size(30);
             cfuhash_set_flag(links, CFUHASH_FROZEN_UNTIL_GROWS);
             MR->links = links;
         }
-        else
-        {
+        else {
             MR->links = 0;
         }
     }
 }
 
-void merge_MRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B)
-{
-    //----
-    // Merge the contents of MR_B into MR_A
-    //
+void mergeMRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B) {
     // Check to see that the number of contigs are the same
     int i = 0, j = 0, k = 0;
-    if(MR_A->numContigs != MR_B->numContigs)
-    {
+    if(MR_A->numContigs != MR_B->numContigs) {
         char str[80];
         sprintf(str, "Unequal number of contigs in MR structs to be merged (Num contigs: %d, %d)", MR_A->numContigs, MR_B->numContigs);
         printError(str, __LINE__);
@@ -163,26 +151,21 @@ void merge_MRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B)
 
     // now check that the lengths of all the contigs are the same
     // just check every 100th contig
-    for(i=0; i < MR_A->numContigs; ++i)
-    {
-        if(i < MR_A->numContigs)
-        {
-            if(MR_A->contigLengths[i] != MR_B->contigLengths[i])
-            {
+    for(i=0; i < MR_A->numContigs; ++i) {
+        if(i < MR_A->numContigs) {
+            if(MR_A->contigLengths[i] != MR_B->contigLengths[i]) {
                 char str[80];
                 sprintf(str, "Unequal contig lengths in MR structs to be merged (Contig#: %d, Lengths: %d, %d)", i, MR_A->numContigs, MR_B->numContigs);
                 printError(str, __LINE__);
                 return;
             }
         }
-        else
-        {
+        else {
             break;
         }
     }
 
     // we can assume that the headers are the same. So now time to merge the data
-
     // keep a backup of these guys
     uint32_t old_numBams = MR_A->numBams;
     BM_bamFile ** old_bamFiles = MR_A->bamFiles;
@@ -190,15 +173,16 @@ void merge_MRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B)
     uint32_t ** old_plpBp = MR_A->plpBp;
 
     //-----
-    // Fix the num bams and bam file names
+    // BAM files
     MR_A->numBams += MR_B->numBams;
     // realloc the memory for MR_A
-    MR_A->bamFiles = calloc(MR_A->numBams, sizeof(BM_bamFile*));
+    MR_A->bamFiles = (BM_bamFile**) calloc(MR_A->numBams, sizeof(BM_bamFile*));
     for (i = 0; i < old_numBams; ++i) {
         MR_A->bamFiles[i] = old_bamFiles[i];
     }
     for (j = 0; j < MR_B->numBams; ++j) {
         MR_A->bamFiles[i] = MR_B->bamFiles[j];
+        MR_B->bamFiles[j] = 0; // avoid deleting twice
         ++i;
     }
     // free these original data
@@ -259,91 +243,83 @@ void merge_MRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B)
         }
     }
 
-
     //-----
     // Links
-    if(MR_A->isLinks)
-    {
+    if(MR_A->isLinks) {
         // break the pattern of overwriting. We can just add the links here
         char **keys = NULL;
         size_t *key_sizes = NULL;
         size_t key_count = 0;
         keys = (char **)cfuhash_keys_data(MR_B->links, &key_count, &key_sizes, 0);
-
         for (i = 0; i < (int)key_count; i++) {
             BM_linkPair * LP = cfuhash_get(MR_B->links, keys[i]);
             free(keys[i]);
             BM_linkInfo* LI = LP->LI;
             do {
+                BM_linkInfo * new_LI = cloneLinkInfo(LI);
+                // adjust the bid
+                new_LI->bid += old_numBams;
                 addLink(MR_A->links,
+                        new_LI,
                         LP->cid1,
-                        LP->cid2,
-                        LI->pos1,
-                        LI->pos2,
-                        LI->reversed1,
-                        LI->reversed2,
-                        LI->bid+old_numBams,
-                        LT_NONE);
+                        LP->cid2);
             } while(getNextLinkInfo(&LI));
-
         }
         free(keys);
         free(key_sizes);
     }
+    destroyMR(MR_B);
 }
 
-void destroy_MR(BM_mappingResults * MR)
-{
-    //----
-    // free the MR object
-    //
+void destroyMR(BM_mappingResults * MR) {
     int i = 0;
-    if(MR->numContigs != 0 && MR->numBams != 0) {
-        if(MR->plpBp != 0) {
-            for(i = 0; i < MR->numContigs; ++i) {
-                if(MR->plpBp[i] != 0)
-                    free(MR->plpBp[i]);
-            }
-            free(MR->plpBp);
-        }
-
-        if(MR->bamFiles != 0) {
-            destroyBamFiles(MR->bamFiles, MR->numBams);
-        }
-
-        if(MR->contigNames != 0) {
-            for(i = 0; i < MR->numContigs; ++i) {
-                if(MR->contigNames[i] != 0)
-                    free(MR->contigNames[i]);
-            }
-            free(MR->contigNames);
-            free(MR->contig_name_lengths);
-        }
-
-        if(MR->contigLengths != 0)
-            free(MR->contigLengths);
-
-        if(MR->contigLengthCorrectors != 0) {
-            for(i = 0; i < MR->numContigs; ++i) {
-                if(MR->contigLengthCorrectors[i] != 0)
-                    free(MR->contigLengthCorrectors[i]);
-            }
-            free(MR->contigLengthCorrectors);
-        }
-    }
-
-    free(MR->coverage_mode);
-
-    // destroy paired links
-    if(MR->isLinks)
+    if(MR != 0)
     {
-        destroyLinks(MR->links);
-        cfuhash_clear(MR->links);
-        cfuhash_destroy(MR->links);
+        if(MR->numContigs != 0 && MR->numBams != 0) {
+            if(MR->plpBp != 0) {
+                for(i = 0; i < MR->numContigs; ++i) {
+                    if(MR->plpBp[i] != 0)
+                        free(MR->plpBp[i]);
+                }
+                free(MR->plpBp);
+            }
+
+            if(MR->bamFiles != 0) {
+                destroyBamFiles(MR->bamFiles, MR->numBams);
+            }
+
+            if(MR->contigNames != 0) {
+                for(i = 0; i < MR->numContigs; ++i) {
+                    if(MR->contigNames[i] != 0)
+                        free(MR->contigNames[i]);
+                }
+                free(MR->contigNames);
+                free(MR->contig_name_lengths);
+            }
+
+            if(MR->contigLengths != 0)
+                free(MR->contigLengths);
+
+            if(MR->contigLengthCorrectors != 0) {
+                for(i = 0; i < MR->numContigs; ++i) {
+                    if(MR->contigLengthCorrectors[i] != 0)
+                        free(MR->contigLengthCorrectors[i]);
+                }
+                free(MR->contigLengthCorrectors);
+            }
+        }
+
+        free(MR->coverage_mode);
+
+        // destroy paired links
+        if(MR->isLinks) {
+            destroyLinks(MR->links);
+            cfuhash_clear(MR->links);
+            cfuhash_destroy(MR->links);
+        }
     }
 }
 
-// This function reads a BAM alignment from one BAM file.
 int read_bam(void *data,
              bam1_t *b) // read level filters better go here to avoid pileup
 {
@@ -366,10 +342,6 @@ int parseCoverageAndLinks(int numBams,
                           char* bamFiles[],
                           BM_mappingResults * MR
 ) {
-    //-----
-    // work out coverage depths and also pairwise linkages if asked to do so
-    //
-
     int supp_check = 0x0; // include supp mappings
     if (ignoreSuppAlignments) {
         supp_check = BM_BAM_FSUPP;
@@ -382,12 +354,12 @@ int parseCoverageAndLinks(int numBams,
     bam_mplp_t mplp;
     int tid = 0, *n_plp, i = 0;
     // load contig names and BAM index.
-    data = calloc(numBams, sizeof(aux_t*)); // data[i] for the i-th input
+    data = (aux_t**) calloc(numBams, sizeof(aux_t*)); // data[i] for the i-th input
     int beg = 0, end = 1<<30;  // set the default region
 
     for (i = 0; i < numBams; ++i) {
         bam_hdr_t *htmp;
-        data[i] = calloc(1, sizeof(aux_t));
+        data[i] = (aux_t*) calloc(1, sizeof(aux_t));
         data[i]->fp = bgzf_open(bamFiles[i], "r"); // open BAM
         data[i]->min_mapQ = mapQ;                  // set the mapQ filter
         data[i]->min_len  = minLen;                // set the qlen filter
@@ -398,7 +370,7 @@ int parseCoverageAndLinks(int numBams,
     }
 
     // initialise the mapping results struct
-    init_MR(MR,
+    initMR(MR,
             h,
             numBams,
             bamFiles,
@@ -461,16 +433,21 @@ int parseCoverageAndLinks(int numBams,
                         core.tid != core.mtid) {                    // hits different contigs
 
                         // looks legit
+                        // get a link info
+                        BM_linkInfo * LI = makeLinkInfo(core.tid,                           // contig 1
+                                                        core.mtid,                          // contig 2
+                                                        core.pos,                           // pos 1
+                                                        core.mpos,                          // pos 2
+                                                        ((core.flag&BAM_FREVERSE) != 0),    // 1 == reversed
+                                                        ((core.flag&BAM_FMREVERSE) != 0),   // 0 = agrees
+                                                        i                                   // bam file ID
+                                                        );
+
+                        // add the link
                         addLink(MR->links,
-                                core.tid,                           // contig 1
-                                core.mtid,                          // contig 2
-                                core.pos,                           // pos 1
-                                core.mpos,                          // pos 2
-                                ((core.flag&BAM_FREVERSE) != 0),    // 1 == reversed
-                                ((core.flag&BAM_FMREVERSE) != 0),   // 0 = agrees
-                                i,                                  // bam file ID
-                                LT_NONE                             // the type of the link
-                                );
+                                LI,
+                                core.tid,
+                                core.mtid);
                     }
                 }
             }
@@ -503,136 +480,143 @@ int parseCoverageAndLinks(int numBams,
 }
 
 void typeBamFiles(BM_mappingResults * MR) {
-
-    // get a list of all the bam file names
-    char** bam_files = calloc(MR->numBams, sizeof(char*));
-    int i = 0, tid = 0, *n_plp, j = 0;
-    for(j = 0; j < MR->numBams; ++j) {
-        bam_files[j] = (MR->bamFiles[j])->fileName;
-    }
+    //-----
+    // code uses the pattern outlined in samtools view (sam_view.c)
+    // thanks lh3!
+    //
+    int i = 0, j = 0;
 
     // always ignoreSuppAlignments
     int supp_check = BM_BAM_FSUPP;
 
-    // initialize the auxiliary data structures
-    const bam_pileup1_t **plp;
-    bam_hdr_t *h = 0; // BAM header of the 1st input
-    aux_t **data;
-    bam_mplp_t mplp;
-    // load contig names and BAM index.
-    data = calloc(MR->numBams, sizeof(void*)); // data[i] for the i-th input
-    int beg = 0, end = 1<<30;  // set the default region
-
     uint32_t * num_found = calloc(MR->numBams, sizeof(uint32_t));     // the number of good links found for each bam
     uint32_t *** inserts = calloc(MR->numBams, sizeof(uint32_t**));   // observed insert sizes per bam per OT
-    int num_done = 0;                                                 // the number of bams that enough reads
     int ** orient_counts = calloc(MR->numBams, sizeof(int*));         // hold counts for each of the orientation types we'll see
 
     for (i = 0; i < MR->numBams; ++i) {
         num_found[i] = 0;
         orient_counts[i] = calloc(3, sizeof(uint32_t*));
         inserts[i] = calloc(3, sizeof(int*));
-        for (j = 0; j < 3; ++j)
-        {
+        for (j = 0; j < 3; ++j) {
             inserts[i][j] = calloc(BM_PAIRS_FOR_TYPE, sizeof(uint32_t));
             orient_counts[i][j] = 0;
         }
-
-        data[i] = calloc(1, sizeof(aux_t));
-        data[i]->fp = bgzf_open(bam_files[i], "r"); // open BAM
-        data[i]->min_mapQ = 0;                     // set the mapQ filter
-        data[i]->min_len  = 0;                     // set the qlen filter
-        bam_hdr_t *htmp;
-        htmp = bam_hdr_read(data[i]->fp);          // read the BAM header ( I think this must be done for each file for legitness!)
-        if (i == 0) {
-            h = htmp; // keep the header of the 1st BAM
-        } else { bam_hdr_destroy(htmp); } // if not the 1st BAM, trash the header
     }
 
-    // the core multi-pileup loop
-    mplp = bam_mplp_init(MR->numBams, read_bam, (void**)data); // initialization
-    n_plp = calloc(MR->numBams, sizeof(int)); // n_plp[i] is the number of covering reads from the i-th BAM
-    plp = calloc(MR->numBams, sizeof(void*)); // plp[i] points to the array of covering reads (internal in mplp)
+    samFile *in = 0; j = 0;
+    bam_hdr_t *header = NULL;
 
-    // initialise
-    int pos = 0; // current position in the contig ( 1 indexed )
+    for (i = 0; i < MR->numBams; ++i) {
+        // open file handlers
+        if ((in = sam_open((MR->bamFiles[i])->fileName, "r")) == 0) {
+            fprintf(stderr, "ERROR: Failed to open \"%s\" for reading.\n", (MR->bamFiles[i])->fileName);
+            goto type_end;
+        }
+        if ((header = sam_hdr_read(in)) == 0) {
+            fprintf(stderr, "ERROR: Failed to read the header from \"%s\".\n", (MR->bamFiles[i])->fileName);
+            goto type_end;
+        }
 
-    j = 0;
-    // go through each of the contigs in the file, from tid == 0 --> end
-    while ((num_done < MR->numBams) && (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0)) { // come to the next covered position
-        if (pos < beg || pos >= end) continue; // out of range; skip
-        for (i = 0; i < MR->numBams; ++i) {
-            if(num_found[i] <= BM_PAIRS_FOR_TYPE)
-            {
-                // for each read in the pileup
-                for (j = 0; j < n_plp[i]; ++j) {
-                    const bam_pileup1_t *p = plp[i] + j; // DON'T modfity plp[][] unless you really know
-                    if (p->is_del || p->is_refskip) {} // having dels or refskips at tid:pos
-                    else {
-                        // now we do links if we've been asked to
-                        bam1_core_t core = p->b[0].core;
-                        // check to see if this is a proper linking paired read
-                        if ((core.pos == pos) &&                        // make sure this is the first time we've ween this particular pair
-                            (core.flag & BAM_FPAIRED) &&                // read is a paired read
-                            (core.flag & BAM_FREAD1) &&                 // read is first in pair (avoid dupe links)
-                            ((core.flag & BM_BAM_FMAPPED) == 0) &&      // both ends are mapped
-                            ((core.flag & supp_check) == 0) &&          // is primary mapping (optional)
-                            core.tid == core.mtid) {                    // hits same contig
+        // retrieve alignments in specified regions
+        bam1_t *b;
+        hts_idx_t *idx = sam_index_load(in, (MR->bamFiles[i])->fileName); // load index
+        if (idx == 0) { // index is unavailable
+            fprintf(stderr, "ERROR: Random alignment retrieval only works for indexed BAM or CRAM files.\n");
+            goto type_end;
+        }
+        b = bam_init1();
+        int result = -1;
 
-                            // get orientation type
-                            int ot = OT_NONE;
-                            if((core.flag&BAM_FREVERSE) != 0) {             // <-1--
-                                if((core.flag&BAM_FMREVERSE) != 0)
-                                    ot = OT_SAME;                              // <-1-- <-2--
-                                else
-                                    ot = OT_OUT;                               // <-1-- --2->
-                            }
-                            else {                                          // --1->
-                                if((core.flag&BAM_FMREVERSE) != 0)
-                                    ot = OT_IN;                                // --1-> <-2--
-                                else
-                                    ot = OT_SAME;                              // --1-> --2->
-                            }
-                            //int isize = abs(core.isize);
-                            // check to see if it's about face
-                            if(core.isize < 0)
-                            {
-                                if(ot == OT_IN)
-                                    ot = OT_OUT;
-                                else if(ot == OT_OUT)
-                                    ot = OT_IN;
-                            }
+        int hh;
+        for (hh = 0; hh < header->n_targets; ++hh) {
+            hts_itr_t *iter = sam_itr_querys(idx, header, header->target_name[hh]); // parse a region in the format like `chr2:100-200'
+            if (iter == NULL) { // reference name is not found
+                continue;
+            }
+            int contig_length = header->target_len[hh];
+            if(contig_length < (2 * BM_IGNORE_FROM_END))
+                continue;
+            int upper_bound = contig_length - BM_IGNORE_FROM_END;
+            // fetch alignments
+            while ((num_found[i] <= BM_PAIRS_FOR_TYPE) && (result = sam_itr_next(in, iter, b)) >= 0) {
+                bam1_core_t core = b->core;
+                // check to see if this is a proper linking paired read
+                if ((core.flag & BAM_FPAIRED) &&                // read is a paired read
+                    (core.flag & BAM_FREAD1) &&                 // read is first in pair (avoid dupe links)
+                    ((core.flag & BM_BAM_FMAPPED) == 0) &&      // both ends are mapped
+                    ((core.flag & supp_check) == 0) &&          // is primary mapping (optional)
+                    core.tid == core.mtid) {                    // hits same contig
 
-                            if(core.isize > 0) {
-                                inserts[i][ot][orient_counts[i][ot]] += core.isize;
-                            } else {
-                                inserts[i][ot][orient_counts[i][ot]] -= core.isize;
-                            }
-                            // increment thse guys
-                            ++orient_counts[i][ot];
-                            ++num_found[i];
-                            /*
-                            printf("TYPE: I: %d, CID: %d, P: %d, MP: %d, R: %d, MR: %d, BAM: %d, OT: %d, FOUND: %d\n",
-                                    isize,
-                                    core.mtid,
-                                    core.pos,
-                                    core.mpos,
-                                    ((core.flag&BAM_FREVERSE) != 0),
-                                    ((core.flag&BAM_FMREVERSE) != 0),
-                                    i,
-                                    ot,
-                                    num_found[i]);
-                            */
-                            if(num_found[i] ==  BM_PAIRS_FOR_TYPE)
-                            {
-                                // this bam is done
-                                ++num_done;
-                            }
-                        }
+                    // make sure we're not too close to the end of the contig
+                    int isize = abs(core.mpos - core.pos) + core.l_qseq;
+                    int cpos = 0;
+                    if(core.mpos < core.pos)
+                        cpos = (int)(((float)isize)/2 + core.mpos);
+                    else
+                        cpos = (int)(((float)isize)/2 + core.pos);
+
+                    if((cpos < BM_IGNORE_FROM_END) || (cpos > upper_bound))
+                        continue;
+
+                    // get orientation type
+                    int ot = OT_NONE;
+                    if((core.flag&BAM_FREVERSE) != 0) {             // <-1--
+                        if((core.flag&BAM_FMREVERSE) != 0)
+                            ot = OT_SAME;                              // <-1-- <-2--
+                        else
+                            ot = OT_OUT;                               // <-1-- --2->
                     }
+                    else {                                          // --1->
+                        if((core.flag&BAM_FMREVERSE) != 0)
+                            ot = OT_IN;                                // --1-> <-2--
+                        else
+                            ot = OT_SAME;                              // --1-> --2->
+                    }
+
+                    // check to see if it's about face
+                    if(core.isize < 0)
+                    {
+                        if(ot == OT_IN)
+                            ot = OT_OUT;
+                        else if(ot == OT_OUT)
+                            ot = OT_IN;
+                    }
+
+                    // increment thse guys
+                    inserts[i][ot][orient_counts[i][ot]] += isize;
+                    ++orient_counts[i][ot];
+                    ++num_found[i];
+
+                    /*
+                    printf("TYPE: I: %d, CID: %d, P: %d, MP: %d, Center: %d, R: %d, MR: %d, OT: %d, Contig: %s, BAM: %s\n",
+                            isize,
+                            core.mtid,
+                            core.pos,
+                            core.mpos,
+                            cpos,
+                            ((core.flag&BAM_FREVERSE) != 0),
+                            ((core.flag&BAM_FMREVERSE) != 0),
+                            ot,
+                            header->target_name[hh],
+                            (MR->bamFiles[i])->fileName);
+                    */
                 }
             }
+
+            hts_itr_destroy(iter);
+            if (result < -1) {
+                fprintf(stderr, "ERROR: retrieval of reads from contig: \"%s\" failed due to truncated file or corrupt BAM index file\n", header->target_name[hh]);
+                break;
+            }
         }
+        bam_destroy1(b);
+        hts_idx_destroy(idx); // destroy the BAM index
+
+type_end:
+
+        // close files, free and return
+        if (in) sam_close(in);
+        if ( header ) bam_hdr_destroy(header);
     }
 
     for (i = 0; i < MR->numBams; ++i) {
@@ -657,26 +641,17 @@ void typeBamFiles(BM_mappingResults * MR) {
         }
     }
 
+    // clean up
     free(num_found);
-    free(n_plp); free(plp);
-    bam_mplp_destroy(mplp);
-    bam_hdr_destroy(h);
-
     for (i = 0; i < MR->numBams; ++i) {
-        bgzf_close(data[i]->fp);
-        if (data[i]->iter) bam_itr_destroy(data[i]->iter);
-        free(data[i]);
         free(orient_counts[i]);
         for (j = 0; j < 3; ++j) {
             free(inserts[i][j]);
         }
         free(inserts[i]);
-
     }
     free(inserts);
-    free(data);
     free(orient_counts);
-    free(bam_files);
 }
 
 void adjustPlpBp(BM_mappingResults * MR,
@@ -754,6 +729,11 @@ void destroyCoverages(float ** covs, int numContigs) {
     ***      LINKS      ***
     ***********************/
 
+void findGapStats(BM_linkPair * LP,
+                  BM_bamFile * BFs
+                  ) {
+}
+
 int initLW(BM_LinkWalker * walker, BM_mappingResults * MR) {
     return initLinkWalker(walker, MR->links);
 }
@@ -775,9 +755,11 @@ void destroyBamFiles(BM_bamFile ** BFs, int numBams) {
     int j = 0;
     if(BFs != 0) {
         for(i = 0; i < numBams; ++i) {
-            free(BFs[i]->fileName);
-            for(j = 0; j < BFs[i]->numTypes; ++j) {
-                free(BFs[i]->types[j]);
+            if(BFs[i] != 0) {
+                free(BFs[i]->fileName);
+                for(j = 0; j < BFs[i]->numTypes; ++j) {
+                    free(BFs[i]->types[j]);
+                }
             }
         }
         free(BFs);
@@ -816,7 +798,7 @@ void printError(char* errorMessage, int line) {
     printf("ERROR: At line: %d\n\t%s\n\n", line, errorMessage);
 }
 
-void print_MR(BM_mappingResults * MR) {
+void printMR(BM_mappingResults * MR) {
     int i = 0, j = 0;
     if(MR->numContigs != 0 && MR->numBams != 0) {
         if(MR->plpBp != NULL) {
@@ -866,4 +848,37 @@ void printBamFileInfo(BM_bamFile * BF)
                                              BT->supporting);
     }
     printf("---\n");
+}
+
+float BM_mean(uint32_t * values, uint32_t size) {
+    uint32_t sum = 0;
+    int i = 0;
+    for( i = 0; i < size; ++i) {
+        sum += *(values + i);
+    }
+    return (float)sum/(float)size;
+}
+
+float BM_stdDev(uint32_t * values, uint32_t size, float m) {
+    float sum = 0;
+    int i = 0;
+    if(m == -1)
+        m = BM_mean(values, size);
+    for(i = 0; i < size; ++i) {
+        sum += pow((float)*(values + i) - m, 2);
+    }
+    return sqrt(sum/(float)size);
+}
+
+float BM_fakeStdDev(uint32_t * values, uint32_t size) {
+    // everything is 3 stdevs from the mean right?
+    uint32_t max = 0, min = 1<<30;
+    int i = 0;
+    for( i = 0; i < size; ++i) {
+        if (*(values + i) > max)
+            max = *(values + i);
+        else if (*(values + i) < min)
+            min = *(values + i);
+    }
+    return (float)(max-min)/6;
 }

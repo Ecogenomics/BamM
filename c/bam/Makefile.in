@@ -16,7 +16,7 @@ LIBS =  -lm $(LIBCFU_LDFLAGS) $(LIBCFU_LIBS) $(LIBHTS_LDFLAGS) $(LIBHTS_LIBS)
 EXECUTABLE = bamParser
 BMM_BAM_LIB = libBamM.a
 
-TEST_SOURCES = example.c bamParser.c pairedLink.c
+TEST_SOURCES = parser.c bamParser.c pairedLink.c
 LIB_SOURCES = bamParser.c pairedLink.c
 
 LIBBAMM_OBJS = \

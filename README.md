@@ -160,8 +160,8 @@ Here is an example C program which uses this library. It is quite fast.
                                             bam_files,
                                             mr);
         free(coverage_mode);
-        print_MR(mr);
-        destroy_MR(mr);
+        printMR(mr);
+        destroyMR(mr);
 
         for (i = 0; i < num_bams; ++i) {
             free(bam_files[i]);
