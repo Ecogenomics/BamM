@@ -18,9 +18,9 @@ If you're installing system-wide then you can use your favourite package manager
 
 The notes here are for installing on Ubuntu, but should be transferrable to any other Linux system. I'm not sure if these notes are transferabble to fashionable overpriced systems with rounded rectangles and retina displays and I'm almost cetain you'll need some sysadmin-fu to get things going on a Windows system. If you do ge it all set up then please let me know how and I'll buy you a 5 shot venti, 2/5th decaf, ristretto shot, 1pump Vanilla, 1pump Hazelnut, breve,1 sugar in the raw, with whip, carmel drizzle on top, free poured, 4 pump mocha.
 
-First, you need pip, git, zlib and a C-compiler. On Ubuntu this looks like:
+First, you need git, zlib and a C-compiler. On Ubuntu this looks like:
 
-    sudo apt-get -y install git build-essential python-pip zlib1g-dev
+    sudo apt-get -y install git build-essential zlib1g-dev
 
 Next you'll need htslib (Samtools guts) and libcfu (hash objects) (if you haven't already installed them system wide)
 
@@ -55,7 +55,7 @@ On my system I have trouble installing it becuase of inconsistencies with print 
 If you install these libraries to local folders (e.g. in your home folder) then you need to take note of where you installed them. If you installed them system-wide then it *should* be no hassle.
 
 ###Install BamM
-Get the latest version from github:
+Get the latest version from github (pip hates this code for some reason...):
 
     git clone https://github.com/minillinim/BamM.git
 
