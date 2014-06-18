@@ -71,6 +71,10 @@ Relative paths are OK. You can add the --prefix flag to setup.py to install BamM
 
 ## Example usage
 
+I've wrapped the python in a script called bamm. It has 2 modes, 'parse' and 'type'. Use bamm -h for details
+
+## Using the modules in your own Python code
+
     #-----------------------
     # first import it
     from bamm.BamParser import BamParser
