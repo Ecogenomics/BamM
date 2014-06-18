@@ -51,17 +51,15 @@ from bamm.BamParser import BamParser
 def doWork( args ):
     """ Main wrapper"""
     if(args.subparser_name == 'type'):
-        BP = BamParser(0,
-                       0,
-                       coverageMode="none")
+        BP = BamParser(coverageMode="none")
         BP.typeBams(args.bamfiles,
                     types=args.num_types,
                     threads=args.threads)
         BP.printBamTypes()
 
     elif(args.subparser_name == 'parse'):
-        BP = BamParser(args.base_quality,
-                       args.length,
+        BP = BamParser(baseQuality=args.base_quality,
+                       minLength=args.length,
                        mappingQuality=args.mapping_quality,
                        coverageMode=args.coverage_mode)
 

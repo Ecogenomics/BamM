@@ -5,7 +5,7 @@
 #                                                                             #
 #    Class for parsing BAM files                                              #
 #                                                                             #
-#    Copyright (C) Michael Imelfort, Donovan Parks                            #
+#    Copyright (C) Michael Imelfort                                           #
 #                                                                             #
 ###############################################################################
 #                                                                             #
@@ -26,12 +26,12 @@
 
 __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
-__credits__ = ["Michael Imelfort, Donovan Parks"]
+__credits__ = ["Michael Imelfort"]
 __license__ = "GPLv3"
-__version__ = "0.0.1"
+__version__ = "0.1.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
-__status__ = "Dev"
+__status__ = "Beta"
 
 ###############################################################################
 
@@ -188,8 +188,8 @@ def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
 class BamParser:
     """Main class for reading in and parsing contigs"""
     def __init__(self,
-                 baseQuality,
-                 minLength,
+                 baseQuality=0,
+                 minLength=0,
                  mappingQuality=0,
                  coverageMode='vanilla',
                  ignoreSuppAlignments=True
