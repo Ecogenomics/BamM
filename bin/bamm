@@ -51,18 +51,31 @@ from bamm.BamParser import BamParser
 def doWork( args ):
     """ Main wrapper"""
     if(args.subparser_name == 'type'):
-        pass
+        BP = BamParser(0,
+                       0,
+                       coverageMode="none")
+        BP.typeBams(args.bamfiles,
+                    types=args.num_types,
+                    threads=args.threads)
+        BP.printBamTypes()
+
     elif(args.subparser_name == 'parse'):
         BP = BamParser(args.base_quality,
                        args.length,
                        mappingQuality=args.mapping_quality,
-                       coverageMode=args.coverage_mode,
-                       doLinks=args.links)
+                       coverageMode=args.coverage_mode)
 
-        BP.parseBams(args.bamfiles, numThreads=3)
-        print BP.MR
-    elif(args.subparser_name == 'extract'):
-        pass
+        BP.parseBams(args.bamfiles,
+                     doLinks=args.links,
+                     types=args.num_types,
+                     threads=args.threads)
+
+        # print nice stuff out
+        if args.links:
+            BP.printBamTypes()
+        BP.printCoverages()
+        if args.links:
+            BP.printLinks()
     else:
         print "ERROR: Unknown mode '%s'" % args.subparser_name
 
@@ -84,13 +97,13 @@ def printHelp():
 
     bamm type      -> Parse BAM files and determine read orientation type
     bamm parse     -> Parse BAM files and get coverage and/or linking reads
-    bamm extract   -> Extract reads from BAM files
 
     USE: bamm OPTION -h to see detailed options
     ''' % __version__
 
+#    bamm extract   -> Extract reads from BAM files
+
 if __name__ == '__main__':
-    print
     #-------------------------------------------------
     # intialise the options parser
     parser = argparse.ArgumentParser(add_help=False)
@@ -103,6 +116,8 @@ if __name__ == '__main__':
                                         help='parse BAM files and determine reads type',
                                         description='------------------------------------------------------------------------------\nParse BAM files and determine reads type\n------------------------------------------------------------------------------')
     type_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+    type_parser.add_argument('--num_types', '-n', nargs='+', help="number of orientation types per BAM", type=int)
+    type_parser.add_argument('--threads', '-t', help="number of threads to use", type=int, default=1)
 
     #-------------------------------------------------
     # determine linking reads
@@ -112,12 +127,16 @@ if __name__ == '__main__':
                                         description='------------------------------------------------------------------------------\nGet coverage information and/or linking reads\n------------------------------------------------------------------------------')
 
     parse_parser.add_argument('bamfiles', nargs='+', help="BAM files to parse")
-    parse_parser.add_argument('--links', '-L', help="find pairing links", action='store_true', default=False)
+    parse_parser.add_argument('--links', '-L', help="find pairing links", action="store_true", default=False)
+    parse_parser.add_argument('--num_types', '-n', nargs='+', help="number of orientation types per BAM", type=int, default=None)
     parse_parser.add_argument('--length', '-l', help="minimum Q length", type=int, default=50)
     parse_parser.add_argument('--base_quality', '-q', help="base quality threshold (Qscore)", type=int, default=20)
     parse_parser.add_argument('--mapping_quality', '-Q', help="mapping quality threshold", type=int, default=0)
     parse_parser.add_argument('--coverage_mode' ,'-m', help="how to calculate coverage [vanilla, outlier]", default='vanilla')
+    parse_parser.add_argument('--threads', '-t', help="number of threads to use", type=int, default=1)
 
+
+    """
     #-------------------------------------------------
     # read extractor
     extract_parser = subparsers.add_parser('extract',
@@ -136,6 +155,7 @@ if __name__ == '__main__':
     extract_parser.add_argument('-g', '--no_gzip', action="store_true", default=False, help="do not gzip output files")
     extract_parser.add_argument('-o', '--out_folder', default="", help="write to this folder (None for current dir)")
     extract_parser.add_argument('-H', '--headers_only', action="store_true", default=False, help="extract only (unique) headers")
+    """
 
     #-------------------------------------------------
     # get and check options

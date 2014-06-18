@@ -96,7 +96,7 @@ typedef struct {                    //
  } BM_bamFile;
 
 /*! @typedef
- * @abstract Structure for returning mapping results
+ * @abstract Structure for storing BAM file information
  *
  * @field plpBp                       number of bases piled up on each contig
  * @field contigLengths               lengths of the referene sequences
@@ -105,13 +105,13 @@ typedef struct {                    //
  * @field numContigs                  number of reference sequences
  * @field bamFiles                    array of pointers to BM_bamFile's used in this mapping result
  * @field contigNames                 names of the reference sequences
- * @field contig_name_lengths         lengths of the names of the reference sequences
+ * @field contigNameLengths           lengths of the names of the reference sequences
  * @field isLinks                     are links being calculated
  * @field coverage_mode               type of coverage to be calculate ['vanilla', 'outlier']
  * @field isIgnoreSupps               are supplementary alignments being ignored
  * @field links                       linking pairs
  */
-typedef struct BM_mappingResults {
+typedef struct BM_fileInfo {
     uint32_t ** plpBp;
     uint32_t * contigLengths;
     uint32_t ** contigLengthCorrectors;
@@ -119,42 +119,68 @@ typedef struct BM_mappingResults {
     uint32_t numContigs;
     BM_bamFile ** bamFiles;
     char ** contigNames;
-    uint16_t * contig_name_lengths;
+    uint16_t * contigNameLengths;
     int isLinks;
     char * coverage_mode;
     int isIgnoreSupps;
     cfuhash_table_t * links;
-} BM_mappingResults;
+} BM_fileInfo;
 
-    /***********************
-    *** MAPPING RESULTS  ***
-    ***********************/
-/*!
- * @abstract Allocate space for a new MR struct
+/*! @typedef
+ * @abstract Structure for storing a sequencing read
  *
- * @return BM_mappingResults *
+ * @field seqId       id of the read as stored in the BAM
+ * @field seq         nucleic acid sequence
+ * @field qual        quality sequence
+ * @field len         read length
+ */
+typedef struct BM_seqRead {
+    char * seqId;
+    char * seq;
+    char * qual;
+    uint8_t len;
+} BM_seqRead;
+
+/*! @typedef
+ * @abstract Structure for storing a paired read
+ *
+ * @field forward     forward BM_seqRead
+ * @field reverse     reverse BM_seqRead
+ */
+typedef struct BM_pairedRead {
+    BM_seqRead * forward;
+    BM_seqRead * reverse;
+} BM_pairedRead;
+
+    /**********************
+    ***  BAM FILE DATA  ***
+    **********************/
+/*!
+ * @abstract Allocate space for a new BFI struct
+ *
+ * @return BM_fileInfo *
  *
  * @discussion Allocates the memore which should be initialised at some point in time.
- * You call destroyMR to free this memory
+ * You call destroyBFI to free this memory
  */
-BM_mappingResults * createMR(void);
+BM_fileInfo * createBFI(void);
 
 /*!
  * @abstract Initialise the mapping results struct
  *
- * @param MR                    mapping results struct to initialise
+ * @param BFI                    mapping results struct to initialise
  * @param BAM_header            htslib BAM header
  * @param numBams               number of BAM files to parse
  * @param bamFiles              filenames of BAMs parsed
  * @param links                 array of OT counts per bam or 0
- * @param coverageMode          type of coverage to be calculated
+ * @param coverageMode          type of coverage to be calculated ("none" if we're just extracting reads)
  * @param ignoreSuppAlignments  only use primary alignments
  * @return void
  *
- * @discussion If you call this function then you MUST call destroyMR
+ * @discussion If you call this function then you MUST call destroyBFI
  * when you're done.
  */
-void initMR(BM_mappingResults * MR,
+void initBFI(BM_fileInfo * BFI,
              bam_hdr_t * BAM_header,
              int numBams,
              char * bamFiles[],
@@ -164,22 +190,22 @@ void initMR(BM_mappingResults * MR,
 );
 
 /*!
- * @abstract Merge the contents of MR_B into MR_A
+ * @abstract Merge the contents of BFI_B into BFI_A
  *
- * @param  MR_A  mapping results struct to copy to
- * @param  MR_B  mapping results struct to copy from
+ * @param  BFI_A  BM_bamFileInfo struct to copy to
+ * @param  BFI_B  BM_bamFileInfo struct to copy from
  * @return void
  *
- * @discussion MR_B remains unchanged.
- * MR_A is updated to include all the info contained in MR_B
+ * @discussion BFI_B remains unchanged.
+ * BFI_A is updated to include all the info contained in BFI_B
  *
  * NOTE: We assume that all the haders of all the files are in sync. If they
  * are not, if contigs have been removed etc, then doom will swiftly follow.
  * Also, we assume that flags like do_links, do_outlier match... ...or DOOM!
  *
- * MR_B is deleted in the course of the merge
+ * BFI_B is deleted in the course of the merge
  */
-void mergeMRs(BM_mappingResults * MR_A, BM_mappingResults * MR_B);
+void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B);
 
     /***********************
     *** PARSING BAMFILES ***
@@ -193,6 +219,7 @@ int read_bam(void *data,
 /*!
  * @abstract Initialise the mapping results struct <- read in the BAM files
  *
+ * @param typeOnly              work out the type of the BAMs and return
  * @param numBams               number of BAM files to parse
  * @param baseQ                 base quality threshold
  * @param mapQ                  mapping quality threshold
@@ -201,17 +228,18 @@ int read_bam(void *data,
  * @param ignoreSuppAlignments  only use primary alignments
  * @param coverageMode          type of coverage to be calculated
  * @param bamFiles              filenames of BAM files to parse
- * @param MR                    mapping results struct to write to
+ * @param  BFI                  BM_bamFileInfo struct to write to
  * @return 0 for success
  *
- * @discussion This function expects MR to be a null pointer. It calls
- * initMR and stores info accordingly. TL;DR If you call this function
- * then you MUST call destroyMR when you're done.
+ * @discussion This function expects BFI to be a null pointer. It calls
+ * initBFI and stores info accordingly. TL;DR If you call this function
+ * then you MUST call destroyBFI when you're done.
  *
  * Each item in the links array is the number of orienation types for the corresponding bam
  *
  */
-int parseCoverageAndLinks(int numBams,
+int parseCoverageAndLinks(int typeOnly,
+                          int numBams,
                           int baseQ,
                           int mapQ,
                           int minLen,
@@ -219,70 +247,73 @@ int parseCoverageAndLinks(int numBams,
                           int ignoreSuppAlignments,
                           char* coverageMode,
                           char* bamFiles[],
-                          BM_mappingResults * MR);
+                          BM_fileInfo * BFI);
 
 
+/*!
+ * @abstract Extract reads from a BAM file based on which contigs they map to
+ *
+ * @param  BFI          BM_bamFileInfo struct containing BM_bamFile structs
+ * @param  contigs      array of contigs to extract reads for
+ * @param  numContigs   size of array of contigs to extract reads for
+ * @return void
+ *
+ * @discussion This function expects BFI to be initialised.
+ */
+void extractReads(char ** bamFiles,
+                  int numBams,
+                  char ** contigs,
+                  int numContigs);
 
 /*!
  * @abstract work out the orientation type and insert size for given bam files
  *
- * @param  MR  mapping results struct containing BM_bamFile structs
+ * @param  BFI         BM_bamFileInfo struct containing BM_bamFile structs
  * @return void
  *
- * @discussion This function expects MR to be initialised.
+ * @discussion This function expects BFI to be initialised.
  */
 #define BM_PAIRS_FOR_TYPE 10000    // only need to parse this many pairs to infer the type of the bam file
 #define BM_IGNORE_FROM_END 3000    // ignore reads with centers mapping this far from end of contig
-void typeBamFiles(BM_mappingResults * MR);
+void typeBamFiles(BM_fileInfo * BFI);
 
 /*!
  * @abstract Adjust (reduce) the number of piled-up bases along a contig
  *
- * @param  MR  mapping results struct to write to
+ * @param  BFI              BM_bamFileInfo struct to write to
  * @param  position_holder  array of pileup depths
- * @param  tid  contig currently being processed
+ * @param  tid              contig currently being processed
  * @return void
  *
- * @discussion This function expects MR to be initialised.
+ * @discussion This function expects BFI to be initialised.
  * it can change the values of contigLengthCorrectors and plpBp
  */
-void adjustPlpBp(BM_mappingResults * MR,
+void adjustPlpBp(BM_fileInfo * BFI,
                  uint32_t ** position_holder,
                  int tid);
 
 /*!
  * @abstract Calculate the coverage for each contig for each BAM
  *
- * @param  MR  mapping results struct with mapping info
+ * @param  BFI         BM_bamFileInfo struct containing data
  * @return matrix of floats (rows = contigs, cols = BAMs)
  *
- * @discussion This function expects MR to be initialised.
+ * @discussion This function expects BFI to be initialised.
  * NOTE: YOU are responsible for freeing the return value
  * recommended method is to use destroyCoverages
  */
-float ** calculateCoverages(BM_mappingResults * MR);
+float ** calculateCoverages(BM_fileInfo * BFI);
 
     /***********************
     ***      LINKS       ***
     ***********************/
 /*!
- * @abstract Determine the relative orientation and gap separating two contigs
- *
- * @param  LP   LinkPair struct to analyse
- * @param  BFs  array of BAM files the links are found in
- * @return void
- */
-
-void findGapStats(BM_linkPair * LP,
-                  BM_bamFile * BFs);
-
-/*!
  * @abstract Start moving through all of the links
  *
- * @param  MR  mapping results struct containing links
+ * @param  BFI         BM_bamFileInfo struct containing links
  * @return 1 if links OK or 0 otherwise
  */
-int initLW(BM_LinkWalker * walker, BM_mappingResults * MR);
+int initLW(BM_LinkWalker * walker, BM_fileInfo * BFI);
 
 /*!
  * @abstract Move to the next LinkInfo or LinkPair
@@ -296,12 +327,12 @@ int stepLW(BM_LinkWalker * walker);
     *** HATIN' SEGFAULTS ***
     ***********************/
 /*!
- * @abstract Free all the memory calloced in initMR
+ * @abstract Free all the memory calloced in initBFI
  *
- * @param  MR  mapping results struct to destroy
+ * @param  BFI         BM_bamFileInfo struct to destroy
  * @return void
  */
-void destroyMR(BM_mappingResults * MR);
+void destroyBFI(BM_fileInfo * BFI);
 
 /*!
  * @abstract Destroy the coverages structure made in  calculateCoverages
@@ -313,7 +344,7 @@ void destroyMR(BM_mappingResults * MR);
 void destroyCoverages(float ** covs, int numContigs);
 
 /*!
- * @abstract Start moving through all of the links
+ * @abstract Destroy the link walker instance
  *
  * @param  walker   pointer to LinkHolder.
  * @return void
@@ -327,6 +358,47 @@ void destroyLW(BM_LinkWalker * walker);
  * @return void
  */
  void destroyBamFiles(BM_bamFile ** BFs, int numBams);
+
+/*!
+ * @abstract Delete a single read
+ *
+ * @param  SR   Single read struct to delete
+ * @return void
+ */
+void destroyRead(BM_seqRead * SR);
+
+/*!
+ * @abstract Delete a paired read
+ *
+ * @param  PR   Paired read struct to delete
+ * @return void
+ */
+void destroyPairedRead(BM_pairedRead * PR);
+
+    /***********************
+    ***      READS       ***
+    ***********************/
+
+/*!
+ * @abstract Initialise a single ended read
+ *
+ * @param   seqId       Id of the read as given in the BAM
+ * @param   seq         read sequence
+ * @param   qual        quality score of the read
+ * @return BM_seqRead *
+ */
+ BM_seqRead * makeSeqRead(char * seqId,
+                         char * seq,
+                         char * qual);
+
+/*!
+ * @abstract Initialise a paired end read
+ *
+ * @param   forward       pointer to the forward read
+ * @param   reverse       pointer to the reverse read
+ * @return BM_pairedRead *
+ */
+BM_pairedRead * makePairedRead(BM_seqRead * fSR, BM_seqRead * rSR);
 
     /***********************
     *** PRINTING AND I/O ***
@@ -351,10 +423,10 @@ char * OT2Str(OT type);
 /*!
  * @abstract Print the Mapping results to stdout
  *
- * @param  MR  mapping results struct to print
+ * @param  BFI         BM_bamFileInfo struct to print
  * @return void
  */
-void printMR(BM_mappingResults * MR);
+void printBFI(BM_fileInfo * BFI);
 
 /*!
  * @abstract Print the bamFile-ish info
@@ -362,7 +434,7 @@ void printMR(BM_mappingResults * MR);
  * @param  BF  bam file struct to print
  * @return void
  */
-void printBamFileInfo(BM_bamFile * BF);
+void printBamFileType(BM_bamFile * BF);
 
         /***********************
         ***   MATHY EXTRAS   ***

@@ -135,11 +135,12 @@ int initLinkWalker(BM_LinkWalker * walker, cfuhash_table_t * linkHash) {
         free((walker->keys)[walker->keyCount]);
         // tee-up the first linkInfo
         walker->LI = (walker->pair)->LI;
-        return 1;
+        return 2;
     }
     else {
         // no links
         free(walker->keys);
+        walker->keys = 0;
     }
     return 0;
 }
@@ -243,21 +244,15 @@ char * LT2Str(LT type) {
 
 void printLinks(cfuhash_table_t * linkHash, char ** bamNames, char ** contigNames) {
     BM_LinkWalker walker;
-    initLinkWalker(&walker, linkHash);
-    int ret_val = 2;
-    printf("#cid_1\tcid_2\tpos_1\trev_1\tpos_2\trev_2\tfile\n");
-    while(ret_val != 0) {
-        /*
-        if(ret_val == 2) {
-            // new contig pair
-            printLinkPair(walker.pair, contigNames);
+    int ret_val = initLinkWalker(&walker, linkHash);
+    if(ret_val)
+        printf("#cid_1\tcid_2\tpos_1\trev_1\tpos_2\trev_2\tfile\n");
+        while(ret_val != 0) {
+            printf("%s\t%s\t", contigNames[walker.pair->cid1], contigNames[walker.pair->cid2]);
+            printLinkInfo(walker.LI, bamNames);
+            ret_val = stepLinkWalker(&walker);
         }
-        */
-        printf("%s\t%s\t", contigNames[walker.pair->cid1], contigNames[walker.pair->cid2]);
-        printLinkInfo(walker.LI, bamNames);
-        ret_val = stepLinkWalker(&walker);
-    }
-    destroyLinkWalker(&walker);
+        destroyLinkWalker(&walker);
 }
 
 void printLinkPair(BM_linkPair* LP, char ** contigNames) {

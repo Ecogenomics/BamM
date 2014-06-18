@@ -47,7 +47,6 @@ typedef enum {LT_NONE, LT_SS, LT_SE, LT_ES, LT_EE, LT_ERROR} LT;   // Do contigs
  * @field pos1           position of read in contig 1
  * @field pos2           position of read in contig 2
  * @field bid            id of the BAM file link originates from
- * @field type           the type of this link
  * @field nextLink       link to next link info struct (linked list)
  */
 typedef struct {
