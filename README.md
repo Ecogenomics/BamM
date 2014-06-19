@@ -67,9 +67,13 @@ If you installed one or more of these libraries locally then you need to tell se
 
     python setup.py install --with-libhts-lib /path/to/htslib --with-libhts-inc /path/to/htslib --with-libcfu-inc /path/to/libcfu/include/ --with-libcfu-lib path/to/libcfu/lib/
 
-Relative paths are OK. You can add the --prefix flag to setup.py to install BamM locally. Once done, don't forget to add BamM to your PYTHONPATH.
+Relative paths are OK. You can add the --prefix flag to setup.py to install BamM locally. Once done, don't forget to add BamM to your PYTHONPATH. Also, if htslib and libcfu are in non-standard places you'll need to mess with your LD_LIBRARY_PATH.
 
 ## Example usage
+
+I've wrapped the python in a script called bamm. It has 2 modes, 'parse' and 'type'. Use bamm -h for details
+
+## Using the modules in your own Python code
 
     #-----------------------
     # first import it
