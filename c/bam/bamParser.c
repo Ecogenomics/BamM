@@ -434,7 +434,6 @@ int parseCoverageAndLinks(int typeOnly,
             free(position_holder[i]);
         }
     }
-
     free(position_holder);
 
     free(n_plp); free(plp);
@@ -602,13 +601,11 @@ void typeBamFiles(BM_fileInfo * BFI) {
     for (i = 0; i < BFI->numBams; ++i) {
         // open file handlers
         if ((in = sam_open((BFI->bamFiles[i])->fileName, "r")) == 0) {
-            fprintf(stderr, "ERROR: Failed to open \"%s\" for reading.\n", (BFI->bamFiles[i])->fileName);
             if (in) sam_close(in);
             if ( header ) bam_hdr_destroy(header);
             continue;
         }
         if ((header = sam_hdr_read(in)) == 0) {
-            fprintf(stderr, "ERROR: Failed to read the header from \"%s\".\n", (BFI->bamFiles[i])->fileName);
             if (in) sam_close(in);
             if ( header ) bam_hdr_destroy(header);
             continue;
@@ -630,11 +627,15 @@ void typeBamFiles(BM_fileInfo * BFI) {
         for (hh = 0; hh < header->n_targets; ++hh) {
             hts_itr_t *iter = sam_itr_querys(idx, header, header->target_name[hh]); // parse a region in the format like `chr2:100-200'
             if (iter == NULL) { // reference name is not found
+                hts_itr_destroy(iter);
                 continue;
             }
             int contig_length = header->target_len[hh];
             if(contig_length < (2 * BM_IGNORE_FROM_END))
+            {
+                hts_itr_destroy(iter);
                 continue;
+            }
             int upper_bound = contig_length - BM_IGNORE_FROM_END;
             // fetch alignments
             while ((num_found[i] <= BM_PAIRS_FOR_TYPE) && (result = sam_itr_next(in, iter, b)) >= 0) {
