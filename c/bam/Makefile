@@ -1,12 +1,12 @@
 CC = gcc
 
-LIBHTS_CPPFLAGS = -I/home/uqmimelf/local/opt/htslib
-LIBHTS_LDFLAGS = -L/home/uqmimelf/local/opt/htslib
+LIBHTS_CPPFLAGS = -I/srv/sw/htslib/1.0/1.0-github
+LIBHTS_LDFLAGS = -L/srv/sw/htslib/1.0/1.0-github
 LIBHTS_LIBS = -lhts
-LIBHTS_LIB_DIR = /home/uqmimelf/local/opt/htslib
+LIBHTS_LIB_DIR = /srv/sw/htslib/1.0/1.0-github
 
-LIBCFU_CPPFLAGS = -I/home/uqmimelf/local/opt/libcfu-0.03/include
-LIBCFU_LDFLAGS = -L/home/uqmimelf/local/opt/libcfu-0.03/lib
+LIBCFU_CPPFLAGS = -I/srv/sw/libcfu/include
+LIBCFU_LDFLAGS = -L/srv/sw/libcfu/lib
 LIBCFU_LIBS = -lcfu
 LIBCFU_LIB_DIR = 
 

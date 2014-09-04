@@ -1,0 +1,8 @@
+build/
+c/bam/bamParser
+c/bam/*.o
+c/bam/config.log
+c/bam/config.status
+c/bam/libBamM.a
+install.sh
+lib/

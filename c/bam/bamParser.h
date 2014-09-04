@@ -47,6 +47,10 @@ typedef BGZF bamFile;
 extern "C" {
 #endif
 
+// proper linking read is a properly paired, (primary alignment) of the first read in thr pair
+#define BM_BAM_FSUPP (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)
+#define BM_BAM_FMAPPED (BAM_FMUNMAP | BAM_FUNMAP)
+
 // Orientation types
 typedef enum {OT_OUT, OT_SAME, OT_IN, OT_NONE, OT_ERROR} OT;  // relative orientation of paired reads
 

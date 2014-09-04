@@ -43,10 +43,6 @@
 #include "bamParser.h"
 #include "pairedLink.h"
 
-// proper linking read is a properly paired, (primary alignment) of the first read in thr pair
-#define BM_BAM_FSUPP (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)
-#define BM_BAM_FMAPPED (BAM_FMUNMAP | BAM_FUNMAP)
-
 BM_fileInfo * createBFI(void) {
     return (BM_fileInfo*) calloc(1, sizeof(BM_fileInfo));
 }
@@ -631,7 +627,7 @@ void typeBamFiles(BM_fileInfo * BFI) {
                 continue;
             }
             int contig_length = header->target_len[hh];
-            if(contig_length < (2 * BM_IGNORE_FROM_END))
+            if(contig_length < (3 * BM_IGNORE_FROM_END))
             {
                 hts_itr_destroy(iter);
                 continue;
@@ -708,6 +704,11 @@ void typeBamFiles(BM_fileInfo * BFI) {
                 fprintf(stderr, "ERROR: retrieval of reads from contig: \"%s\" failed due to truncated file or corrupt BAM index file\n", header->target_name[hh]);
                 break;
             }
+
+            // have we found enough?
+            if(num_found[i] <= BM_PAIRS_FOR_TYPE)
+            	break;
+            // else next contig!
         }
         bam_destroy1(b);
         hts_idx_destroy(idx); // destroy the BAM index
