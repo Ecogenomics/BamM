@@ -6,3 +6,6 @@ c/bam/config.status
 c/bam/libBamM.a
 install.sh
 lib/
+MANIFEST
+bamm/*.pyc
+c/bam/Makefile

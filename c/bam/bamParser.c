@@ -31,6 +31,7 @@
 #include <stdio.h>
 #include <unistd.h>
 #include <math.h>
+#include <libgen.h>
 
 // htslib
 //#include "htslib/bgzf.h"
@@ -396,7 +397,7 @@ int parseCoverageAndLinks(int typeOnly,
                     if ((core.pos == pos) &&                        // make sure it's the first time we've seen this link
                         (core.flag & BAM_FPAIRED) &&                // read is a paired read
                         (core.flag & BAM_FREAD1) &&                 // read is first in pair (avoid dupe links)
-                        ((core.flag & BM_BAM_FMAPPED) == 0) &&     // both ends are mapped
+                        ((core.flag & BM_BAM_FMAPPED) == 0) &&      // both ends are mapped
                         ((core.flag & supp_check) == 0) &&          // is primary mapping (optional)
                         core.tid != core.mtid) {                    // hits different contigs
 
@@ -506,6 +507,10 @@ void extractReads(char ** bamFiles,
         cfuhash_table_t *pairs = cfuhash_new_with_initial_size(3000);
         cfuhash_set_flag(pairs, CFUHASH_FROZEN_UNTIL_GROWS);
 
+		char * pretty_name = calloc(1000, sizeof(char));
+		pretty_name = strdup(basename(((BFI)->bamFiles[i])->fileName));
+		fprintf(stdout, "%d\n", (int)strlen(pretty_name)); fflush(stdout);
+
         int result = -1;
 
         int hh;
@@ -519,6 +524,7 @@ void extractReads(char ** bamFiles,
             // fetch alignments
             while ((result = sam_itr_next(in, iter, b)) >= 0) {
                 bam1_core_t core = b->core;
+                printf(">b_%s;c_%s;r_%s;\n", pretty_name, contigs[hh], bam_get_qname(b));
                 printf(">%s\n", bam_get_qname(b));
                 uint8_t *s = bam_get_seq(b);
                 for (i = 0; i < core.l_qseq; ++i) { printf("%c", "=ACMGRSVTWYHKDBN"[bam_seqi(s, i)]); }
@@ -557,6 +563,8 @@ void extractReads(char ** bamFiles,
                 break;
             }
         }
+
+        free(pretty_name);
         bam_destroy1(b);
         hts_idx_destroy(idx); // destroy the BAM index
 

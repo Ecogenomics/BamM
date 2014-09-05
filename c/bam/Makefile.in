@@ -24,9 +24,12 @@ LIBBAMM_SOURCES = bamParser.c pairedLink.c
 
 LIBBAMM_OBJS = bamParser.o pairedLink.o
 
+# make these c blobs if you care, they are not supported though
 #all: parser extractor library
-all: parser library
-       
+#all: parser library
+# by default, just make the library
+all: library
+      
 .SUFFIXES: .c .o
 
 .c.o:

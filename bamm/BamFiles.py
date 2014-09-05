@@ -38,6 +38,7 @@ __status__ = "Beta"
 # system imports
 import ctypes as c
 import numpy as np
+import sys
 
 # local imports
 from BamLinks import *
@@ -184,41 +185,37 @@ class BM_fileInfo(object):
             except KeyError:
                 self.links[key] = BFIb.links[key]
 
-    def printBamTypes(self, fileName=None, returnStr=False):
+    def printBamTypes(self, fileHandle=None):
+        if fileHandle is None:
+            fileHandle = sys.stdout
         # header
-        retstr = "#file\tinsert\tstdev\torientation\tsupporting\n"
+        fileHandle.write("#file\tinsert\tstdev\torientation\tsupporting\n")
         # values
-        retstr += "\n".join([str(BF) for BF in self.bamFiles])
-        if returnStr:
-            return retstr
-        print retstr
+        fileHandle.write("\n".join([str(BF) for BF in self.bamFiles]) + "\n")
 
-    def printCoverages(self, fileName=None, returnStr=False):
+    def printCoverages(self, fileHandle=None):
         """print the coverage profiles"""
+        if fileHandle is None:
+            fileHandle = sys.stdout
         # header
-        retstr = "#contig\tLength"
+        fileHandle.write("#contig\tLength")
         for i in range(self.numBams):
-            retstr += "\t%s" % self.bamFiles[i].fileName
-        retstr += "\n"
+            fileHandle.write("\t%s" % self.bamFiles[i].fileName)
+        fileHandle.write("\n")
         # values
-        retstr += "\n".join(["%s\t%d\t" % (self.contigNames[i], self.contigLengths[i]) +
-                             "\t".join(["%0.4f" % self.coverages[i,j] for j in range(self.numBams)])
-                             for i in range(self.numContigs)])
-        if returnStr:
-            return retstr
-        print retstr
+        fileHandle.write("\n".join(["%s\t%d\t" % (self.contigNames[i], self.contigLengths[i]) +
+                                    "\t".join(["%0.4f" % self.coverages[i,j] for j in range(self.numBams)])
+                                    for i in range(self.numContigs)]) + "\n")
 
-    def printLinks(self, fileName=None, returnStr=False):
+    def printLinks(self, fileHandle=None):
         """print all the links"""
-        retstr = ""
+        if fileHandle is None:
+            fileHandle = sys.stdout
         if len(self.links) != 0:
             # header
-            retstr = "%s\n" % "\t".join(["#cid_1","cid_2","pos_1","rev_1","pos_2","rev_2","file"])
+            fileHandle.write("%s\n" % "\t".join(["#cid_1","cid_2","len_1","pos_1","rev_1","len_2","pos_2","rev_2","file"]))
             # values
-            retstr += "\n".join([self.links[key].printMore(self.contigNames, [self.bamFiles[i].fileName for i in range(self.numBams)]) for key in self.links.keys()])
-        if returnStr:
-            return retstr
-        print retstr
+            fileHandle.write("\n".join([self.links[key].printMore(self.contigNames, self.contigLengths, [self.bamFiles[i].fileName for i in range(self.numBams)]) for key in self.links.keys()]) + "\n")
 
     def __str__(self):
         """print everything"""

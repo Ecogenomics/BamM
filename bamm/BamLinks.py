@@ -157,8 +157,8 @@ class BM_linkInfo(object):
     def __str__(self):
         return "%d\t%d\t%d\t%d\t%s" % (self.pos1, self.reversed1, self.pos2, self.reversed2, self.bamID)
 
-    def printMore(self, bamFileNames):
-        return "%d\t%d\t%d\t%d\t%s" % (self.pos1, self.reversed1, self.pos2, self.reversed2, bamFileNames[self.bamID])
+    def printMore(self, bamFileNames, len1, len2):
+        return "%d\t%d\t%d\t%d\t%d\t%d\t%s" % (len1, self.pos1, self.reversed1, len2, self.pos2, self.reversed2, bamFileNames[self.bamID])
 
 class BM_linkPair(object):
     def __init__(self,
@@ -187,8 +187,16 @@ class BM_linkPair(object):
     def __str__(self):
         return "\n".join(["%s\t%s\t%s" % (self.cid1, self.cid2, link) for link in self.links])
 
-    def printMore(self, contigNames, bamFileNames):
-        return "\n".join(["%s\t%s\t%s" % (contigNames[self.cid1], contigNames[self.cid2], link.printMore(bamFileNames)) for link in self.links])
+    def printMore(self,
+                  contigNames,
+                  contigLengths,
+                  bamFileNames):
+        """Print function used to export a tabular format"""
+        return "\n".join(["%s\t%s\t%s" % (contigNames[self.cid1],
+                                          contigNames[self.cid2],
+                                          link.printMore(bamFileNames, contigLengths[self.cid1], contigLengths[self.cid2])
+                                          )
+                          for link in self.links])
 
 ###############################################################################
 ###############################################################################

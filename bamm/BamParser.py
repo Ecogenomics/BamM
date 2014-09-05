@@ -40,6 +40,7 @@ import os
 import ctypes as c
 from multiprocessing import Pool, Manager
 import numpy as np
+import sys
 
 # local imports
 from CWrapper import *
@@ -110,10 +111,10 @@ def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
     contig_names = None
     links = {}
 
-    if func == "parse":
+    BFI = bAMpARSER._parseOneBam(bid)
 
-        BFI = bAMpARSER._parseOneBam(bid)
-
+    # only do this if we are doing covs or links (or both)
+    if bAMpARSER.doCovs or bAMpARSER.doLinks:
         contig_lengths = np.array([int(i) for i in c.cast(BFI.contigLengths, c.POINTER(c.c_uint32*BFI.numContigs)).contents])
         plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.plpBp,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
 
@@ -137,11 +138,6 @@ def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
             for i in range(BFI.numContigs):
                 contig_names.append("".join([j for j in c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents]))
 
-    elif func == "type":
-        BFI = bAMpARSER._typeOneBam(bid)
-    else:
-        return
-
     # we always populate the bam file type information classes
     bam_file_name = bAMpARSER.bamFiles[bid]
     BF = BM_bamFile(bid, bam_file_name)
@@ -155,12 +151,10 @@ def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
                         (bt_c.contents).supporting)
         BF.types.append(BT)
 
-    # only do links on a parse run
-    if func == "parse":
-        if bAMpARSER.doLinks:
-            links = pythonizeLinks(BFI, BF, contig_lengths)
-        else:
-            links = {}
+    if bAMpARSER.doLinks:
+        links = pythonizeLinks(BFI, BF, contig_lengths)
+    else:
+        links = {}
 
     # make the python object
     BBFI = BM_fileInfo(coverages,
@@ -219,6 +213,8 @@ class BamParser:
         self.bamFiles = []
         self.types = []
         self.doLinks = False
+        self.doTypes = False
+        self.doCovs = False
 
 #------------------------------------------------------------------------------
 # Bam parseratering
@@ -251,7 +247,13 @@ class BamParser:
         for i in range(1, len(gBFI)):
             self.BFI.consume(gBFI[i])
 
-    def parseBams(self, bamFiles, doLinks=False, types=None, threads=1):
+    def parseBams(self,
+                  bamFiles,
+                  doLinks=False,
+                  doTypes=False,
+                  doCovs=False,
+                  types=None,
+                  threads=1):
         """Parse bam files to get coverage and linking reads
 
         stores results in internal mapping results list
@@ -259,6 +261,7 @@ class BamParser:
         # set these now
         self.bamFiles = bamFiles
 
+        # how may insert types for each bam file?
         if types is None:
             self.types = [1]*len(self.bamFiles)
         else:
@@ -267,7 +270,13 @@ class BamParser:
         if len(self.types) != len(self.bamFiles):
             raise InvalidNumberOfTypesException("%d types for %d BAM files" % (len(self.types), len(self.bamFiles)))
 
+        # make sure (again) that we're doing something
         self.doLinks = doLinks
+        self.doCovs = doCovs
+        if not (self.doCovs or self.doLinks):
+            self.doTypes = True
+        else:
+            self.doTypes = doTypes
 
         # check that the bam files and their indexes exist
         for bam in bamFiles:
@@ -288,12 +297,13 @@ class BamParser:
         pool.close()
         pool.join()
 
-        # all the BFIs are made. Only one has the contig IDs. find it's index
         baseBFI_index = 0
-        for i in range(len(gBFI)):
-            if len(gBFI[i].contigNames) > 0:
-                baseBFI_index = i
-                break
+        if self.doCovs or self.doLinks:
+            # all the BFIs are made. Only one has the contig IDs. find it's index
+            for i in range(len(gBFI)):
+                if len(gBFI[i].contigNames) > 0:
+                    baseBFI_index = i
+                    break
 
         # merge all the separate mapping results
         self.BFI = gBFI[baseBFI_index]
@@ -336,42 +346,67 @@ class BamParser:
         bamfiles_c_array[:] = [self.bamFiles[bid]]
 
         types_c_arr = (c.c_int * 1)()
-        if self.doLinks:
-            types_c_arr[:] = [self.types[bid]]
+        types_c_arr[:] = [self.types[bid]]
 
         CW = CWrapper()
-        CW._parseCoverageAndLinks(0,        # unset typeOnly flag
-                                  1,
-                                  self.baseQuality,
-                                  self.mappingQuality,
-                                  self.minLength,
-                                  types_c_arr,
-                                  self.ignoreSuppAlignments,
-                                  c.create_string_buffer(self.coverageMode),
-                                  bamfiles_c_array,
-                                  pBFI)
+        if self.doLinks or self.doCovs:
+            CW._parseCoverageAndLinks(0,        # unset typeOnly flag
+                                      1,
+                                      self.baseQuality,
+                                      self.mappingQuality,
+                                      self.minLength,
+                                      types_c_arr,
+                                      self.ignoreSuppAlignments,
+                                      c.create_string_buffer(self.coverageMode),
+                                      bamfiles_c_array,
+                                      pBFI)
+        else:
+            # types only
+            CW._parseCoverageAndLinks(1,        # set typeOnly flag
+                                      1,
+                                      0,
+                                      0,
+                                      0,
+                                      types_c_arr,
+                                      1,
+                                      c.create_string_buffer("none"),
+                                      bamfiles_c_array,
+                                      pBFI)
+
         return BFI
 
 #------------------------------------------------------------------------------
 # Printing and IO
 
-    def printBamTypes(self):
+    def printBamTypes(self, fileName=""):
         if self.BFI is None:
             raise NoBAMSFoundException
         else:
-            self.BFI.printBamTypes()
+            if fileName == "":
+                self.BFI.printBamTypes(sys.stdout)
+            else:
+                with open(fileName, "w") as fh:
+                    self.BFI.printBamTypes(fh)
 
-    def printCoverages(self):
+    def printCoverages(self, fileName=""):
         if self.BFI is None:
             raise NoBAMSFoundException
         else:
-            self.BFI.printCoverages()
+            if fileName == "":
+                self.BFI.printCoverages(sys.stdout)
+            else:
+                with open(fileName, "w") as fh:
+                    self.BFI.printCoverages(fh)
 
-    def printLinks(self):
+    def printLinks(self, fileName=""):
         if self.BFI is None:
             raise NoBAMSFoundException
         else:
-            self.BFI.printLinks()
+            if fileName == "":
+                self.BFI.printLinks(sys.stdout)
+            else:
+                with open(fileName, "w") as fh:
+                    self.BFI.printLinks(fh)
 
 
 ###############################################################################
