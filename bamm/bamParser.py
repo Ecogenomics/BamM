@@ -43,28 +43,19 @@ import numpy as np
 import sys
 
 # local imports
-from CWrapper import *
-from BamLinks import *
-from BamFiles import *
+from cWrapper import *
+from bamLink import *
+from bamFile import *
+from bammExceptions import *
 
 ###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-
-class BamMException(BaseException): pass
-class InvalidCoverageModeException(BamMException): pass
-class InvalidNumberOfTypesException(BamMException): pass
-class BAMFileNotFoundException(BamMException): pass
-class BAMIndexNotFoundException(BamMException): pass
-class NoBAMSFoundException(BamMException): pass
-
 ###############################################################################
 ###############################################################################
 # Multiprocessing requires that all passed items be pickleable. That is they
 # must be vanilla variables or functions defined in the file itself, ie. not
 # within a class. We get around this by writing an external function which calls
 # a class function. Hacky, but it works.
+###############################################################################
 ###############################################################################
 ###############################################################################
 

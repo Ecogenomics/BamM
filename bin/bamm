@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "GPLv3"
-__version__ = "0.2.0"
+__version__ = "0.2.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -38,10 +38,15 @@ __status__ = "Beta"
 ###############################################################################
 ###############################################################################
 
+# system imports
 import argparse
 import sys
 
-from bamm.BamParser import BamParser
+# local imports
+from bamm.bamParser import BamParser
+from bamm.bamMaker import BamMaker
+from bamm.bamExtractor import BamExtractor
+from bamm.bammExceptions import *
 
 ###############################################################################
 ###############################################################################
@@ -50,8 +55,40 @@ from bamm.BamParser import BamParser
 
 def doWork( args ):
     """ Main wrapper"""
-    if(args.subparser_name == 'extract'):
-        return
+    if(args.subparser_name == 'make'):
+        # making the class will take care of filenames and make sure that
+        # all the parameters are set nicely
+        try:
+            BM = BamMaker(args.database,
+                          args.alignment_algorithm,
+                          args.index_algorithm,
+                          args.out_filename,
+                          args.reads_1,
+                          readFile2=args.reads_2,
+                          interleaved=args.interleaved,
+                          singleEnded=args.single,
+                          keptFiles=args.kept,
+                          keepFiles=args.keep,
+                          outputTam=args.output_tam,
+                          numThreads=args.threads,
+                          maxMemory=args.memory,
+                          forceOverwriting=args.force
+                          )
+        except InvalidParameterSetException as e:
+            printError(e)
+            subparsers.choices['make'].print_help()
+            sys.exit(1)
+
+        # create indexes if required
+        if(BM.keptFiles is False):
+            BM.makeDatabase()
+
+        # Now make the TAM/BAM file
+        BM.makeBam()
+
+        # clean up if we need to
+        if BM.keepFiles is False and BM.keptFiles is False :
+            BM.removeDatabase()
 
     elif(args.subparser_name == 'parse'):
         BP = BamParser(baseQuality=args.base_quality,
@@ -79,8 +116,29 @@ def doWork( args ):
             BP.printLinks(args.links)
         if args.coverages != "":
             BP.printCoverages(args.coverages)
+
+    elif(args.subparser_name == 'extract'):
+        try:
+            BE = BamExtractor(args.targets,
+                              args.bamfiles,
+                              prefix=args.prefix,
+                              outFolder=args.out_folder,
+                              shuffle=args.shuffle,
+                              mixBams=args.mix_bams,
+                              ignoreUnpaired=args.ignore_unpaired,
+                              bigFile=args.no_gzip,
+                              headersOnly=args.headers_only)
+        except InvalidParameterSetException as e:
+            printError(e)
+            subparsers.choices['extract'].print_help()
+            sys.exit(1)
+
+        BE.extract()
+
     else:
-        print "ERROR: Unknown mode '%s'" % args.subparser_name
+        printError("Unknown mode '%s'" % args.subparser_name)
+        parser.print_help()
+        sys.exit(1)
 
 ###############################################################################
 ###############################################################################
@@ -98,19 +156,48 @@ def printHelp():
                 version: %s
    -----------------------------------------
 
-    bamm parse   -> Get coverage profiles / linking reads / orientation types
-    bamm extract -> Extract reads from BAMs
+    bamm make     ->  Make a TAM/BAM file (sorted + indexed)
+    bamm parse    ->  Get coverage profiles / linking reads / orientation types
+    bamm extract  ->  Extract reads from BAM files
 
     USE: bamm OPTION -h to see detailed options
     ''' % __version__
-
-#    bamm extract   -> Extract reads from BAM files
 
 if __name__ == '__main__':
     #-------------------------------------------------
     # intialise the options parser
     parser = argparse.ArgumentParser(add_help=False)
     subparsers = parser.add_subparsers(help="--", dest='subparser_name')
+
+    #-------------------------------------------------
+    # make a BAM file
+    make_parser = subparsers.add_parser('make',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='make a TAM/BAM file (sorted + indexed)',
+                                        description='make a TAM/BAM file (sorted + indexed)')
+    make_parser.add_argument("-1", "--reads_1", default=None, help="The first data of a paired read file")
+    make_parser.add_argument("-2", "--reads_2", default=None, help="The second data of a paired read file")
+    make_parser.add_argument("-d", "--database", default=None, help="The scaffold, query, database...")
+
+    make_parser.add_argument("-i", "--interleaved", action="store_true", default=False, help="The first query file contains interleaved paired sequences")
+    make_parser.add_argument("-s", "--single", action="store_true", default=False, help="Use this for non-paired reads")
+
+    make_parser.add_argument("--index_algorithm", default=None, help="The algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
+    make_parser.add_argument("--alignment_algorithm", default="mem", help="The algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
+
+    make_parser.add_argument("-K", "--kept", action="store_true", default=False,
+                           help="Assume the indices already exist, don't re-make them (and don't delete them) (e.g. previously this script was run with -k/--keep")
+    make_parser.add_argument("-k", "--keep", action="store_true", default=False,
+                           help="Keep all the database index files etc after (see also --kept)")
+    make_parser.add_argument("-f", "--force", action="store_true", default=False,
+                           help="Force overwriting of index files if they are present")
+
+    make_parser.add_argument("-o", "--out_filename", default=None,
+                           help="Output a sorted indexed bam file, of this name")
+    make_parser.add_argument("--output_tam", action="store_true", default=False, help="Output TAM file instead of BAM file")
+
+    make_parser.add_argument("-t", "--threads", type=int, default="1", help="The number of threads to use where possible")
+    make_parser.add_argument("-m", "--memory", type=int, default=None, help="The amount of memory to use where possible (default 2GB*number of threads)")
 
     #-------------------------------------------------
     # determine linking reads
@@ -122,35 +209,35 @@ if __name__ == '__main__':
     parse_parser.add_argument('--links', '-l', help="filename to write pairing links to", default="")
     parse_parser.add_argument('--coverages', '-c', help="filename to write coverage profiles to", default="")
     parse_parser.add_argument('--types', '-t', help="filename to write bamfile types to", default="")
+
     parse_parser.add_argument('--num_types', '-n', nargs='+', help="number of orientation types per BAM", type=int)
+    parse_parser.add_argument('--coverage_mode' ,'-m', help="how to calculate coverage [vanilla, outlier] (requires --coverage)", default='vanilla')
+
     parse_parser.add_argument('--length', '-L', help="minimum Q length", type=int, default=50)
     parse_parser.add_argument('--base_quality', '-q', help="base quality threshold (Qscore)", type=int, default=20)
     parse_parser.add_argument('--mapping_quality', '-Q', help="mapping quality threshold", type=int, default=0)
-    parse_parser.add_argument('--coverage_mode' ,'-m', help="how to calculate coverage [vanilla, outlier] (requires --coverage)", default='vanilla')
+
     parse_parser.add_argument('--processes', '-p', help="number of threads to use", type=int, default=1)
 
-    if False:
+    #-------------------------------------------------
+    # read extractor
+    extract_parser = subparsers.add_parser('extract',
+                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        help='extract reads from bamfile(s)',
+                                        description='Extract reads which hit the given references')
+    extract_parser.add_argument('targets', help="file containing reference names (1 per line) or contigs file in fasta format")
+    extract_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
 
-        """
-        #-------------------------------------------------
-        # read extractor
-        extract_parser = subparsers.add_parser('extract',
-                                            formatter_class=argparse.ArgumentDefaultsHelpFormatter,
-                                            help='extract reads from bamfile(s)',
-                                            description='------------------------------------------------------------------------------\nExtract reads which hit the given references\n------------------------------------------------------------------------------')
-        extract_parser.add_argument('list', help="file containing reference names. 1 per line")
-        extract_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+    extract_parser.add_argument('-p', '--prefix', default="", help="prefix to apply to output files")
+    extract_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder (None for current dir)")
 
-        extract_parser.add_argument('--prefix', help="prefix to apply to output files")
-        extract_parser.add_argument('-d', '--dont_trust_sam_flags', action="store_true", default=False, help="do not trust sam flags")
-        extract_parser.add_argument('-p', '--pairs_only', action="store_true", default=False, help="ignore unpaired reads")
-        extract_parser.add_argument('-b', '--no_separate_bams', action="store_true", default=False, help="use the same file for all reads")
-        extract_parser.add_argument('-c', '--combine_reads', action="store_true", default=False, help="write paired and unpaired to the same files")
-        extract_parser.add_argument('-s', '--shuffle', action="store_true", default=False, help="shuffle paired reads in ouput files")
-        extract_parser.add_argument('-g', '--no_gzip', action="store_true", default=False, help="do not gzip output files")
-        extract_parser.add_argument('-o', '--out_folder', default="", help="write to this folder (None for current dir)")
-        extract_parser.add_argument('-H', '--headers_only', action="store_true", default=False, help="extract only (unique) headers")
-        """
+    extract_parser.add_argument('-s', '--shuffle', action="store_true", default=False, help="shuffle paired reads in ouput files")
+    extract_parser.add_argument('-i', '--ignore_unpaired', action="store_true", default=False, help="ignore unpaired reads")
+    extract_parser.add_argument('-m', '--mix_bams', action="store_true", default=False, help="use the same file for all reads")
+    extract_parser.add_argument('-c', '--combine_reads', action="store_true", default=False, help="write paired and unpaired to the same files")
+
+    extract_parser.add_argument('--no_gzip', action="store_true", default=False, help="do not gzip output files")
+    extract_parser.add_argument('--headers_only', action="store_true", default=False, help="extract only (unique) headers")
 
     #-------------------------------------------------
     # get and check options
@@ -159,7 +246,7 @@ if __name__ == '__main__':
         printHelp()
         sys.exit(0)
     elif(sys.argv[1] == '-v' or sys.argv[1] == '--version'):
-        print "BamTyper: version %s %s %s" % (__version__, __copyright__, __author__)
+        print "BamM: version %s %s %s" % (__version__, __copyright__, __author__)
         sys.exit(0)
     elif(sys.argv[1] == '-h' or sys.argv[1] == '--help'):
         printHelp()
