@@ -91,7 +91,7 @@ def pythonizeLinks(BFI, bamFile, contigLengths):
 
     return links
 
-def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
+def externalParseWrapper(bAMpARSER, bid, gBFI, doContigNames):
     """ctypes pointers are unpickleable -- what we need is a hack!
 
     See BamParser._parseOneBam for what this function should be doing
@@ -107,6 +107,7 @@ def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
     # only do this if we are doing covs or links (or both)
     if bAMpARSER.doCovs or bAMpARSER.doLinks:
         contig_lengths = np.array([int(i) for i in c.cast(BFI.contigLengths, c.POINTER(c.c_uint32*BFI.numContigs)).contents])
+
         plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.plpBp,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
 
         # transfer the coverages over
@@ -119,7 +120,10 @@ def externalParseWrapper(bAMpARSER, bid, gBFI, func, doContigNames):
         else:
             for c_idx in range(BFI.numContigs):
                 for b_idx in range(BFI.numBams):
-                    coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
+                    if contig_lengths[c_idx] != 0:  # need to handle this edge case
+                        coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
+                    else:
+                        coverages[c_idx,b_idx] = 0.
 
         # we only need to do the contig names for one of the threads
         if doContigNames:
@@ -229,7 +233,7 @@ class BamParser:
         gBFI = Manager().list()
         pool = Pool(processes=threads)
         for bid in range(len(bamFiles)):
-            pool.apply_async(func=externalParseWrapper, args=(self, bid, gBFI, "type", False))
+            pool.apply_async(func=externalParseWrapper, args=(self, bid, gBFI, False))
         pool.close()
         pool.join()
 
@@ -244,7 +248,8 @@ class BamParser:
                   doTypes=False,
                   doCovs=False,
                   types=None,
-                  threads=1):
+                  threads=1,
+                  verbose=False):
         """Parse bam files to get coverage and linking reads
 
         stores results in internal mapping results list
@@ -276,12 +281,51 @@ class BamParser:
             elif not os.path.isfile("%s.bai" % bam):
                 raise BAMIndexNotFoundException("Index file %s could not be found" % ("%s.bai" % bam))
 
+
+        ************************************************
+
+        workerQueue = mp.Queue()
+        writerQueue = mp.Queue()
+
+        for binId in binIds:
+            workerQueue.put(binId)
+
+        for _ in range(self.numThreads):
+            workerQueue.put(None)
+
+        binIdToModels = mp.Manager().dict()
+        calcProc = [mp.Process(target = self.__fetchModelInfo, args = (binIdToModels, markerFile, workerQueue, writerQueue)) for _ in range(self.numThreads)]
+        writeProc = mp.Process(target = self.__reportFetchProgress, args = (len(binIds), writerQueue))
+
+        writeProc.start()
+
+        for p in calcProc:
+            p.start()
+
+        for p in calcProc:
+            p.join()
+
+        writerQueue.put(None)
+        writeProc.join()
+
+        # create a standard dictionary from the managed dictionary
+        d = {}
+        for binId in binIdToModels.keys():
+            d[binId] = binIdToModels[binId]
+
+        ************************************************
+
+
+
+
         global gBFI
         gBFI = Manager().list()
         pool = Pool(processes=threads)
         do_contig_names = True
         for bid in range(len(bamFiles)):
-            pool.apply_async(func=externalParseWrapper, args=(self, bid, gBFI, "parse", do_contig_names))
+            if verbose:
+                print "Parsing file: %s" % bamFiles[bid]
+            pool.apply_async(func=externalParseWrapper, args=(self, bid, gBFI, do_contig_names))
             if do_contig_names:
                 # we only need to parse the contig names once
                 do_contig_names = False
