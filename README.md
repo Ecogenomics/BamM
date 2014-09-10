@@ -79,30 +79,46 @@ I've wrapped the python in a script called bamm. It has 2 modes, 'parse' and 'ty
     # first import it
     from bamm.BamParser import BamParser
 
+
+    def parseBams(self,
+                  bamFiles,
+                  doLinks=False,
+                  doTypes=False,
+                  doCovs=False,
+                  types=None,
+                  threads=1,
+                  verbose=False):
+
     #-----------------------
-    # use a BAM parser to get the orientation type of a BAM file only
+    # EX: use a BAM parser to get the orientation type of a BAM file only
 
     BP = BamParser(coverageMode="none")             # note you must set coverage to None
 
-    BP.typeBams(['file1.bam', 'file2.bam'],         # list of file names
-                types=[2,1],                        # number of insert types per BAM
-                threads=2)                          # number of threads
+    BP.parseBams(['file1.bam', 'file2.bam'],        # list of file names
+                 doTypes=True,                      # using only this flag indicates you want types only (much faster)
+                 types=[2,1],                       # number of insert types per BAM
+                 threads=2,                         # number of threads
+                 verbose=True)                      # be more verbose
 
     BP.printBamTypes()                              # tell the world!
 
     #-----------------------
-    # use a BAM parser to get coverage profiles and links
+    # EX: use a BAM parser to get coverage profiles and links
 
     BP = BamParser()
 
     BP.parseBams(['file1.bam', 'file2.bam'],        # list of file names
+                 doCovs=True,                       # indicate coverages should be calculated
                  doLinks=True,                      # work out links during parse
                  types=[2,1],                       # number of insert types per BAM
-                 threads=3)                         # number of threads
+                 threads=3,                         # number of threads
+                 verbose=True)                      # be more verbose
+
+	# NOTE: doLinks implies doTypes!
 
     BP.printBamTypes()
     BP.printCoverages()
-    BP.printLinks()
+    BP.printLinks("links.tsv")						# can specify a filename for all the print functions
 
     #-----------------------
     # the full range of options at initialisation are:
@@ -110,10 +126,8 @@ I've wrapped the python in a script called bamm. It has 2 modes, 'parse' and 'ty
      baseQuality                    # quality score threshold of reads to accept during pileup coverage calculation ( default = 0 )
      minLength                      # minimum length threshold of a mapped read ( default = 0 )
      mappingQuality                 # BWA/BAM mapping quality threshold
-     coverageMode                   # 'vanilla' (standard pileup), 'outlier' (truncated mean) or 'none' (use for typing only)
-     doLinks                        # calculate links during parsing ( default = False )
+     coverageMode                   # 'vanilla' (standard pileup), 'outlier' (truncated mean)
      ignoreSuppAlignments           # ignore supplementary alignments ( default = True )
-
 
 ## Using the C directly
 

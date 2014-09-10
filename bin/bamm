@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "GPLv3"
-__version__ = "0.2.1"
+__version__ = "0.2.2"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -102,20 +102,20 @@ def doWork( args ):
         else:
             doTypes = (args.types != "")
 
-        BP.parseBams(args.bamfiles,
-                     doLinks=(args.links != ""),
-                     doTypes=doTypes,
-                     doCovs=(args.coverages != ""),
-                     types=args.num_types,
-                     threads=args.processes)
-
-        # print nice stuff out as required
-        if doTypes:
-            BP.printBamTypes(args.types)
-        if args.links != "":
-            BP.printLinks(args.links)
-        if args.coverages != "":
-            BP.printCoverages(args.coverages)
+        ret = BP.parseBams(args.bamfiles,
+                           doLinks=(args.links != ""),
+                           doTypes=doTypes,
+                           doCovs=(args.coverages != ""),
+                           types=args.num_types,
+                           threads=args.processes)
+        if ret == 0:
+            # print nice stuff out as required
+            if doTypes:
+                BP.printBamTypes(args.types)
+            if args.links != "":
+                BP.printLinks(args.links)
+            if args.coverages != "":
+                BP.printCoverages(args.coverages)
 
     elif(args.subparser_name == 'extract'):
         try:
