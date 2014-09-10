@@ -51,7 +51,7 @@ setup(
     packages=['bamm'],
     scripts=['bin/bamm'],
     url='http://pypi.python.org/pypi/BamM/',
-    license='GPLv3',
+    license='LGPLv3',
     description='BamM',
     long_description=open('README.md').read(),
     install_requires=[],
