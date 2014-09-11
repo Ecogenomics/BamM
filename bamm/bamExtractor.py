@@ -63,79 +63,94 @@ from bammExceptions import *
 def externalParseWrapper(bAMeXTRACTOR, bid, gBFI, func, doContigNames):
     """ctypes pointers are unpickleable -- what we need is a hack!
 
-    See BamParser._parseOneBam for what this function should be doing
+    See BamExtractor._parseOneBam for what this function should be doing
     """
-    pass
-    # go back into the class to do the work
-    """
-    coverages = []
-    contig_lengths = None
-    contig_names = None
-    links = {}
 
-    BFI = bAMpARSER._parseOneBam(bid)
+    CW = CWrapper()
+    while True:
+        # get the next one off the list
+        bid = parseQueue.get(block=True, timeout=None)
+        if bid is None: # poison pill
+            break
 
-    # only do this if we are doing covs or links (or both)
-    if bAMpARSER.doCovs or bAMpARSER.doLinks:
-        contig_lengths = np.array([int(i) for i in c.cast(BFI.contigLengths, c.POINTER(c.c_uint32*BFI.numContigs)).contents])
-        plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.plpBp,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
+        if verbose:
+            print "Parsing file: %s" % bAMpARSER.bamFiles[bid]
 
-        # transfer the coverages over
-        coverages = np.zeros((BFI.numContigs, BFI.numBams))
-        if bAMpARSER.coverageMode == 'outlier':
-            contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.contigLengthCorrectors,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
-            for c_idx in range(int(BFI.numContigs)):
-                for b_idx in range(int(BFI.numBams)):
-                    coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx] - contig_length_correctors[c_idx])
-        else:
-            for c_idx in range(BFI.numContigs):
-                for b_idx in range(BFI.numBams):
-                    coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
-
-        # we only need to do the contig names for one of the threads
-        if doContigNames:
-            contig_names = []
-            contig_name_lengths = np.array([int(i) for i in c.cast(BFI.contigNameLengths, c.POINTER(c.c_uint16*BFI.numContigs)).contents])
-            contig_name_array = c.cast(BFI.contigNames, c.POINTER(c.POINTER(c.c_char)*BFI.numContigs)).contents
-            for i in range(BFI.numContigs):
-                contig_names.append("".join([j for j in c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents]))
-
-    # we always populate the bam file type information classes
-    bam_file_name = bAMpARSER.bamFiles[bid]
-    BF = BM_bamFile(bid, bam_file_name)
-    BF_C = (c.cast(BFI.bamFiles, c.POINTER(c.POINTER(BM_bamFile_C)*1)).contents)[0].contents
-    num_types = BF_C.numTypes
-    BTs_C = c.cast(BF_C.types, c.POINTER(c.POINTER(BM_bamType_C)*num_types)).contents
-    for bt_c in BTs_C:
-        BT = BM_bamType((bt_c.contents).orientationType,
-                        (bt_c.contents).insertSize,
-                        (bt_c.contents).insertStdev,
-                        (bt_c.contents).supporting)
-        BF.types.append(BT)
-
-    if bAMpARSER.doLinks:
-        links = pythonizeLinks(BFI, BF, contig_lengths)
-    else:
+        # go back into the class to do the work
+        coverages = []
+        contig_lengths = None
+        contig_names = None
         links = {}
 
-    # make the python object
-    BBFI = BM_fileInfo(coverages,
-                       contig_lengths,
-                       BFI.numBams,
-                       BFI.numContigs,
-                       contig_names,
-                       [BF],
-                       links)
+        BFI = bAMpARSER._parseOneBam(bid)
 
-    # append onto the global list
-    gBFI.append(BBFI)
+        # only do this if we are doing covs or links (or both)
+        if bAMpARSER.doCovs or bAMpARSER.doLinks:
+            contig_lengths = np.array([int(i) for i in c.cast(BFI.contigLengths, c.POINTER(c.c_uint32*BFI.numContigs)).contents])
 
-    # destroy the C-allocateed memory
-    pBFI = c.POINTER(BM_fileInfo_C)
-    pBFI = c.pointer(BFI)
-    CW = CWrapper()
-    CW._destroyBFI(pBFI)
-    """
+            plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.plpBp,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
+
+            # transfer the coverages over
+            coverages = np.zeros((BFI.numContigs, BFI.numBams))
+            if bAMpARSER.coverageMode == 'outlier':
+                contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.contigLengthCorrectors,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
+                for c_idx in range(int(BFI.numContigs)):
+                    for b_idx in range(int(BFI.numBams)):
+                        coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx] - contig_length_correctors[c_idx])
+            else:
+                for c_idx in range(BFI.numContigs):
+                    for b_idx in range(BFI.numBams):
+                        if contig_lengths[c_idx] != 0:  # need to handle this edge case
+                            coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
+                        else:
+                            coverages[c_idx,b_idx] = 0.
+
+            # we only need to do the contig names for one of the threads
+            if doContigNames:
+                contig_names = []
+                contig_name_lengths = np.array([int(i) for i in c.cast(BFI.contigNameLengths, c.POINTER(c.c_uint16*BFI.numContigs)).contents])
+                contig_name_array = c.cast(BFI.contigNames, c.POINTER(c.POINTER(c.c_char)*BFI.numContigs)).contents
+                for i in range(BFI.numContigs):
+                    contig_names.append("".join([j for j in c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents]))
+
+        # we always populate the bam file type information classes
+        bam_file_name = bAMpARSER.bamFiles[bid]
+        BF = BM_bamFile(bid, bam_file_name)
+        BF_C = (c.cast(BFI.bamFiles, c.POINTER(c.POINTER(BM_bamFile_C)*1)).contents)[0].contents
+        num_types = BF_C.numTypes
+        BTs_C = c.cast(BF_C.types, c.POINTER(c.POINTER(BM_bamType_C)*num_types)).contents
+        for bt_c in BTs_C:
+            BT = BM_bamType((bt_c.contents).orientationType,
+                            (bt_c.contents).insertSize,
+                            (bt_c.contents).insertStdev,
+                            (bt_c.contents).supporting)
+            BF.types.append(BT)
+
+        if bAMpARSER.doLinks:
+            links = pythonizeLinks(BFI, BF, contig_lengths)
+        else:
+            links = {}
+
+        # make the python object
+        BBFI = BM_fileInfo(coverages,
+                           contig_lengths,
+                           BFI.numBams,
+                           BFI.numContigs,
+                           contig_names,
+                           [BF],
+                           links)
+
+        # append onto the global list
+        BFI_list.append(BBFI)
+
+        # destroy the C-allocateed memory
+        pBFI = c.POINTER(BM_fileInfo_C)
+        pBFI = c.pointer(BFI)
+        CW._destroyBFI(pBFI)
+
+        if doContigNames:
+            # we only need to parse the contig names once
+            doContigNames = False
 
 ###############################################################################
 ###############################################################################
@@ -146,7 +161,7 @@ class BamExtractor:
     """Main class for reading in and parsing contigs"""
     def __init__(self,
                 targets,                    # list of contig IDs or fasta file (used as a filter)
-                bamfiles,                   # list of bamfiles to extract reads from
+                bamFiles,                   # list of bamfiles to extract reads from
                 prefix="",                  # append thiss to all output files
                 outFolder=".",              # wriate output to this folder
                 shuffle=False,              # use shuffled format for paired reads
@@ -160,6 +175,8 @@ class BamExtractor:
         # make sure the output folder exists
         self.outFolder = outFolder
         self.makeSurePathExists(self.outFolder)
+
+        self.bamFiles = bamFiles
 
         # work out how we'll write files
         if bigFile:
@@ -222,6 +239,23 @@ class BamExtractor:
     def extract(self):
         """Extract all the reads"""
         self.makeOutputFiles()
+        for bid in range(len(self.bamFiles)):
+            self._extractFromOneBam(bid)
+
+    def _extractFromOneBam(self, bid):
+        """Extract reads mapping to contigs from a single BAM"""
+        bamfiles_c_array = (c.c_char_p * 1)()
+        bamfiles_c_array[:] = [self.bamFiles[bid]]
+
+        num_contigs = len(self.targets)
+        contigs_c_array = (c.c_char_p * num_contigs)()
+        contigs_c_array[:] = self.targets
+
+        CW = CWrapper()
+        CW._extractReads(bamfiles_c_array,
+                         1,
+                         contigs_c_array,
+                         num_contigs)
 
     def makeSurePathExists(self, path):
         try:

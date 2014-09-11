@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort", "Ben Woodcroft", "Connor Skennerton"]
 __license__ = "LGPLv3"
-__version__ = "1.0"
+__version__ = "1.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -49,8 +49,171 @@ from bammExceptions import *
 ###############################################################################
 ###############################################################################
 
+def checkForDatabase(database_basename):
+    return os.path.isfile(database_basename+'.amb')
+
+class BamScheduler:
+    """Schedule making multiple BAM and TAM files"""
+
+    def __init__(self,
+                 database,
+                 alignmentAlgorithm,
+                 indexAlgorithm,
+                 paired=[],
+                 interleaved=[],
+                 singleEnded=[],
+                 keptFiles=False,
+                 keepFiles=False,
+                 outputTam=False,
+                 numThreads=1,
+                 maxMemory=None,
+                 forceOverwriting=False
+                 ):
+
+        # the main thing is to make sure that the input paramters make sense
+        self.database = database
+        self.paired = paired
+        self.interleaved = interleaved
+        self.singleEnded = singleEnded
+        if self.database is None:
+            raise InvalidParameterSetException('Nothing to map reads onto, you need to supply -d <DATABASE>')
+        if self.singleEnded == [] and self.paired == [] and self.interleaved == []:
+            raise InvalidParameterSetException("Nothing to map, use '-p', '-i' or '-s' to specify reads files")
+
+        self.alignmentAlgorithm = alignmentAlgorithm
+        self.indexAlgorithm = indexAlgorithm
+        self.keptFiles = keptFiles
+        self.keepFiles = keepFiles
+        self.numThreads = str(numThreads)
+        self.maxMemory = maxMemory
+        self.outputTam = outputTam
+        self.forceOverwriting = forceOverwriting
+
+        if self.maxMemory is None:
+          self.maxMemory = str(self.numThreads*2)+'G' #Default to 2GBs per number of threads
+
+        # --kept sanity check
+        if checkForDatabase(self.database):
+            # dbs are there, has the user specified 'kept'
+            if self.keptFiles is False and not self.forceOverwriting:
+                raise InvalidParameterSetException("You didn't specify --kept but there appears to be bwa index files present.\nI'm cowardly refusing to run so as not to risk overwriting.\nUse -f to force overwriting and -k to keep new indices")
+        elif self.keptFiles:
+            # user specified 'kept' but there are no DBs there
+            raise InvalidParameterSetException("You specified --kept but there doesn't appear to be any suitable bwa index files present")
+
+        self.BMs = []
+        self.outFiles = {}  # use this to check for repeated output files
+
+        # the BamMaker class can check validity of it's own paramters quite well
+        # we can just make a list of these guys here and then set it all going once
+        # we're sure everything is going to be OK.
+
+        # paired first
+        l_paired = len(self.paired)
+        if l_paired % 2 != 0:
+            raise InvalidParameterSetException("Use of the -p option requires an even number of reads (ordered as pairs)")
+
+        for p_index in range(l_paired/2):
+            # make the output file name and check that it's going to be unique
+            out_file = self.makeOutFileName(self.paired[2*p_index])
+            if out_file in self.outFiles:
+                raise InvalidParameterSetException('Output filename: %s for read set (Paired: %s %s) conflicts with previously calculated filename for read set %s',
+                                                   out_file,
+                                                   self.paired[2*p_index],
+                                                   self.paired[2*p_index+1],
+                                                   self.outFiles[out_file])
+            self.outFiles[out_file] = "(Paired: %s %s)" % (self.paired[2*p_index], self.paired[2*p_index+1])
+            BM = BamMaker(self.database,
+                          self.alignmentAlgorithm,
+                          self.indexAlgorithm,
+                          out_file,
+                          self.paired[2*p_index],
+                          readFile2=self.paired[2*p_index+1],
+                          interleaved=False,
+                          singleEnded=False,
+                          keptFiles=True,       # always keep these
+                          keepFiles=True,
+                          outputTam=self.outputTam,
+                          numThreads=self.numThreads,
+                          maxMemory=self.maxMemory,
+                          forceOverwriting=self.forceOverwriting
+                          )
+            self.BMs.append(BM)
+
+        # interleaved next
+        for file in self.interleaved:
+            out_file = self.makeOutFileName(file)
+            if out_file in self.outFiles:
+                raise InvalidParameterSetException('Output filename: %s for read set (Interleaved: %s) conflicts with previously calculated filename for read set %s',
+                                                   out_file,
+                                                   file,
+                                                   self.outFiles[out_file])
+            self.outFiles[out_file] = "(Interleaved: %s)" % (file)
+            BM = BamMaker(self.database,
+                          self.alignmentAlgorithm,
+                          self.indexAlgorithm,
+                          out_file,
+                          file,
+                          interleaved=True,
+                          singleEnded=False,
+                          keptFiles=True,
+                          keepFiles=True,
+                          outputTam=self.outputTam,
+                          numThreads=self.numThreads,
+                          maxMemory=self.maxMemory,
+                          forceOverwriting=self.forceOverwriting
+                          )
+            self.BMs.append(BM)
+
+        # singletons last
+        for file in self.singleEnded:
+            out_file = self.makeOutFileName(file)
+            if out_file in self.outFiles:
+                raise InvalidParameterSetException('Output filename: %s for read set (Single: %s) conflicts with previously calculated filename for read set %s',
+                                                   out_file,
+                                                   file,
+                                                   self.outFiles[out_file])
+            self.outFiles[out_file] = "(Single: %s)" % (file)
+            BM = BamMaker(self.database,
+                          self.alignmentAlgorithm,
+                          self.indexAlgorithm,
+                          out_file,
+                          file,
+                          interleaved=False,
+                          singleEnded=True,
+                          keptFiles=True,
+                          keepFiles=True,
+                          outputTam=self.outputTam,
+                          numThreads=self.numThreads,
+                          maxMemory=self.maxMemory,
+                          forceOverwriting=self.forceOverwriting
+                          )
+            self.BMs.append(BM)
+
+        # we've made it this far. Lets tell the user what we intend to do
+        for BM in self.BMs:
+            print BM
+        print "-------------------------------------------"
+
+    def makeBams(self):
+        """Make the bams"""
+        for BM in self.BMs:
+            BM.makeBam()
+
+    def makeOutFileName(self, readsFile):
+        """Consistent way to make output files"""
+        # strip off the ".fa, .fa.gz etc from the end of the reads file
+        out_file_name = readsFile.replace(".fasta.gz","").replace(".fa.gz","").replace(".fq.gz","").replace(".fastq.gz","").replace(".fna.gz","")
+        out_file_name = out_file_name.replace(".fasta","").replace(".fa","").replace(".fq","").replace(".fastq","").replace(".fna","")
+        return out_file_name
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class BamMaker:
-    """Neat utilities for making BAM and SAM files"""
+    """Neat utilities for making BAM and TAM files"""
 
     def __init__(self,
                  database,
@@ -78,7 +241,6 @@ class BamMaker:
 
         if self.database is None or self.readFile1 is None or self.outFileName is None:
             raise InvalidParameterSetException('You need to specify a multiple fasta file (database), at least one read file and an output file')
-
 
         self.isInterleaved = interleaved
         self.isSingleEnded = singleEnded
@@ -126,13 +288,13 @@ class BamMaker:
             if self.readFile2 is None:
                 # only OK if interleaved is set
                 if self.isInterleaved is False:
-                    raise InvalidParameterSetException('You must specify both -1 and -d, as well as -2 or -i for a paired alignment. For single ended just use -1, -d and -s')
+                    raise InvalidParameterSetException('You must specify two reads files and a database or one reads file with the interleaved flag for a paired alignment. For single ended just use -1, -d and -s')
                 elif self.alignmentAlgorithm=='aln':
                     raise InvalidParameterSetException('You cannot use --bwa-aln with interleaved reads')
             # else we have -d, -1 and -2 --> OK
 
         # last sanity check
-        if (self.keptFiles is False and self.checkForDatabase(self.database)) and not self.forceOverwriting:
+        if (self.keptFiles is False and checkForDatabase(self.database)) and not self.forceOverwriting:
             raise InvalidParameterSetException("You didn't specify --kept but there appears to be bwa index files present.\nI'm cowardly refusing to run so as not to risk overwriting.\nUse -f to force overwriting and -k to keep new indices")
 
         # OK we, know what we're doing
@@ -161,9 +323,6 @@ class BamMaker:
         self.safeRemove(self.database+'.rpac')
         self.safeRemove(self.database+'.rsa')
         self.safeRemove(self.database+'.sa')
-
-    def checkForDatabase(self, database_basename):
-        return os.path.isfile(database_basename+'.amb')
 
     #---------------------------------------------------------------
     # main wrapper
@@ -283,3 +442,25 @@ class BamMaker:
     def safeRemove(self, fileName):
         if os.path.isfile(fileName):
             os.system('rm ' + fileName)
+
+    def __str__(self):
+        """Print out the operations and outputs that will be made"""
+        str = "-------------------------------------------\n"
+        if self.isSingleEnded:
+            str += "  Input: Single ended\n"
+            str += "    %s\n" % self.readFile1
+        elif self.isInterleaved:
+            str += "  Input: Interleaved\n"
+            str += "    %s\n" % self.readFile1
+        else:
+            str += "  Input: Paired\n"
+            str += "    %s, %s\n" % (self.readFile1, self.readFile2)
+
+        if self.outputTam:
+            suffix = ""
+        else:
+            suffix = ".bam (sorted + indexed)"
+
+        str += "  Database: %s\n  Output: %s%s\n  Threads: %s\n" % (self.database, self.outFileName, suffix, self.numThreads)
+        str += "  Alignment algorithm: %s" % self.alignmentAlgorithm
+        return str

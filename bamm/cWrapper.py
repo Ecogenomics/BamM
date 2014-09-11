@@ -51,7 +51,7 @@ class CWrapper:
         #---------------------------------
         package_dir, filename = os.path.split(__file__)
         package_dir = os.path.abspath(package_dir)
-        c_lib = os.path.join(package_dir, 'c', 'bam', 'libBamM.a')
+        c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
         self.libPMBam = c.cdll.LoadLibrary(c_lib)
 
         #---------------------------------

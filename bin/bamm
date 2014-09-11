@@ -44,7 +44,7 @@ import sys
 
 # local imports
 from bamm.bamParser import BamParser
-from bamm.bamMaker import BamMaker
+from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bammExceptions import *
 
@@ -56,39 +56,40 @@ from bamm.bammExceptions import *
 def doWork( args ):
     """ Main wrapper"""
     if(args.subparser_name == 'make'):
+        # The BamMaker class is able to take care of making fileNames etc
+        # this outer wrapper is here to allow us to make multiple BAM files
+        # in one go
         # making the class will take care of filenames and make sure that
         # all the parameters are set nicely
         try:
-            BM = BamMaker(args.database,
-                          args.alignment_algorithm,
-                          args.index_algorithm,
-                          args.out_filename,
-                          args.reads_1,
-                          readFile2=args.reads_2,
-                          interleaved=args.interleaved,
-                          singleEnded=args.single,
-                          keptFiles=args.kept,
-                          keepFiles=args.keep,
-                          outputTam=args.output_tam,
-                          numThreads=args.threads,
-                          maxMemory=args.memory,
-                          forceOverwriting=args.force
-                          )
+            BS = BamScheduler(args.database,
+                              args.alignment_algorithm,
+                              args.index_algorithm,
+                              paired=args.coupled,
+                              interleaved=args.interleaved,
+                              singleEnded=args.single,
+                              keptFiles=args.kept,
+                              keepFiles=args.keep,
+                              outputTam=args.output_tam,
+                              numThreads=args.processes,
+                              maxMemory=args.memory,
+                              forceOverwriting=args.force
+                              )
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['make'].print_help()
             sys.exit(1)
 
         # create indexes if required
-        if(BM.keptFiles is False):
-            BM.makeDatabase()
+        if(args.kept is False):
+            BS.BMs[0].makeDatabase()
 
         # Now make the TAM/BAM file
-        BM.makeBam()
+        BS.makeBams()
 
         # clean up if we need to
-        if BM.keepFiles is False and BM.keptFiles is False :
-            BM.removeDatabase()
+        if args.keep is False and args.kept is False :
+            BS.BMs[0].removeDatabase()
 
     elif(args.subparser_name == 'parse'):
         BP = BamParser(baseQuality=args.base_quality,
@@ -107,7 +108,8 @@ def doWork( args ):
                            doTypes=doTypes,
                            doCovs=(args.coverages != ""),
                            types=args.num_types,
-                           threads=args.processes)
+                           threads=args.processes,
+                           verbose=args.verbose)
         if ret == 0:
             # print nice stuff out as required
             if doTypes:
@@ -156,7 +158,7 @@ def printHelp():
                 version: %s
    -----------------------------------------
 
-    bamm make     ->  Make a TAM/BAM file (sorted + indexed)
+    bamm make     ->  Make TAM/BAM files (sorted + indexed)
     bamm parse    ->  Get coverage profiles / linking reads / orientation types
     bamm extract  ->  Extract reads from BAM files
 
@@ -174,30 +176,29 @@ if __name__ == '__main__':
     make_parser = subparsers.add_parser('make',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         help='make a TAM/BAM file (sorted + indexed)',
-                                        description='make a TAM/BAM file (sorted + indexed)')
-    make_parser.add_argument("-1", "--reads_1", default=None, help="The first data of a paired read file")
-    make_parser.add_argument("-2", "--reads_2", default=None, help="The second data of a paired read file")
-    make_parser.add_argument("-d", "--database", default=None, help="The scaffold, query, database...")
+                                        description='make a TAM/BAM file (sorted + indexed)',
+                                        epilog='''EXAMPLE: bamm make -d contigs.fa.gz -i reads1_shuffled.fq.gz reads2_shuffled.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -s reads4_singles.fq.gz -t 40
+                                               will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads''')
 
-    make_parser.add_argument("-i", "--interleaved", action="store_true", default=False, help="The first query file contains interleaved paired sequences")
-    make_parser.add_argument("-s", "--single", action="store_true", default=False, help="Use this for non-paired reads")
+    make_parser.add_argument("-d", "--database", default=None, help="contigs to map onto (in fasta format)")
+    make_parser.add_argument("-i", "--interleaved", nargs='+', default=[], help="map interleaved sequence files (as many as you like) EX: -i reads1_shuffled.fq.gz reads2_shuffled.fq.gz")
+    make_parser.add_argument("-c", "--coupled", nargs='+', default=[], help="map paired sequence files (as many sets as you like) EX: -c reads1_1.fq.gz reads1_2.fq.gz reads2_1.fq.gz reads2_2.fq.gz")
+    make_parser.add_argument("-s", "--single", nargs='+', default=[], help="map Single ended sequence files (as many as you like) EX: -s reads1_singles.fq.gz reads2_singles.fq.gz")
 
-    make_parser.add_argument("--index_algorithm", default=None, help="The algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
-    make_parser.add_argument("--alignment_algorithm", default="mem", help="The algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
+    make_parser.add_argument("--index_algorithm", default=None, help="algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
+    make_parser.add_argument("--alignment_algorithm", default="mem", help="algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
 
-    make_parser.add_argument("-K", "--kept", action="store_true", default=False,
-                           help="Assume the indices already exist, don't re-make them (and don't delete them) (e.g. previously this script was run with -k/--keep")
     make_parser.add_argument("-k", "--keep", action="store_true", default=False,
-                           help="Keep all the database index files etc after (see also --kept)")
+                           help="keep all the database index files etc after (see also --kept)")
+    make_parser.add_argument("-K", "--kept", action="store_true", default=False,
+                           help="assume the indices already exist, don't re-make them (and don't delete them) (e.g. previously this script was run with -k/--keep")
     make_parser.add_argument("-f", "--force", action="store_true", default=False,
-                           help="Force overwriting of index files if they are present")
+                           help="force overwriting of index files if they are present")
 
-    make_parser.add_argument("-o", "--out_filename", default=None,
-                           help="Output a sorted indexed bam file, of this name")
-    make_parser.add_argument("--output_tam", action="store_true", default=False, help="Output TAM file instead of BAM file")
+    make_parser.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
 
-    make_parser.add_argument("-t", "--threads", type=int, default="1", help="The number of threads to use where possible")
-    make_parser.add_argument("-m", "--memory", type=int, default=None, help="The amount of memory to use where possible (default 2GB*number of threads)")
+    make_parser.add_argument("-p", "--processes", type=int, default="1", help="number of threads to use where possible")
+    make_parser.add_argument("-m", "--memory", type=int, default=None, help="amount of memory to use where possible (default 2GB*number of threads)")
 
     #-------------------------------------------------
     # determine linking reads
@@ -206,18 +207,19 @@ if __name__ == '__main__':
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
                                         description='get bamfile type and/or coverage profiles and/or linking reads')
     parse_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
-    parse_parser.add_argument('--links', '-l', help="filename to write pairing links to", default="")
-    parse_parser.add_argument('--coverages', '-c', help="filename to write coverage profiles to", default="")
-    parse_parser.add_argument('--types', '-t', help="filename to write bamfile types to", default="")
+    parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
+    parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
+    parse_parser.add_argument('-t', '--types', help="filename to write bamfile types to", default="")
 
-    parse_parser.add_argument('--num_types', '-n', nargs='+', help="number of orientation types per BAM", type=int)
-    parse_parser.add_argument('--coverage_mode' ,'-m', help="how to calculate coverage [vanilla, outlier] (requires --coverage)", default='vanilla')
+    parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of orientation types per BAM", type=int)
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverage)", default='vanilla', choices=['vanilla', 'outlier'])
 
-    parse_parser.add_argument('--length', '-L', help="minimum Q length", type=int, default=50)
-    parse_parser.add_argument('--base_quality', '-q', help="base quality threshold (Qscore)", type=int, default=20)
-    parse_parser.add_argument('--mapping_quality', '-Q', help="mapping quality threshold", type=int, default=0)
+    parse_parser.add_argument('-L', '--length', help="minimum Q length", type=int, default=50)
+    parse_parser.add_argument('-q', '--base_quality', help="base quality threshold (Qscore)", type=int, default=20)
+    parse_parser.add_argument('-Q', '--mapping_quality', help="mapping quality threshold", type=int, default=0)
 
-    parse_parser.add_argument('--processes', '-p', help="number of threads to use", type=int, default=1)
+    parse_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
+    parse_parser.add_argument('-p', '--processes', help="number of threads to use", type=int, default=1)
 
     #-------------------------------------------------
     # read extractor
