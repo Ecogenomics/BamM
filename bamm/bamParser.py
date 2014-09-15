@@ -111,7 +111,7 @@ def externalParseWrapper(bAMpARSER, parseQueue, BFI_list, verbose, doContigNames
                 contig_name_lengths = np.array([int(i) for i in c.cast(BFI.contigNameLengths, c.POINTER(c.c_uint16*BFI.numContigs)).contents])
                 contig_name_array = c.cast(BFI.contigNames, c.POINTER(c.POINTER(c.c_char)*BFI.numContigs)).contents
                 for i in range(BFI.numContigs):
-                    contig_names.append("".join([j for j in c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents]))
+                    contig_names.append((c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents).value)
 
         # we always populate the bam file type information classes
         bam_file_name = bAMpARSER.bamFiles[bid]
@@ -210,7 +210,7 @@ class BamParser:
         else:
             self.ignoreSuppAlignments = 0
 
-        if coverageMode not in ['vanilla', 'outlier', 'none']:
+        if coverageMode not in ['vanilla', 'outlier']:
              raise InvalidCoverageModeException("Unknown coverage mode '%s' supplied" % coverageMode)
         self.coverageMode = coverageMode
 
@@ -223,7 +223,7 @@ class BamParser:
         self.bamFiles = []
         self.types = []
         self.doLinks = False
-        self.doTypes = False
+        self.doInserts = False
         self.doCovs = False
 
 #------------------------------------------------------------------------------
@@ -232,7 +232,7 @@ class BamParser:
     def parseBams(self,
                   bamFiles,
                   doLinks=False,
-                  doTypes=False,
+                  doInserts=False,
                   doCovs=False,
                   types=None,
                   threads=1,
@@ -257,9 +257,9 @@ class BamParser:
         self.doLinks = doLinks
         self.doCovs = doCovs
         if not (self.doCovs or self.doLinks):
-            self.doTypes = True
+            self.doInserts = True
         else:
-            self.doTypes = doTypes
+            self.doInserts = doInserts
 
         # check that the bam files and their indexes exist
         for bam in bamFiles:

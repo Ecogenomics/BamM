@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ###############################################################################
 #                                                                             #
-#    BamLinks.py                                                              #
+#    bamLink.py                                                              #
 #                                                                             #
 #    Class for storing information about links between contigs                #
 #                                                                             #

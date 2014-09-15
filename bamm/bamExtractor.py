@@ -38,16 +38,17 @@ __status__ = "Beta"
 # system imports
 import os
 import ctypes as c
-from multiprocessing import Pool, Manager
+from multiprocessing import Lock, Manager, Process
 import numpy as np
 import sys
 import gzip
-import mimetypes
+import Queue
 
 # local imports
 from cWrapper import *
 from bamFile import *
 from bammExceptions import *
+from bamRead import *
 
 ###############################################################################
 ###############################################################################
@@ -60,97 +61,67 @@ from bammExceptions import *
 ###############################################################################
 ###############################################################################
 
-def externalParseWrapper(bAMeXTRACTOR, bid, gBFI, func, doContigNames):
+def externalExtractWrapper(bAMeXTRACTOR, extractQueue, readSetQueue, verbose):
     """ctypes pointers are unpickleable -- what we need is a hack!
 
     See BamExtractor._parseOneBam for what this function should be doing
     """
-
     CW = CWrapper()
+    files_to_parse = True
+    timeout = 0
+
+    # how many reads should accrue before we write them out?
+    cache_size = 500
+
     while True:
-        # get the next one off the list
-        bid = parseQueue.get(block=True, timeout=None)
-        if bid is None: # poison pill
-            break
+        # see if there is anything to write to disk
+        try:
+            read_set = readSetQueue.get(block=True, timeout=timeout)
+            replace = True
 
-        if verbose:
-            print "Parsing file: %s" % bAMpARSER.bamFiles[bid]
+            # put it back on the of the queue
+            with bAMeXTRACTOR.Lock:
+                if bAMeXTRACTOR.numReadingThreads == 0:
+                    # all threads have finished adding to the lists
+                    # we don't need to put this one back on the end of the queue
+                    replace = False
 
-        # go back into the class to do the work
-        coverages = []
-        contig_lengths = None
-        contig_names = None
-        links = {}
-
-        BFI = bAMpARSER._parseOneBam(bid)
-
-        # only do this if we are doing covs or links (or both)
-        if bAMpARSER.doCovs or bAMpARSER.doLinks:
-            contig_lengths = np.array([int(i) for i in c.cast(BFI.contigLengths, c.POINTER(c.c_uint32*BFI.numContigs)).contents])
-
-            plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.plpBp,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
-
-            # transfer the coverages over
-            coverages = np.zeros((BFI.numContigs, BFI.numBams))
-            if bAMpARSER.coverageMode == 'outlier':
-                contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.contigLengthCorrectors,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
-                for c_idx in range(int(BFI.numContigs)):
-                    for b_idx in range(int(BFI.numBams)):
-                        coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx] - contig_length_correctors[c_idx])
+            # write some stuff
+            if not replace:
+                # we are going to write the rest of this guy to file regardless
+                read_set.write(bAMeXTRACTOR.targetNames)
             else:
-                for c_idx in range(BFI.numContigs):
-                    for b_idx in range(BFI.numBams):
-                        if contig_lengths[c_idx] != 0:  # need to handle this edge case
-                            coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
-                        else:
-                            coverages[c_idx,b_idx] = 0.
+                (buffer_size, num_reads_queued) = read_set.getSize()
+                if num_reads_queued >= cache_size:
+                    print "going to write"
+                    read_set.write(bAMeXTRACTOR.targetNames, maxDump=cache_size)
 
-            # we only need to do the contig names for one of the threads
-            if doContigNames:
-                contig_names = []
-                contig_name_lengths = np.array([int(i) for i in c.cast(BFI.contigNameLengths, c.POINTER(c.c_uint16*BFI.numContigs)).contents])
-                contig_name_array = c.cast(BFI.contigNames, c.POINTER(c.POINTER(c.c_char)*BFI.numContigs)).contents
-                for i in range(BFI.numContigs):
-                    contig_names.append("".join([j for j in c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents]))
+            # put it back on the end of the queue if necessary
+            if replace:
+                readSetQueue.put(read_set)
 
-        # we always populate the bam file type information classes
-        bam_file_name = bAMpARSER.bamFiles[bid]
-        BF = BM_bamFile(bid, bam_file_name)
-        BF_C = (c.cast(BFI.bamFiles, c.POINTER(c.POINTER(BM_bamFile_C)*1)).contents)[0].contents
-        num_types = BF_C.numTypes
-        BTs_C = c.cast(BF_C.types, c.POINTER(c.POINTER(BM_bamType_C)*num_types)).contents
-        for bt_c in BTs_C:
-            BT = BM_bamType((bt_c.contents).orientationType,
-                            (bt_c.contents).insertSize,
-                            (bt_c.contents).insertStdev,
-                            (bt_c.contents).supporting)
-            BF.types.append(BT)
+        except Queue.Empty:
+            # empty queue only matters when the extract Q is depleted
+            if not files_to_parse:
+                break
 
-        if bAMpARSER.doLinks:
-            links = pythonizeLinks(BFI, BF, contig_lengths)
-        else:
-            links = {}
+        timeout=2
 
-        # make the python object
-        BBFI = BM_fileInfo(coverages,
-                           contig_lengths,
-                           BFI.numBams,
-                           BFI.numContigs,
-                           contig_names,
-                           [BF],
-                           links)
+        # get the next one off the list if we've not seen our None already
+        if files_to_parse:
+            bid = extractQueue.get(block=True, timeout=None)
+            if bid is None: # poison pill
+                files_to_parse = False
+                with bAMeXTRACTOR.Lock:
+                    bAMeXTRACTOR.numReadingThreads -= 1
 
-        # append onto the global list
-        BFI_list.append(BBFI)
+            else:
+                if verbose:
+                    print "Extracting reads from file: %s" % bAMeXTRACTOR.bamFiles[bid]
+                bAMeXTRACTOR._extractFromOneBam(bid)
+                if verbose:
+                    print "Done extracting reads from file: %s" % bAMeXTRACTOR.bamFiles[bid]
 
-        # destroy the C-allocateed memory
-        pBFI = c.POINTER(BM_fileInfo_C)
-        pBFI = c.pointer(BFI)
-        CW._destroyBFI(pBFI)
-
-        if doContigNames:
-            # we only need to parse the contig names once
-            doContigNames = False
 
 ###############################################################################
 ###############################################################################
@@ -162,11 +133,13 @@ class BamExtractor:
     def __init__(self,
                 targets,                    # list of contig IDs or fasta file (used as a filter)
                 bamFiles,                   # list of bamfiles to extract reads from
-                prefix="",                  # append thiss to all output files
+                prefix="",                  # append this string to the beginning of all output files
+                targetNames=[],             # list of names of the groups in the targets list
                 outFolder=".",              # wriate output to this folder
-                shuffle=False,              # use shuffled format for paired reads
                 mixBams=False,              # use one file for all bams
-                combineReadsFalse=False,    # combine paired and unpaired into one file
+                mixTargets=False,           # use one file for all groups
+                mixReads=False,             # use one file for paired / unpaired reads
+                shuffle=False,              # use shuffled format for paired reads
                 ignoreUnpaired=False,       # ignore all upaired reads
                 bigFile=False,              # do NOT gzip outputs
                 headersOnly=False           # write read headers only
@@ -174,88 +147,241 @@ class BamExtractor:
 
         # make sure the output folder exists
         self.outFolder = outFolder
-        self.makeSurePathExists(self.outFolder)
+        self.makeSurePathExists(self.outFolder) # it's a waste if we abort but I like to check if write permissions are intact before I do lots of work.
+
+        # the number of threads that are still reading BAM files
+        self.numReadingThreads = 0
+        # a global lock to protect numReadingThreads
+        self.Lock = Lock()
 
         self.bamFiles = bamFiles
-
-        # work out how we'll write files
-        if bigFile:
-            self.writeOpen = open
-        else:
-            self.writeOpen = gzip.open
-
+        self.prettyBamNames = []
+        for bam in self.bamFiles:
+            self.prettyBamNames.append(os.path.basename(bam).replace(".bam", ""))
         self.prefix = prefix
-        self.shuffle = shuffle
+
         self.mixBams = mixBams
+        self.mixTargets = mixTargets
+        self.mixReads = mixReads
+
         self.ignoreUnpaired = ignoreUnpaired
-        self.headersOnly = headersOnly
+        self.shuffle = shuffle
+        if headersOnly:
+            self.headersOnly = 1
+        else:
+            self.headersOnly = 0
+
+        # are we going to zip the output?
+        if bigFile:
+            self.zipped = False
+        else:
+            self.zipped = True
 
         # munge the targets
-        self.targets = []
-        try:
-            read_open = open
-            # handle gzipped files
-            mime = mimetypes.guess_type(targets)
-            if mime[1] == 'gzip':
-                read_open = gzip.open
-        except:
-            raise InvalidParameterSetException('Error when guessing targets file mimetype')
-        with read_open(targets, "r") as t_fh:
-            self.makeTargetList(t_fh)
-        if len(self.targets) == 0:
-            raise InvalidParameterSetException('No targets supplied')
+        if targetNames == []:
+            # no names specified, just use "List_1", "List_2" etc...
+            targetNames = ["list_%d" % i for i in range(1, len(targets)+1)]
+        self.targetNames = targetNames
 
-    def makeTargetList(self, t_fh):
-        """Get the list of targets to hit"""
-        # work out if the targets are lists of contig IDs or just contigs
-        # assume that if the file is fasta then the first character will be ">"
-        # otherwise it must be a list
-        first_line = t_fh.readline()
-        try:
-            if first_line[0] == ">":
-                t = first_line.rstrip()[1:]
-                if t != "":
-                    self.targets.append(t)
-                for line in t_fh:
-                    if line[0] == ">":
-                        t = line.rstrip()[1:]
-                        if t != "":
-                            self.targets.append(t)
-            else:
-                t = first_line.rstrip()
-                if t != "":
-                    self.targets.append(t)
-                for line in t_fh:
-                    t = line.rstrip()
-                    if t != "":
-                        self.targets.append(t)
-        except:
-            raise InvalidParameterSetException('Something is wrong with the supplied targets file')
+        # initialise to the first set of targets
+        self.targets = targets[0]
+        self.bins = [0]*len(self.targets)
 
-    def makeOutputFiles(self):
-        """Open all the output file handles we'll need"""
-        pass
+        for targ in range(1, len(targets)):
+            self.targets += targets[targ]
+            self.bins += [targ] * len(targets[targ])
 
-    def extract(self):
-        """Extract all the reads"""
-        self.makeOutputFiles()
+        self.manager = Manager()
+
+        self.outFiles = {}          # target, bam, rpi -> (filename, readQueue)
+        self.readSetsQueue = self.organiseOutFiles()
+
+    def organiseOutFiles(self):
+        """Open all the output file handles we'll need
+
+        full path determined
+        extension and zippability not determined
+        """
+        # we need to make a filename for every eventuality
+        prefix = os.path.join(os.path.abspath(self.outFolder), self.prefix)
+
+        # place all the file queues onto one global queue. This is where we'll do the writing from
+        read_set_queue = self.manager.Queue()
+
         for bid in range(len(self.bamFiles)):
-            self._extractFromOneBam(bid)
+            if self.mixBams:
+                bam_str = "allMapd"
+            else:
+                bam_str = self.prettyBamNames[bid]
+
+            if bam_str not in self.outFiles:
+                self.outFiles[bid] = {}
+
+            for tid in range(len(self.targetNames)):
+                if self.mixTargets:
+                    tar_str = "allTargets"
+                else:
+                    tar_str = self.targetNames[tid]
+
+                if tid not in self.outFiles[bid]:
+                    self.outFiles[bid][tid] = {}
+                if self.prefix == "":
+                    fn = "%s%s.%s" % (prefix, bam_str, tar_str)
+                else:
+                    fn = "%s.%s.%s" % (prefix, bam_str, tar_str)
+                if self.mixReads:
+                    # all reads should go into the one file
+                    read_set_P = ReadSet(fn + ".allReads", zipped=self.zipped)
+                    read_set_S = read_set_P
+
+                    read_set_queue.put(read_set_P)
+
+                elif self.shuffle:
+                    # one file for pairs and one for singles
+                    read_set_P = ReadSet(fn + ".pairedReads", paired=True, zipped=self.zipped)
+                    read_set_S = ReadSet(fn + ".unpairedReads", zipped=self.zipped)
+
+                    read_set_queue.put(read_set_P)
+                    read_set_queue.put(read_set_S)
+
+                else:
+                    # each in their own file
+                    paired_fn1 = fn + ".1"
+                    paired_fn2 = fn + ".2"
+                    read_set_P = ReadSet(paired_fn1, fileName2=paired_fn2, paired=True, zipped=self.zipped)
+                    read_set_S = ReadSet(fn + ".unpairedReads", zipped=self.zipped)
+
+                    read_set_queue.put(read_set_P)
+                    read_set_queue.put(read_set_S)
+
+                # we use the filenames to link everything up below
+                self.outFiles[bid][tid][RPI.FIR] = read_set_P
+                self.outFiles[bid][tid][RPI.SEC] = read_set_P
+                if self.ignoreUnpaired:
+                    self.outFiles[bid][tid][RPI.SNGL] = None
+                else:
+                    self.outFiles[bid][tid][RPI.SNGL] = read_set_S
+
+        return read_set_queue
+
+    def extract(self, threads=1, verbose=False):
+        """Extract all the reads"""
+        # start running the parser in multithreaded mode
+        extract_queue = self.manager.Queue()
+
+        # place the bids on the queue
+        for bid in range(len(self.bamFiles)):
+            extract_queue.put(bid)
+
+        # place one None on the queue for each thread we have access to
+        for _ in range(threads):
+            extract_queue.put(None)
+
+        # eventually we need to stop putting file objects back onto the queue
+        # as each thread gets to the end of it's parsing it decrements this value
+        # when it is 0 then we know that there is nothing more to read
+        with self.Lock:
+            self.numReadingThreads = threads
+
+        try:
+            # make the processes
+            extract_proc = [Process(target=externalExtractWrapper,
+                                    args=(self, extract_queue, self.readSetsQueue, verbose)
+                                    )
+                            for _ in range(threads)]
+            for p in extract_proc:
+                p.start()
+
+            for p in extract_proc:
+                p.join()
+
+            # success
+            return 0
+
+        except:
+            # ctrl-c! Make sure all processes are terminated
+            for p in extract_proc:
+                p.terminate()
+
+            # dismal failure
+            return 1
 
     def _extractFromOneBam(self, bid):
         """Extract reads mapping to contigs from a single BAM"""
-        bamfiles_c_array = (c.c_char_p * 1)()
-        bamfiles_c_array[:] = [self.bamFiles[bid]]
+        bamfile_c = c.c_char_p()
+        bamfile_c = self.bamFiles[bid]
+
+        pretty_name_c = c.c_char_p()
+        pretty_name_c = self.prettyBamNames[bid]
 
         num_contigs = len(self.targets)
         contigs_c_array = (c.c_char_p * num_contigs)()
         contigs_c_array[:] = self.targets
 
+        bins_c_array = (c.c_uint16 * num_contigs)()
+        bins_c_array[:] = self.bins
+
+        headers_only_c = c.c_uint32()
+        headers_only_c = self.headersOnly
+
+        pBMM = c.POINTER(BM_mappedRead_C)
+        BMM = BM_mappedRead_C
+
+        # call the C function
         CW = CWrapper()
-        CW._extractReads(bamfiles_c_array,
-                         1,
-                         contigs_c_array,
-                         num_contigs)
+        pBMM = CW._extractReads(bamfile_c,
+                                contigs_c_array,
+                                num_contigs,
+                                bins_c_array,
+                                pretty_name_c,
+                                headers_only_c)
+
+        print "fin C part for:",  self.prettyBamNames[bid]
+
+        for_destruction = pBMM      # need to remember the root of the linked list so we can destroy it
+
+        num_made = 0
+        coutt = 0
+        # now munge the c linked list into something more pythonic
+        while pBMM != 0:
+            # get hold of the next item in the linked list
+            root = c.cast(pBMM, c.POINTER(BM_mappedRead_C))
+            # is, bin and rpi are always there
+            id = (c.cast(root.contents.seqId, c.POINTER(c.c_char*root.contents.idLen)).contents).value
+            bin = root.contents.bin
+            rpi = root.contents.rpi
+            qual = None
+            seq = None
+            # we only stored these guys if asked to
+            if 0 == self.headersOnly:
+                seq = (c.cast(root.contents.seq, c.POINTER(c.c_char*root.contents.seqLen)).contents).value
+                qual_len = root.contents.qualLen
+                if qual_len > 0:
+                     qual (c.cast(root.contents.qual, c.POINTER(c.c_char*qual_len)).contents).value
+
+            # make a mapped read and place on the correct queue
+            new_BMM = BM_mappedRead(id,
+                                    seq=seq,
+                                    qual=qual,
+                                    rpi=rpi,
+                                    bin=bin
+                                    )
+
+            # place the read onto the management queue
+            self.outFiles[bid][bin][rpi].add(new_BMM)
+
+            coutt += 1
+            num_made += 1
+            if coutt >= 100000:
+                coutt = 0
+                print "Added %d for: %s" %(num_made, self.prettyBamNames[bid])
+
+
+            # next!
+            pBMM = CW._nextMappedRead(pBMM)
+
+        # clean up all the C allocated memory now.
+        CW._destroyMappedReads(for_destruction)
 
     def makeSurePathExists(self, path):
         try:

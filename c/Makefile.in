@@ -18,15 +18,14 @@ BMM_PARSER = bamParser
 BMM_EXTRACTOR = bamExtractor
 BMM_LIB = libBamM.a
 
-PARSER_SOURCES = parser.c bamParser.c pairedLink.c
-EXTRACTOR_SOURCES = extractor.c bamParser.c pairedLink.c
-LIBBAMM_SOURCES = bamParser.c pairedLink.c
+PARSER_SOURCES = examples/parser.c bamParser.c pairedLink.c
+EXTRACTOR_SOURCES = examples/extractor.c bamExtractor.c bamParser.c pairedLink.c
+LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c
 
-LIBBAMM_OBJS = bamParser.o pairedLink.o
+LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o
 
 # make these c blobs if you care, they are not supported though
 #all: parser extractor library
-#all: parser library
 # by default, just make the library
 all: library
       

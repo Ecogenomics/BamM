@@ -41,6 +41,8 @@ __status__ = "Beta"
 # system imports
 import argparse
 import sys
+import gzip
+import mimetypes
 
 # local imports
 from bamm.bamParser import BamParser
@@ -71,9 +73,10 @@ def doWork( args ):
                               keptFiles=args.kept,
                               keepFiles=args.keep,
                               outputTam=args.output_tam,
-                              numThreads=args.processes,
+                              numThreads=args.threads,
                               maxMemory=args.memory,
-                              forceOverwriting=args.force
+                              forceOverwriting=args.force,
+                              verbose=args.verbose
                               )
         except InvalidParameterSetException as e:
             printError(e)
@@ -99,35 +102,45 @@ def doWork( args ):
 
         # if called with no mode then just print types to stdout
         if (args.links == "") and (args.coverages == ""):
-            doTypes = True
+            doInserts = True
         else:
-            doTypes = (args.types != "")
+            doInserts = (args.inserts != "")
 
         ret = BP.parseBams(args.bamfiles,
                            doLinks=(args.links != ""),
-                           doTypes=doTypes,
+                           doInserts=doInserts,
                            doCovs=(args.coverages != ""),
                            types=args.num_types,
-                           threads=args.processes,
+                           threads=args.threads,
                            verbose=args.verbose)
         if ret == 0:
             # print nice stuff out as required
-            if doTypes:
-                BP.printBamTypes(args.types)
+            if doInserts:
+                BP.printBamTypes(args.inserts)
             if args.links != "":
                 BP.printLinks(args.links)
             if args.coverages != "":
                 BP.printCoverages(args.coverages)
 
     elif(args.subparser_name == 'extract'):
+
+        if args.target_lists == [] or args.bamfiles == []:
+            printError('-l and -b arguments are mandatory')
+            subparsers.choices['extract'].print_help()
+            sys.exit(1)
+
         try:
-            BE = BamExtractor(args.targets,
+            # get the targets in list form, regardless of how they were passed to us
+            targets = makeTargetLists(args.target_lists)
+            BE = BamExtractor(targets,
                               args.bamfiles,
                               prefix=args.prefix,
                               outFolder=args.out_folder,
-                              shuffle=args.shuffle,
                               mixBams=args.mix_bams,
+                              mixTargets=args.mix_targets,
+                              mixReads=args.mix_reads,
                               ignoreUnpaired=args.ignore_unpaired,
+                              shuffle=args.shuffle,
                               bigFile=args.no_gzip,
                               headersOnly=args.headers_only)
         except InvalidParameterSetException as e:
@@ -135,12 +148,61 @@ def doWork( args ):
             subparsers.choices['extract'].print_help()
             sys.exit(1)
 
-        BE.extract()
+        BE.extract(args.threads, args.verbose)
 
     else:
         printError("Unknown mode '%s'" % args.subparser_name)
         parser.print_help()
         sys.exit(1)
+
+def makeTargetLists(target_lists):
+    """Get the lists of targets to hit"""
+    # work out if the targets are lists of contig IDs or just contigs
+    # assume that if the file is fasta then the first character will be ">"
+    # otherwise it must be a list
+    targets = []
+    for t_list in target_lists:
+        try:
+            read_open = open
+            # handle gzipped files
+            mime = mimetypes.guess_type(t_list)
+            if mime[1] == 'gzip':
+                read_open = gzip.open
+        except:
+            raise InvalidParameterSetException('Error when guessing targets file mimetype')
+
+        with read_open(t_list, "r") as t_fh:
+            tmp_targets = []
+            first_line = t_fh.readline()
+            try:
+                if first_line[0] == ">":
+                    t = first_line.rstrip()[1:]
+                    if t != "":
+                        tmp_targets.append(t)
+                    for line in t_fh:
+                        if line[0] == ">":
+                            t = line.rstrip()[1:]
+                            if t != "":
+                                tmp_targets.append(t)
+                else:
+                    t = first_line.rstrip()
+                    if t != "":
+                        tmp_targets.append(t)
+                    for line in t_fh:
+                        t = line.rstrip()
+                        if t != "":
+                            tmp_targets.append(t)
+
+                if len(tmp_targets) == 0:
+                    raise InvalidParameterSetException('No targets in list: %s' % t_list)
+                targets.append(tmp_targets)
+            except:
+                raise InvalidParameterSetException('Something is wrong with the supplied targets file')
+
+    if len(targets) == 0:
+        raise InvalidParameterSetException('No valid targets supplied')
+
+    return targets
 
 ###############################################################################
 ###############################################################################
@@ -197,8 +259,9 @@ if __name__ == '__main__':
 
     make_parser.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
 
-    make_parser.add_argument("-p", "--processes", type=int, default="1", help="number of threads to use where possible")
-    make_parser.add_argument("-m", "--memory", type=int, default=None, help="amount of memory to use where possible (default 2GB*number of threads)")
+    make_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
+    make_parser.add_argument("-t", "--threads", type=int, default="1", help="maximum number of threads to use")
+    make_parser.add_argument("-m", "--memory", type=int, default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads)")
 
     #-------------------------------------------------
     # determine linking reads
@@ -208,10 +271,10 @@ if __name__ == '__main__':
                                         description='get bamfile type and/or coverage profiles and/or linking reads')
     parse_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
     parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
+    parse_parser.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
     parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
-    parse_parser.add_argument('-t', '--types', help="filename to write bamfile types to", default="")
 
-    parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of orientation types per BAM", type=int)
+    parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
     parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverage)", default='vanilla', choices=['vanilla', 'outlier'])
 
     parse_parser.add_argument('-L', '--length', help="minimum Q length", type=int, default=50)
@@ -219,27 +282,32 @@ if __name__ == '__main__':
     parse_parser.add_argument('-Q', '--mapping_quality', help="mapping quality threshold", type=int, default=0)
 
     parse_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
-    parse_parser.add_argument('-p', '--processes', help="number of threads to use", type=int, default=1)
+    parse_parser.add_argument('-t', '--threads', help="maximum number of threads to use", type=int, default=1)
 
     #-------------------------------------------------
     # read extractor
     extract_parser = subparsers.add_parser('extract',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         help='extract reads from bamfile(s)',
-                                        description='Extract reads which hit the given references')
-    extract_parser.add_argument('targets', help="file containing reference names (1 per line) or contigs file in fasta format")
-    extract_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+                                        description='Extract reads which hit the given references',
+                                        epilog='-t and -b arguments are mandatory')
+    extract_parser.add_argument('-l', '--target_lists', nargs='+', default=[], help="files containing reference names (1 per line) or contigs file in fasta format")
+    extract_parser.add_argument('-b', '--bamfiles', nargs='+', default=[], help="bam files to parse")
 
     extract_parser.add_argument('-p', '--prefix', default="", help="prefix to apply to output files")
-    extract_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder (None for current dir)")
+    extract_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder")
 
-    extract_parser.add_argument('-s', '--shuffle', action="store_true", default=False, help="shuffle paired reads in ouput files")
-    extract_parser.add_argument('-i', '--ignore_unpaired', action="store_true", default=False, help="ignore unpaired reads")
-    extract_parser.add_argument('-m', '--mix_bams', action="store_true", default=False, help="use the same file for all reads")
-    extract_parser.add_argument('-c', '--combine_reads', action="store_true", default=False, help="write paired and unpaired to the same files")
+    extract_parser.add_argument('--mix_bams', action="store_true", default=False, help="use the same file for multiple bam files")
+    extract_parser.add_argument('--mix_targets', action="store_true", default=False, help="use the same files for multiple target groups")
+    extract_parser.add_argument('--mix_reads', action="store_true", default=False, help="use the same files for paired/unpaired reads")
+    extract_parser.add_argument('--ignore_unpaired', action="store_true", default=False, help="ignore unpaired reads")
+    extract_parser.add_argument('--shuffle', action="store_true", default=False, help="shuffle paired reads in ouput files")
 
     extract_parser.add_argument('--no_gzip', action="store_true", default=False, help="do not gzip output files")
     extract_parser.add_argument('--headers_only', action="store_true", default=False, help="extract only (unique) headers")
+
+    extract_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
+    extract_parser.add_argument('-t', '--threads', help="maximum number of threads to use", type=int, default=1)
 
     #-------------------------------------------------
     # get and check options

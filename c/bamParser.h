@@ -2,7 +2,11 @@
 //
 //   bamParser.h
 //
-//   Determine average coverage values and linking read pairs
+//   Engine for parsing BAM files - non-parallel
+//   Functions include:
+//   Determine "type" of bam file (insert size, orientation of reads etc...)
+//   Determine average coverage values
+//   Find linking read pairs
 //
 //   Copyright (C) Michael Imelfort
 //
@@ -130,32 +134,6 @@ typedef struct BM_fileInfo {
     cfuhash_table_t * links;
 } BM_fileInfo;
 
-/*! @typedef
- * @abstract Structure for storing a sequencing read
- *
- * @field seqId       id of the read as stored in the BAM
- * @field seq         nucleic acid sequence
- * @field qual        quality sequence
- * @field len         read length
- */
-typedef struct BM_seqRead {
-    char * seqId;
-    char * seq;
-    char * qual;
-    uint8_t len;
-} BM_seqRead;
-
-/*! @typedef
- * @abstract Structure for storing a paired read
- *
- * @field forward     forward BM_seqRead
- * @field reverse     reverse BM_seqRead
- */
-typedef struct BM_pairedRead {
-    BM_seqRead * forward;
-    BM_seqRead * reverse;
-} BM_pairedRead;
-
     /**********************
     ***  BAM FILE DATA  ***
     **********************/
@@ -253,22 +231,6 @@ int parseCoverageAndLinks(int typeOnly,
                           char* bamFiles[],
                           BM_fileInfo * BFI);
 
-
-/*!
- * @abstract Extract reads from a BAM file based on which contigs they map to
- *
- * @param  BFI          BM_bamFileInfo struct containing BM_bamFile structs
- * @param  contigs      array of contigs to extract reads for
- * @param  numContigs   size of array of contigs to extract reads for
- * @return void
- *
- * @discussion This function expects BFI to be initialised.
- */
-void extractReads(char ** bamFiles,
-                  int numBams,
-                  char ** contigs,
-                  int numContigs);
-
 /*!
  * @abstract work out the orientation type and insert size for given bam files
  *
@@ -363,50 +325,6 @@ void destroyLW(BM_LinkWalker * walker);
  */
  void destroyBamFiles(BM_bamFile ** BFs, int numBams);
 
-/*!
- * @abstract Delete a single read
- *
- * @param  SR   Single read struct to delete
- * @return void
- */
-void destroyRead(BM_seqRead * SR);
-
-/*!
- * @abstract Delete a paired read
- *
- * @param  PR   Paired read struct to delete
- * @return void
- */
-void destroyPairedRead(BM_pairedRead * PR);
-
-    /***********************
-    ***      READS       ***
-    ***********************/
-
-/*!
- * @abstract Initialise a single ended read
- *
- * @param   seqId       Id of the read as given in the BAM
- * @param   seq         read sequence
- * @param   qual        quality score of the read
- * @return BM_seqRead *
- */
- BM_seqRead * makeSeqRead(char * seqId,
-                         char * seq,
-                         char * qual);
-
-/*!
- * @abstract Initialise a paired end read
- *
- * @param   forward       pointer to the forward read
- * @param   reverse       pointer to the reverse read
- * @return BM_pairedRead *
- */
-BM_pairedRead * makePairedRead(BM_seqRead * fSR, BM_seqRead * rSR);
-
-    /***********************
-    *** PRINTING AND I/O ***
-    ***********************/
 /*!
  * @abstract Human readable orientation type
  *

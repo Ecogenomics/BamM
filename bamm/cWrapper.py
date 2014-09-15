@@ -61,6 +61,9 @@ class CWrapper:
         self._destroyBFI = self.libPMBam.destroyBFI
 
         self._extractReads = self.libPMBam.extractReads
+        self._printMappedReads = self.libPMBam.printMappedReads
+        self._destroyMappedReads = self.libPMBam.destroyMappedReads
+        self._nextMappedRead = self.libPMBam.nextMappedRead
 
         self._parseCoverageAndLinks = self.libPMBam.parseCoverageAndLinks
         self._adjustPlpBp = self.libPMBam.adjustPlpBp

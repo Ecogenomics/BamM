@@ -29,8 +29,9 @@
 #include <unistd.h>
 
 // local includes
-#include "bamParser.h"
-#include "pairedLink.h"
+#include "../bamParser.h"
+#include "../bamExtractor.h"
+#include "../pairedLink.h"
 
 int main(int argc, char *argv[])
 {

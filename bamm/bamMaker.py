@@ -67,7 +67,8 @@ class BamScheduler:
                  outputTam=False,
                  numThreads=1,
                  maxMemory=None,
-                 forceOverwriting=False
+                 forceOverwriting=False,
+                 verbose=False
                  ):
 
         # the main thing is to make sure that the input paramters make sense
@@ -76,9 +77,9 @@ class BamScheduler:
         self.interleaved = interleaved
         self.singleEnded = singleEnded
         if self.database is None:
-            raise InvalidParameterSetException('Nothing to map reads onto, you need to supply -d <DATABASE>')
+            raise InvalidParameterSetException('Nothing to map reads onto, you need to supply a database')
         if self.singleEnded == [] and self.paired == [] and self.interleaved == []:
-            raise InvalidParameterSetException("Nothing to map, use '-p', '-i' or '-s' to specify reads files")
+            raise InvalidParameterSetException("Nothing to map, please specify coupled, interleaved or single ended reads files")
 
         self.alignmentAlgorithm = alignmentAlgorithm
         self.indexAlgorithm = indexAlgorithm
@@ -96,10 +97,10 @@ class BamScheduler:
         if checkForDatabase(self.database):
             # dbs are there, has the user specified 'kept'
             if self.keptFiles is False and not self.forceOverwriting:
-                raise InvalidParameterSetException("You didn't specify --kept but there appears to be bwa index files present.\nI'm cowardly refusing to run so as not to risk overwriting.\nUse -f to force overwriting and -k to keep new indices")
+                raise InvalidParameterSetException("You didn't specify that index files have been kept but there appears to be bwa index files present.\nI'm cowardly refusing to run so as not to risk overwriting.\nForce overwriting to create new indices")
         elif self.keptFiles:
             # user specified 'kept' but there are no DBs there
-            raise InvalidParameterSetException("You specified --kept but there doesn't appear to be any suitable bwa index files present")
+            raise InvalidParameterSetException("You specified that index files have been kept but there doesn't appear to be any suitable bwa index files present")
 
         self.BMs = []
         self.outFiles = {}  # use this to check for repeated output files
@@ -191,9 +192,10 @@ class BamScheduler:
             self.BMs.append(BM)
 
         # we've made it this far. Lets tell the user what we intend to do
-        for BM in self.BMs:
-            print BM
-        print "-------------------------------------------"
+        if verbose:
+            for BM in self.BMs:
+                print BM
+            print "-------------------------------------------"
 
     def makeBams(self):
         """Make the bams"""
@@ -288,14 +290,14 @@ class BamMaker:
             if self.readFile2 is None:
                 # only OK if interleaved is set
                 if self.isInterleaved is False:
-                    raise InvalidParameterSetException('You must specify two reads files and a database or one reads file with the interleaved flag for a paired alignment. For single ended just use -1, -d and -s')
+                    raise InvalidParameterSetException('You must specify two read files and a database or one read file with the interleaved flag for a paired alignment or explicitly use the single ended flag')
                 elif self.alignmentAlgorithm=='aln':
-                    raise InvalidParameterSetException('You cannot use --bwa-aln with interleaved reads')
+                    raise InvalidParameterSetException('You cannot use the "aln" algorithm with interleaved reads')
             # else we have -d, -1 and -2 --> OK
 
         # last sanity check
         if (self.keptFiles is False and checkForDatabase(self.database)) and not self.forceOverwriting:
-            raise InvalidParameterSetException("You didn't specify --kept but there appears to be bwa index files present.\nI'm cowardly refusing to run so as not to risk overwriting.\nUse -f to force overwriting and -k to keep new indices")
+            raise InvalidParameterSetException("You didn't specify that index files have been kept but there appears to be bwa index files present.\nI'm cowardly refusing to run so as not to risk overwriting.\nForce overwriting to create new indices")
 
         # OK we, know what we're doing
 

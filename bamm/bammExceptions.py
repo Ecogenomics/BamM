@@ -52,6 +52,7 @@ class NoBAMSFoundException(BamMException): pass
 
 class InvalidParameterSetException(BaseException): pass
 
+class MixedFileTypesException(BamMException): pass
 ###############################################################################
 ###############################################################################
 ###############################################################################
