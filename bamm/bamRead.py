@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 ###############################################################################
 #                                                                             #
 #    bamRead.py                                                               #
@@ -28,7 +27,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
-__version__ = "0.1.0"
+__version__ = "1.0.0-b.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -39,112 +38,392 @@ __status__ = "Beta"
 import ctypes as c
 import sys
 import multiprocessing as mp
-import re
 import gzip
 import Queue
-import random
+import time
+from copy import deepcopy
 
 # local import
 from bamm.bammExceptions import *
+from cWrapper import *
 
 ###############################################################################
 ###############################################################################
 ###############################################################################
 ###############################################################################
 
-#
-# This re is used to strip pair information from a read
-#
-pairStripper = re.compile( '(_1$|_2$|/1$|/2$)' )
-metaStripper = re.compile( '(.*;r_)' )
-
-#------------------------------------------------------------------------------
 # Managing paired and unparied reads (and relative ordering)
+#
+# NOTE: This RPI definition corresponds to the definition in bamRead.h
+#
 
 def enum(*sequential, **named):
     enums = dict(zip(sequential, range(len(sequential))), **named)
     return type('Enum', (), enums)
 
+#
+# FIR   means first in properly paired mapping
+# SEC   means second "
+# SNGLP means paired in BAM but unpaired in mapping
+# SNGL  means unpaired in BAM
+# ERROR just for fun
+#
 global RPI
-RPI = enum('FIR', 'SEC', 'SNGL', 'ERROR')
+RPI = enum('FIR', 'SEC', 'SNGL_FIR', 'SNGL_SEC', 'SNGL', 'ERROR')
 
 def RPI2Str(rpi):
     """For the humans!"""
     if rpi == RPI.FIR:
         return 'First'
-    if rpi == RPI.SEC:
+    elif rpi == RPI.SEC:
         return 'Second'
-    if rpi == RPI.SNGL:
+    elif rpi == RPI.SNGL_FIR:
+        return 'First_single'
+    elif rpi == RPI.SNGL_SEC:
+        return 'Second_single'
+    elif rpi == RPI.SNGL:
         return 'Single'
     return 'ERROR'
 
+# RPI.SNGL_FIR needs to be written to the singles file etc...
+RPIConv = {RPI.FIR:RPI.FIR,
+           RPI.SEC:RPI.SEC,
+           RPI.SNGL_FIR:RPI.SNGL,
+           RPI.SNGL_SEC:RPI.SNGL,
+           RPI.SNGL:RPI.SNGL}
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
 ###############################################################################
 
-# mapped read structure "C land"
-"""
-typedef struct BM_mappedRead {
-    char * seqId,
-    char * seq,
-    char * qual,
-    uint16_t idLen,
-    uint16_t seqLen,
-    uint16_t qualLen,
-    uint8_t rpi,
-    uint16_t bin,
-    BM_mappedRead * prev_MR
-} BM_mappedRead;
+class ReadSetManager(object):
+    '''The principle manager of a collection of ReadSet objects
 
-"""
-class BM_mappedRead_C(c.Structure):
-    pass
+    Determines the exact names of the output files when extracting reads.
+    Ensures that only one thread can write to one file at a time.
+    '''
 
-class BM_mappedRead_C(c.Structure):
-    _fields_ = [("seqId", c.POINTER(c.c_char)),
-                ("seq", c.POINTER(c.c_char)),
-                ("qual", c.POINTER(c.c_char)),
-                ("idLen", c.c_uint16),
-                ("seqLen", c.c_uint16),
-                ("qualLen", c.c_uint16),
-                ("rpi", c.c_uint8),
-                ("bin", c.c_uint16),
-                ("nextRead",c.POINTER(BM_mappedRead_C))
-                ]
+    def __init__(self, manager):
+        '''Default constructor.
 
-# mapped read structure "Python land"
-class BM_mappedRead(object):
-    def __init__(self,
-                 seqId,
-                 seq=None,
-                 qual=None,
-                 rpi=RPI.SNGL,
-                 bin=0
-                 ):
-        self.seqId = seqId
-        self.seq = seq
-        self.qual=qual
-        self.rpi = rpi
-        self.bin = bin
+        Initializes a ReadSet instance with the provided set of properties.
 
-    def getUniversalId(self):
-        """Strips off any pesky _1 _2 /1 /2"""
-        return metaStripper.sub('', pairStripper.sub('', self.seqId))
+        Inputs:
+         manager - multiprocessing.Manager() instance owned by the BamExtractor
+                   use this to make all Queues.
+        '''
+        # We use two data structures to manage ReadSets
+        # self.outFiles is a nested hash that links bamFile Id
+        # group Id and read-pair information (rpi) to a ReadSet
+        # self.outFiles = { bamId : { groupId : { rpi : ReadSet } } }
+        self.outFiles = {}
+        # self.fnPrefix2ReadSet is a simple hash that links the
+        # file name prefix to a ReadSet
+        # self.fnPrefix2ReadSet = { outPrefix : ReadSet }
+        self.fnPrefix2ReadSet = {}
 
-    def print_MR(self, targetNames, fileHandle=None):
-        """Print this read"""
-        if fileHandle is None:
-            fileHandle = sys.stdout
+        # The two variables ensure that only one thread has access to a
+        # ReadSet at a time
+        self.lock = manager.Lock()
+        self.readSetInUse = {}
 
-        if self.seq is None:
-            # headers only
-            fileHandle.write("b_%s;%s\n" %(targetNames[self.bin], self.seqId))
-        else:
-            if self.qual is not None:
-                fileHandle.write("@b_%s;%s\n%s\n+\n%s\n" %(targetNames[self.bin], self.seqId, self.seq, self.qual))
+        # The program uses threads which cannot be terminated without
+        # using a trick like altering a global variable.
+        # NOTE: Use self.invalidateThreads to modify this variable
+        self._threadsAreValid = True
+
+        # The RSM communicates with the parsing threads using
+        # a collection of queues.
+        # The request queue is used by threads to make requests
+        # for access to ReadSets. The freeQueue is used to indicate
+        # that access to a resource is no loneger needed.
+        # See self.manageRequests for details.
+        self.requestQueue = manager.Queue()
+        self.freeQueue = manager.Queue()
+
+        # These Queues must be passed in by the BamExtractor
+        # The RSM gives threads access to the ReadSets by placing
+        # copies of them on the appropriate responseQueue.
+        # self.responseQueues is a hash of Queues:
+        # { outPrefix : mp.Manager().Queue() }
+        self.responseQueues = None
+
+        # All strings for printing to std out are placed on this queue
+        # to ensure print statements are not garbled
+        self.printQueue = None
+
+    def invalidateThreads(self):
+        '''Stop all the threads from running
+
+        Also stops any looping processes in the ReadSets
+
+        Inputs:
+         None
+        Outputs:
+         None
+        '''
+        self._threadsAreValid = False
+        for file_name in self.fnPrefix2ReadSet.keys():
+            self.fnPrefix2ReadSet[file_name].threadsAreValid = False
+
+    def setResponseQueues(self, queues):
+        '''Set response queues used to pass ReadSets to the extract threads
+
+        Inputs:
+         queues - dict { outPrefix : mp.Manager().Queue() }, one for each
+                  thread that's parsing BAM files for the BAmExtractor
+        Outputs:
+         None
+        '''
+        self.responseQueues = queues
+
+    def setPrintQueue(self, queue):
+        '''Set the print queue for communcating upwards
+
+        Inputs:
+         queue - mp.Manager().Queue(), print queue managed by the BamExtractor
+        Outputs:
+         None
+        '''
+        self.printQueue = queue
+
+    def getReadSet(self, bid, gid, rpi, threadId):
+        '''Ensure that only one thread at a time has access to a read set
+
+        Inputs:
+         bid - int, the unique identifier for a BAM file
+         gid - int, the unique identifier for a target group
+         rpi - enum, describes the type of read (RPI.FIR etc.)
+         threadId - string, identifies the thread that is requesting
+                    the resource.
+        Outputs:
+         The requested read set or None if it is not available
+        '''
+        read_set = self.outFiles[bid][gid][rpi]
+        file_prefix = read_set.getConstFP()
+        with self.lock:
+            if file_prefix in self.readSetInUse:
+                read_set = None
             else:
-                fileHandle.write(">b_%s;%s\n%s\n" % (targetNames[self.bin], self.seqId, self.seq))
+                self.readSetInUse[file_prefix] = threadId
+        return read_set
+
+    def freeReadSet(self, bid, gid, rpi, threadId):
+        '''Indicate that a thread is finished with a read set
+
+        Inputs:
+         bid - int, the unique identifier for a BAM file
+         gid - int, the unique identifier for a target group
+         rpi - enum, describes the type of read (RPI.FIR etc.)
+         threadId - string, identifies the thread that is freeing
+                    the resource.
+        Outputs:
+         None
+
+        Raises:
+         InvalidParameterSetException - if the supplied information doesn't make sense
+        '''
+        read_set = self.outFiles[bid][gid][rpi]
+        file_prefix = read_set.getConstFP()
+        with self.lock:
+            try:
+                if self.readSetInUse[file_prefix] == threadId:
+                    del self.readSetInUse[file_prefix]
+                else:
+                    raise InvalidParameterSetException("%s owned by %s, not %s" % (file_prefix, self.readSetInUse[file_prefix], threadId))
+            except KeyError:
+                raise InvalidParameterSetException("%s not owned by anyone" % file_prefix)
+                pass
+
+    def manageRequests(self):
+        '''Manage requests by parsing threads to access ReadSets
+
+        This process runs on it's own thread and continues until it discovers
+        a None on the requestQueue or self._threadsAreValid is set to False
+
+        Inputs:
+         None
+
+        Outputs:
+         None
+        '''
+        while self._threadsAreValid: # loop on a global, so that way we can kill threads as needed
+            item = self.requestQueue.get(timeout=None, block=True)
+            if item is None:
+                break
+            else:
+                # is this a request for a readset
+                (thread_id, bid, gid, rpi, is_fastq) = item
+                return_queue = self.responseQueues[thread_id]
+                read_set = None
+                while read_set is None and self._threadsAreValid:
+                    read_set = self.getReadSet(bid, gid, rpi, thread_id)
+
+                    if read_set is None:
+                        # the read_set is in use by another thread. Pop an entry
+                        # off the top of the freeQueue and see if that helps
+                        try:
+                            (f_thread_id, f_bid, f_gid, f_rpi) = self.freeQueue.get(block=True,
+                                                                                    timeout=2)
+                            try:
+                                self.freeReadSet(f_bid, f_gid, f_rpi, f_thread_id)
+                            except InvalidParameterSetException: pass
+                        except Queue.Empty:
+                            # avoid wheel spinning
+                            time.sleep(2)
+                    # else, we have the RS and we're good to go
+
+                # read_set should NOT be None here
+                if read_set is None:
+                    # free the thread
+                    return_queue.put(None)
+                    break
+
+                # let's start trying to get ready for writing
+                # filename should be set and fasta/fastq should be checked
+                return_queue.put(deepcopy(read_set))
+
+                # this read set is now "opened". This change will
+                # be used on the next usage of the ReadSet
+                if is_fastq:
+                    read_set._fastqWritten = True
+                else:
+                    read_set._fastaWritten = True
+
+    def organiseOutFiles(self,
+                         prettyBamFileNames,
+                         groupNames,
+                         zipped,
+                         interleaved,
+                         ignoreUnpaired,
+                         mixBams,
+                         mixGroups,
+                         mixReads,
+                         outFolder,
+                         prefix,
+                         ):
+        '''Determine all the outFile prefixes needed for extraction.
+
+        The RSM manages a collection of output file objects called ReadSets
+        These are made here and placed into hashes for retrieval later. This
+        function also populates instance variables self.fnPrefix2ReadSet and
+        self.outFiles; the two main ways that ReadSets can be accessed.
+
+        File names vary wildly depending on the values of flags such as:
+        mixGroups, mixBams etc. Take care when modifying this code.
+
+        Inputs:
+         prettyBamFileNames - [ string ] simple versions of the BAM filenames
+         groupNames - [ string ] identify contig groups. EX: [bin1, bin2]
+         zipped - bool, True if the output should be zipped
+         interleaved - bool, True if the output should be interleaved
+         ignoreUnpaired - bool, True if unpaired reads should be ignored
+         mixBams - bool, True if BAM file origin should be ignored
+         mixGroups - bool, True if group origin should be ignored
+         mixReads - bool, True if paired / unpaired distinction should be ignored
+         outFolder - string, folder to write output to
+         prefix - string, prefix to apply to all output files
+
+        Outputs:
+         of_prefixes - { bamId : { groupId : { rpi : outFile prefix } } }, this hash can
+                       be used to get the file name prefix for a read set based on
+                       BAM file origin, group origin and pairing information.
+        '''
+        of_prefixes = {}
+        base_path = os.path.join(os.path.abspath(outFolder), prefix)
+
+        # we need to make a filename for every eventuality
+        for bid in range(len(prettyBamFileNames)):
+            if mixBams:
+                bam_str = "allMapped"
+            else:
+                bam_str = prettyBamFileNames[bid]
+
+            if bam_str not in self.outFiles:
+                self.outFiles[bid] = {}
+                of_prefixes[bid] = {}
+
+            for gid in range(len(groupNames)):
+                if mixGroups:
+                    grp_str = "allGroups"
+                else:
+                    grp_str = groupNames[gid]
+
+                if gid not in self.outFiles[bid]:
+                    self.outFiles[bid][gid] = {}
+                    of_prefixes[bid][gid] = {}
+
+                if prefix == "":
+                    fn = "%s%s.%s" % (base_path, bam_str, grp_str)
+                else:
+                    fn = "%s.%s.%s" % (base_path, bam_str, grp_str)
+
+                if mixReads:
+                    # all reads should go into the one file
+                    working_fn = fn + ".allReads"
+                    try:
+                        read_set_P = self.fnPrefix2ReadSet[working_fn]
+                    except KeyError:
+                        read_set_P = ReadSet(working_fn, zipped=zipped)
+                        self.fnPrefix2ReadSet[working_fn] = read_set_P
+                    read_set_S = read_set_P
+
+                elif interleaved:
+                    # one file for pairs and one for singles
+                    working_fn_P = fn + ".pairedReads"
+                    working_fn_S = fn + ".unpairedReads"
+                    try:
+                        read_set_P = self.fnPrefix2ReadSet[working_fn_P]
+                    except KeyError:
+                        read_set_P = ReadSet(working_fn_P, paired=True, zipped=zipped)
+                        self.fnPrefix2ReadSet[working_fn_P] = read_set_P
+
+                    try:
+                        read_set_S = self.fnPrefix2ReadSet[working_fn_S]
+                    except KeyError:
+                        read_set_S = ReadSet(working_fn_S, zipped=zipped)
+                        self.fnPrefix2ReadSet[working_fn_S] = read_set_S
+
+                else:
+                    # each in their own file
+                    working_fn_1 = fn + ".1"
+                    working_fn_2 = fn + ".2"
+                    working_fn_S = fn + ".unpairedReads"
+                    try:
+                        read_set_P = self.fnPrefix2ReadSet[working_fn_1]
+                    except KeyError:
+                        read_set_P = ReadSet(working_fn_1, outPrefix2=working_fn_2, paired=True, zipped=zipped)
+                        self.fnPrefix2ReadSet[working_fn_1] = read_set_P
+
+                    try:
+                        read_set_S = self.fnPrefix2ReadSet[working_fn_S]
+                    except KeyError:
+                        read_set_S = ReadSet(working_fn_S, zipped=zipped)
+                        self.fnPrefix2ReadSet[working_fn_S] = read_set_S
+
+                # we use the filenames to link everything up below
+                self.outFiles[bid][gid][RPI.FIR] = read_set_P
+                self.outFiles[bid][gid][RPI.SEC] = read_set_P
+                of_prefixes[bid][gid][RPI.FIR] = read_set_P.getConstFP()
+                of_prefixes[bid][gid][RPI.SEC] = read_set_P.getConstFP()
+
+                if ignoreUnpaired:
+                    self.outFiles[bid][gid][RPI.SNGL] = None
+                    self.outFiles[bid][gid][RPI.SNGL_FIR] = None
+                    self.outFiles[bid][gid][RPI.SNGL_SEC] = None
+                    of_prefixes[bid][gid][RPI.SNGL] = ""
+                    of_prefixes[bid][gid][RPI.SNGL_FIR] = ""
+                    of_prefixes[bid][gid][RPI.SNGL_SEC] = ""
+                else:
+                    self.outFiles[bid][gid][RPI.SNGL] = read_set_S
+                    self.outFiles[bid][gid][RPI.SNGL_FIR] = read_set_S
+                    self.outFiles[bid][gid][RPI.SNGL_SEC] = read_set_S
+                    of_prefixes[bid][gid][RPI.SNGL] = read_set_S.getConstFP()
+                    of_prefixes[bid][gid][RPI.SNGL_FIR] = read_set_S.getConstFP()
+                    of_prefixes[bid][gid][RPI.SNGL_SEC] = read_set_S.getConstFP()
+
+        return of_prefixes
 
 ###############################################################################
 ###############################################################################
@@ -152,137 +431,194 @@ class BM_mappedRead(object):
 ###############################################################################
 
 class ReadSet(object):
-    """Container class to encapsulate the concept of a(n un)paired read set"""
+    '''Container class to encapsulate the concept of a(n un)paired read set
+
+    This class manages file properties and writing functionality.'''
+
     def __init__(self,
-                 fileName1,                     # always need at least one file name
-                 fileName2 = None,              # second filename for paired non-shuffled
-                 paired=False,                  # paired flag indicates how we should deplete the queue
-                 zipped=True                    # gzip output
+                 outPrefix1,
+                 outPrefix2 = None,
+                 paired=False,
+                 zipped=True
                  ):
-        self.unopened = True                    # is this file unopened?
-        self.fileName1 = fileName1              # the file to write to
-        self.fileName2 = fileName2              # the other file to write to... ...perhaps
-        self.buffer = mp.Manager().dict()       # thread safe dictionary to act as a buffer
-        self.reads = mp.Manager().Queue()       # the reads that we can write to the file
-        self.isPaired = paired                  # pop off reads two at a time?
+        '''Default constructor.
+
+        Initializes a ReadSet instance with the provided set of properties.
+
+        Inputs:
+         outPrefix1 - prefix of the first output file (read1 / forward read).
+         outPrefix2 - prefix of the second output file or None for interleaved
+                      or unpaired files.
+         isPaired - bool, True if the file is a paired read file.
+         zipped - bool, True if the data should be compressed for writing.
+        '''
+        # output read file properties
+        self.isPaired = paired
+        self.zipOutput = zipped
+
+        # prefixes of the files we'll be writing to
+        self._outPrefix1 = outPrefix1
+        # prefix2 may well be None
+        self._outPrefix2 = outPrefix2
 
         # work out how we'll write files
-        self.zipOutput = zipped                 # totes
         if zipped:
-            self.writeOpen = gzip.open
+            self._writeOpen = gzip.open
         else:
-            self.writeOpen = open
+            self._writeOpen = open
 
-        # we need this to throw an attribute error
-        # on the first time it's read -> ie. leave undefined
-        #self.isFasta = #$@!:
+        # If the RSM catches a ^C during a write operation
+        # we need a global variable to exit and kill the thread
+        # Loop as long as threads are valid
+        self._threadsAreValid = True
 
-    def add(self, BMM):
-        """Add a mapped read to the queue, respect read pairings"""
+        # we could potentially be writing both fasta and fastq
+        # these variables keep track of such things and make sure that
+        # the right data goes to the right place
+        self._fastqWritten = False
+        self._fastaWritten = False
 
-        # first check that we are adding fasta to fasta and fastq to fastq
-        try:
-            if self.isFasta ^ (BMM.qual is None):
-                raise MixedFileTypesException("You cannot mix Fasta and Fastq reads together in an output file")
-        except AttributeError:
-            # we have not defined self.isFasta in the __init__
-            # Now we can set the type of the file and we should only get
-            # here on the first read
-            self.isFasta = BMM.qual is None
-            if self.isFasta:
-                ext = ".fna"
-            else:
-                ext = ".fq"
+    def getConstFP(self, fNumber=1):
+        '''return the unchanging filename prefix associated with this ReadSet
 
-            if self.zipOutput:
-                ext += ".gz"
-            self.fileName1 += ext
-            if self.fileName2 is not None:
-                 self.fileName2 += ext
-
-            print "Here", self.fileName1, self.fileName2
-
-        return
-        # if the rpi is unpaired then we don't need to worry about the
-        # order of the reads. Otherwise we should be sure there is a paired read coming
-        # at some stage (or is here now) and these must be placed sequentially
-        # onto the queue
-        if BMM.rpi == RPI.SNGL:
-            self.reads.put(BMM)
+        Inputs:
+         fNumber - which file prefix is needed? [1 or 2]
+        Outputs:
+         The corresponding prefix
+        '''
+        if 1 == fNumber:
+            return self._outPrefix1
         else:
-            uid = BMM.getUniversalId()
-            try:
-                stored_BMM = self.buffer[uid]
-                # put read 1 on first
-                if BMM.rpi == RPI.FIR:
-                    self.reads.put(BMM)
-                    self.reads.put(stored_BMM)
-                else:
-                    self.reads.put(stored_BMM)
-                    self.reads.put(BMM)
+            return self._outPrefix2
 
-                # free this memory
-                del self.buffer[uid]
+    def determineFileSuffix(self, isFastq):
+        '''Determine the suffix of the file depending on if we're writing
+        fasta or fastq
 
-            except KeyError:
-                # first on the scene, store it here
-                self.buffer[uid] = BMM
+        Inputs:
+         isFastq - bool, is the file fastq (or fasta)
+        Outputs:
+         Filenames to be written to.
+         (fileName1, fileName2)
+         fileName2 will be None for unpaired or interleaved-paired files
+        '''
+        if isFastq:
+            ext = ".fq"
+        else:
+            ext = ".fna"
 
-    def getSize(self):
-        """return the size of the read queue and buffer"""
-        return(len(self.buffer), self.reads.qsize())
+        if self.zipOutput:
+            ext += ".gz"
 
-    def write(self, targetNames, maxDump=None):
-        """Write a chunk of reads to file"""
-        qs = self.reads.qsize()
-        if maxDump is None:
-            maxDump = qs
-        elif maxDump < qs:  # don't want to read off the end of the queue
-            maxDump = qs
+        file_name1 = self.getConstFP()+ext
+        file_name2 = self.getConstFP(fNumber=2)
+        if file_name2 is not None:
+            file_name2 += ext
+
+        return (file_name1, file_name2)
+
+    def writeChain(self,
+                   pBMM,
+                   isFastq,
+                   printQueue=None
+                   ):
+        '''Write a single print chain to disk
+
+        A print chain is a linked list of mapped reads that have been
+        pre-ordered and are ready to write (or print). The print chain can
+        contain either Fasta or Fastq reads but never both. File names are
+        determined on the fly based on the presence or absence of quality info
+        of the first read in the chain (determined by the BamExtractor) and
+        passed to this function as isFastq.
+
+        Inputs:
+         pBMM - c.POINTER(BM_mappedRead_C), the start of a linked list of
+                mapped reads, pre-ordered for printing by the BamExtractor
+         isFastq - bool, True if reads have quality information.
+         printQueue - Managed by the BamExtractor. Place all printing strings here
+                      Acts as a verbose flag.
+        Outputs:
+         None
+        '''
+        CW = CWrapper()
+
+        # reads are written (in C land) to this string buffer
+        buffer_c = c.create_string_buffer(2000)
+        pbuffer_c = c.POINTER(c.c_char_p)
+        pbuffer_c = c.pointer(buffer_c)
+
+        # this variable records how much of the buffer is used for each read
+        str_len_c = c.c_int(0)
+        pstr_len_c = c.cast(c.addressof(str_len_c), c.POINTER(c.c_int))
+
+        # get the fileNames to write to
+        (out_file1, out_file2) = self.determineFileSuffix(isFastq)
+
+        # determine file write mode. This instance is likely a copy
+        # of the main one managed by the RSM. so there is no need
+        # to update the value of self._fastXWritten here. Just use it.
+        opened = False
+        if isFastq and self._fastqWritten:
+            opened = True
+        elif not isFastq and self._fastaWritten:
+            opened = True
+
+        if opened:
+            # we will append to an existing file
+            open_mode = "a"
+            mode_desc = "Appending to"
+        else:
+            # overwrite any existing file
+            open_mode = "w"
+            mode_desc = "Writing"
 
         if self.isPaired:
-            # enforce always writing even numbers of reads
-            if maxDump % 2 != 0:
-                maxDump -= 1
+            # swap writing to file 1 and file 2.
+            # always start writing to fh1 first!
+            isFh1 = True
 
             # open files
-            fh1 = self.writeOpen(self.fileName1, 'a')
-            if self.fileName2 is None:
-                print "Writing shuffled file:", self.fileName1
+            fh1 = self._writeOpen(out_file1, open_mode)
+            if out_file2 is None:
+                if printQueue:
+                    printQueue.put(" %s interleaved file: %s" % (mode_desc, out_file1))
                 fh2 = fh1
             else:
-                print "Writing coupled files: ", self.fileName1, self.fileName2
-                fh2 = self.writeOpen(self.fileName2, 'a')
+                if printQueue:
+                    printQueue.put(" %s coupled files: %s %s" % (mode_desc, out_file1, out_file2))
+                fh2 = self._writeOpen(out_file2, open_mode)
+
             # write
-            while maxDump > 0:
-                print maxDump
-                print "going to get A"
-                BMM = self.reads.get(block=True, timeout=None)
-                print "got"
-                BMM.print_MR(targetNames, fh1)
-                print "going to get B"
-                BMM = self.reads.get(block=True, timeout=None)
-                print "got"
-                BMM.print_MR(targetNames, fh2)
-                maxDump -= 2
+            while pBMM and self._threadsAreValid:
+                # get C to write the read into the string buffer
+                CW._sprintMappedRead(pBMM, pbuffer_c, pstr_len_c)
+                # unwrap the buffer and transport into python land
+                printable_string = (c.cast(pbuffer_c, c.POINTER(c.c_char*str_len_c.value)).contents).value
+                if isFh1:
+                    fh1.write(printable_string)
+                    isFh1 = False
+                else:
+                    fh2.write(printable_string)
+                    isFh1 = True
+
+                # be sure that we're going to the next PRINT read
+                pBMM = CW._getNextPrintRead(pBMM)
 
             # and close
             fh1.close()
-            if self.fileName2 is not None:
+            if out_file2 is not None:
                 fh2.close()
         else:
-            with self.writeOpen(self.fileName1, "a") as fh:
-                while maxDump > 0:
-                    print maxDump
-                    print "going to get C"
-                    BMM = self.reads.get(block=True, timeout=None)
-                    print "got"
-                    BMM.print_MR(targetNames, fh)
-                    maxDump -= 1
+            with self._writeOpen(out_file1, open_mode) as fh:
+                if printQueue:
+                    printQueue.put(" %s unpaired file: %s (%s)" % (mode_desc, out_file1, self))
+                while pBMM and self._threadsAreValid:
+                    CW._sprintMappedRead(pBMM, pbuffer_c, pstr_len_c)
+                    printable_string = (c.cast(pbuffer_c, c.POINTER(c.c_char*str_len_c.value)).contents).value
+                    fh.write(printable_string)
+                    pBMM = CW._getNextPrintRead(pBMM)
 
 ###############################################################################
 ###############################################################################
 ###############################################################################
 ###############################################################################
-
-

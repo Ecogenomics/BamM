@@ -38,6 +38,9 @@ __status__ = "Beta"
 # system imports
 import ctypes as c
 
+# local imports
+from cWrapper import *
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -74,70 +77,6 @@ def OT2Str(ot):
 ###############################################################################
 ###############################################################################
 ###############################################################################
-
-# fields defined in cfuhash.c but not accessed at this level
-class cfuhash_table_t(c.Structure):
-    pass
-
-# links-associated structures "C land"
-"""
-typedef struct {
-    uint16_t reversed1;
-    uint16_t reversed2;
-    uint16_t readLength1;
-    uint16_t readLength2;
-    uint32_t pos1;
-    uint32_t pos2;
-    uint32_t bam_ID;
-    struct BM_linkInfo * nextLink;
-} BM_linkInfo;
-
-typedef struct {
-    uint32_t cid1;
-    uint32_t cid2;
-    uint32_t numLinks;
-    BM_linkInfo * LI;
-} BM_linkPair;
-
-typedef struct {
-    char ** keys;
-    size_t keyCount;
-    size_t numKeys;
-    cfuhash_table_t * linkHash;
-    BM_linkPair * pair;
-    BM_linkInfo * LI;
-} BM_LinkWalker;
-
-"""
-class BM_linkInfo_C(c.Structure):
-    pass
-
-class BM_linkInfo_C(c.Structure):
-    _fields_ = [("reversed1", c.c_uint16),
-                ("reversed2", c.c_uint16),
-                ("readLength1", c.c_uint16),
-                ("readLength2", c.c_uint16),
-                ("pos1", c.c_uint32),
-                ("pos2", c.c_uint32),
-                ("bam_ID", c.c_uint32),
-                ("nextLink",c.POINTER(BM_linkInfo_C))
-                ]
-
-class BM_linkPair_C(c.Structure):
-    _fields_ = [("cid1", c.c_uint32),
-                ("cid2", c.c_uint32),
-                ("numLinks", c.c_uint32),
-                ("LI",c.POINTER(BM_linkInfo_C))
-                ]
-
-class BM_LinkWalker_C(c.Structure):
-    _fields_= [("keys", c.POINTER(c.POINTER(c.c_char))),
-               ("keyCount", c.c_size_t),
-               ("numKeys", c.c_size_t),
-               ("links",c.POINTER(cfuhash_table_t)),
-               ("pair",c.POINTER(BM_linkPair_C)),
-               ("LI",c.POINTER(BM_linkInfo_C))
-               ]
 
 # links-associated structures "Python land"
 class BM_linkInfo(object):

@@ -33,18 +33,18 @@
 //#include "htslib/bgzf.h"
 #include "htslib/sam.h"
 
+// cfuhash
+#include "cfuhash.h"
+
 // local includes
 #include "bamParser.h"
 #include "bamExtractor.h"
-
-    /***********************
-    ***      READS       ***
-    ***********************/
+#include "bamRead.h"
 
 BM_mappedRead * extractReads(char * bamFile,
                              char ** contigs,
                              int numContigs,
-                             uint16_t * bins,
+                             uint16_t * groups,
                              char * prettyName,
                              int headersOnly) {
     //-----
@@ -79,6 +79,9 @@ BM_mappedRead * extractReads(char * bamFile,
                 fprintf(stderr, "ERROR: Random alignment retrieval only works for indexed BAM or CRAM files.\n");
             }
             else {
+                cfuhash_table_t *pair_buffer = cfuhash_new_with_initial_size(1000000);
+                cfuhash_set_flag(pair_buffer, CFUHASH_FROZEN_UNTIL_GROWS);
+
                 for (hh = 0; hh < numContigs; ++hh) {
                     hts_itr_t *iter = sam_itr_querys(idx, header, contigs[hh]); // parse a region in the format like `chr2:100-200'
                     if (iter == NULL) { // reference name is not found
@@ -88,10 +91,13 @@ BM_mappedRead * extractReads(char * bamFile,
                     // fetch alignments
                     while ((result = sam_itr_next(in, iter, b)) >= 0) {
                         bam1_core_t core = b->core;
+                        char * seqId = bam_get_qname(b);
                         char * seq = 0;
                         char * qual = 0;
                         int qual_len = 0;
                         int seq_len = 0;
+
+                        // get sequence and quality
                         if(0 == headersOnly) {  // no point allocating unused space
                             seq = calloc(core.l_qseq+1, sizeof(char));
                             qual = calloc(core.l_qseq+1, sizeof(char));
@@ -110,19 +116,16 @@ BM_mappedRead * extractReads(char * bamFile,
                             }
                         }
 
-                        #define MAX_SEQ_ID_LEN 80
-                        char * seq_id = calloc(MAX_SEQ_ID_LEN, sizeof(char));
-                        // allocate the string to the buffer but check to make sure we're not cutting anything off
-                        int id_len = snprintf(seq_id, MAX_SEQ_ID_LEN, "f_%s;c_%s;r_%s", prettyName, contigs[hh], bam_get_qname(b));
-                        if(id_len >= MAX_SEQ_ID_LEN) {
-                            seq_id = calloc(id_len+1, sizeof(char));
-                            snprintf(seq_id, id_len+1, "f_%s;c_%s;r_%s", prettyName, contigs[hh], bam_get_qname(b));
-                        }
-
+                        // work out pairing information
                         uint8_t rpi = RPI_ERROR;
                         if (core.flag&BAM_FPAIRED) {
                             if(core.flag&BAM_FMUNMAP) {
-                                rpi = RPI_SNGL;
+                                if (core.flag&BAM_FREAD1) {
+                                    rpi = RPI_SNGL_FIR;
+                                }
+                                else if (core.flag&BAM_FREAD2) {
+                                    rpi = RPI_SNGL_SEC;
+                                }
                             }
                             else {
                                 if (core.flag&BAM_FREAD1) {
@@ -136,7 +139,18 @@ BM_mappedRead * extractReads(char * bamFile,
                         else {
                             rpi = RPI_SNGL;
                         }
-                        //fprintf(stdout, "%d -- %s -- %d \n", rpi, bam_get_qname(b), bins[hh]); fflush(stdout);
+
+                        // make the funky Id
+                        #define MAX_SEQ_ID_LEN 80
+                        char * seq_id = calloc(MAX_SEQ_ID_LEN, sizeof(char));
+                        // allocate the string to the buffer but check to make sure we're not cutting anything off
+                        int id_len = snprintf(seq_id, MAX_SEQ_ID_LEN, "b_%s;c_%s;r_%s", prettyName, contigs[hh], seqId);
+                        if(id_len >= MAX_SEQ_ID_LEN) {
+                            seq_id = calloc(id_len+1, sizeof(char));
+                            snprintf(seq_id, id_len+1, "b_%s;c_%s;r_%s", prettyName, contigs[hh], seqId);
+                        }
+
+                        // make the mapped read struct
                         prev = makeMappedRead(seq_id,
                                               seq,
                                               qual,
@@ -144,10 +158,47 @@ BM_mappedRead * extractReads(char * bamFile,
                                               seq_len,
                                               qual_len,
                                               rpi,
-                                              bins[hh],
+                                              groups[hh],
                                               prev);
 
                         if (0 == root) { root = prev; }
+
+                        if(rpi == RPI_SNGL || rpi == RPI_SNGL_FIR || rpi == RPI_SNGL_SEC) {
+                            // we can just add away -> indicate singleton reads by pointing
+                            // the parter pointer to itself
+                            prev->partnerRead = prev;
+                        }
+                        else {
+                            // RPI_FIR or RPI_SEC
+                            // now work out pairing information using the hash table
+                            char * stripped_result = pairStripper(seqId, core.l_qname-1);
+                            char * stripped = seqId;
+                            size_t stripped_len = core.l_qname-1;
+                            if(stripped_result)
+                                stripped = stripped_result;
+                                stripped_len = core.l_qname-3;
+
+                            // now stripped always holds a stripped value
+                            // see if it is in the hash already
+                            BM_mappedRead * stored_MR = cfuhash_get(pair_buffer, stripped);
+                            if (stored_MR != NULL) {
+                                // exists in the hash -> We can add the pair info
+                                if(rpi == RPI_FIR)
+                                    prev->partnerRead = stored_MR;
+                                else
+                                    stored_MR->partnerRead = prev;
+
+                                // delete the entry from the hash
+                                cfuhash_delete_data(pair_buffer, stripped, stripped_len);
+                            }
+                            else {
+                                // we should put it in the hash
+                                cfuhash_put(pair_buffer, stripped, prev);
+                            }
+
+                            if(stripped_result) // free this!
+                                free(stripped_result);
+                        }
                     }
                     hts_itr_destroy(iter);
                     if (result < -1) {
@@ -155,6 +206,8 @@ BM_mappedRead * extractReads(char * bamFile,
                         break;
                     }
                 }
+                cfuhash_clear(pair_buffer);
+                cfuhash_destroy(pair_buffer);
             }
             hts_idx_destroy(idx); // destroy the BAM index
         }
@@ -167,71 +220,18 @@ BM_mappedRead * extractReads(char * bamFile,
     return root;
 }
 
-BM_mappedRead * makeMappedRead(char * seqId,
-                                char * seq,
-                                char * qual,
-                                uint16_t idLen,
-                                uint16_t seqLen,
-                                uint16_t qualLen,
-                                uint8_t rpi,
-                                uint16_t bin,
-                                BM_mappedRead * prev_MR) {
-    BM_mappedRead * MR = calloc(1, sizeof(BM_mappedRead));
-    MR->seqId = strdup(seqId);
-    if( 0 != seq ) {
-    	MR->seq = strdup(seq);
-     }
-     else {
-     	MR->seq = 0;
-     }
-    MR->rpi = rpi;
-    MR->idLen = idLen;
-    MR->seqLen = seqLen;
-    MR->qualLen = qualLen;
-    MR->bin = bin;
-    if( 0 != qual )
-        MR->qual = strdup(qual);
-    else
-        MR->qual = 0;
-
-    if(prev_MR)
-        prev_MR->nextRead = MR;
-
-    return MR;
-}
-
-BM_mappedRead * nextMappedRead(BM_mappedRead * MR) {
-    return MR->nextRead;
-}
-
-
-void destroyMappedReads(BM_mappedRead * root_MR) {
-    while(root_MR) {
-        if(root_MR->seqId) free(root_MR->seqId);
-        if(root_MR->seq) free(root_MR->seq);
-        if(root_MR->qual) free(root_MR->qual);
-        BM_mappedRead * tmp_MR = root_MR->nextRead;
-        free(root_MR);
-        root_MR = tmp_MR;
-    }
-}
-
-void printMappedReads(BM_mappedRead * root_MR, FILE * f) {
-
-    if(0 == f) { f = stdout; }
-
-    BM_mappedRead * MR = root_MR;
-    if(MR->qual) {
-        while(MR) {
-            fprintf(f, "@b_%d;%s\n%s\n+\n%s\n", MR->bin, MR->seqId, MR->seq, MR->qual);
-            MR = MR->nextRead;
+char * pairStripper(char * longId, int idLen) {
+    // we're only looking at the second last character
+    // we only care about '.' or '_'
+    --idLen;
+    if(longId[idLen] == '1' || longId[idLen] == '2') {
+        --idLen;
+        if(longId[idLen] == '_' || longId[idLen] == '.') {
+            // if we're here then we need to strip
+            char * ret_str = strdup(longId); // malloc two extra chars
+            ret_str[idLen] = 0;              // chuck the null in early
+            return ret_str;
         }
     }
-    else {
-        while(MR) {
-            fprintf(f, ">b_%d;%s\n%s\n", MR->bin, MR->seqId, MR->seq);
-            MR = MR->nextRead;
-        }
-    }
+    return 0;
 }
-
