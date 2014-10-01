@@ -57,7 +57,16 @@ from bamm.bammExceptions import *
 ###############################################################################
 
 def doWork( args ):
-    """ Main wrapper"""
+    ''' Wrapper for global workflows
+
+    this is where the program forks off into make, parse and extract modes
+
+    Inputs:
+     args - argparse.args containing user preferences
+
+    Outputs:
+     None
+    '''
     if(args.subparser_name == 'make'):
         # The BamMaker class is able to take care of making fileNames etc
         # this outer wrapper is here to allow us to make multiple BAM files
@@ -96,13 +105,19 @@ def doWork( args ):
             BS.BMs[0].removeDatabase()
 
     elif(args.subparser_name == 'parse'):
-        BP = BamParser(minLength=args.length,
-                       baseQuality=args.base_quality,
-                       mappingQuality=args.mapping_quality,
-                       maxMisMatches=args.max_distance,
-                       useSuppAlignments=args.use_supplementary,
-                       useSecondaryAlignments=args.use_secondary,
-                       coverageMode=args.coverage_mode)
+        try:
+            BP = BamParser(minLength=args.length,
+                           baseQuality=args.base_quality,
+                           mappingQuality=args.mapping_quality,
+                           maxMisMatches=args.max_distance,
+                           useSuppAlignments=args.use_supplementary,
+                           useSecondaryAlignments=args.use_secondary,
+                           coverageMode=args.coverage_mode)
+        except (InvalidCoverageModeException,
+                InvalidParameterSetException) as e:
+            printError(e)
+            subparsers.choices['parse'].print_help()
+            sys.exit(1)
 
         # if called with no mode then just print types to stdout
         if (args.links == "") and (args.coverages == ""):
@@ -110,13 +125,19 @@ def doWork( args ):
         else:
             doInserts = (args.inserts != "")
 
-        ret = BP.parseBams(args.bamfiles,
-                           doLinks=(args.links != ""),
-                           doInserts=doInserts,
-                           doCovs=(args.coverages != ""),
-                           types=args.num_types,
-                           threads=args.threads,
-                           verbose=args.verbose)
+        try:
+            ret = BP.parseBams(args.bamfiles,
+                               doLinks=(args.links != ""),
+                               doInserts=doInserts,
+                               doCovs=(args.coverages != ""),
+                               types=args.num_types,
+                               threads=args.threads,
+                               verbose=args.verbose)
+        except BAMFileNotFoundException as e:
+            printError(e)
+            subparsers.choices['parse'].print_help()
+            sys.exit(1)
+
         if ret == 0:
             # print nice stuff out as required
             if doInserts:
@@ -134,32 +155,34 @@ def doWork( args ):
             sys.exit(1)
 
         try:
-            # get the groups in list form, regardless of how they were passed to us
+            # get the groups in list form, regardless of how they were passed
             groups = makeGroupLists(args.groups)
-            BE = BamExtractor()
-            BE.initialise(groups,
-                          args.bamfiles,
-                          prefix=args.prefix,
-                          groupNames=[os.path.basename(group).replace(".bam",
-                                                                      "")
-                                   for group in args.groups],
-                          outFolder=args.out_folder,
-                          mixBams=args.mix_bams,
-                          mixGroups=args.mix_groups,
-                          mixReads=args.mix_reads,
-                          interleaved=args.interleave,
-                          bigFile=args.no_gzip,
-                          headersOnly=args.headers_only,
-                          minMapQual=args.mapping_quality,
-                          maxMisMatches=args.max_distance,
-                          useSuppAlignments=args.use_supplementary,
-                          useSecondaryAlignments=args.use_secondary)
+
+            # now we can make an extractor
+            BE = BamExtractor(groups,
+                              args.bamfiles,
+                              prefix=args.prefix,
+                              groupNames=[ \
+                                  os.path.basename(group).replace(".bam", "")
+                                  for group in args.groups],
+                              outFolder=args.out_folder,
+                              mixBams=args.mix_bams,
+                              mixGroups=args.mix_groups,
+                              mixReads=args.mix_reads,
+                              interleaved=args.interleave,
+                              bigFile=args.no_gzip,
+                              headersOnly=args.headers_only,
+                              minMapQual=args.mapping_quality,
+                              maxMisMatches=args.max_distance,
+                              useSuppAlignments=args.use_supplementary,
+                              useSecondaryAlignments=args.use_secondary)
 
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['extract'].print_help()
             sys.exit(1)
 
+        # and then extract!
         BE.extract(args.threads, args.verbose)
 
     else:
@@ -168,7 +191,17 @@ def doWork( args ):
         sys.exit(1)
 
 def makeGroupLists(groups):
-    """Get the lists of groups to hit"""
+    '''Convert a (mixed) collection of fasta files and contigs lists into
+    a format that is suitable for the extractor
+
+    Inputs:
+     groups - [ fileName ], array of full paths to files containing fasta
+              sequences or a contig list
+
+    Outputs:
+     An array of arrays of contig identifiers. Each internal array represents
+     a distinct group
+    '''
     # work out if the groups are lists of contig IDs or just contigs
     # assume that if the file is fasta then the first character will be ">"
     # otherwise it must be a list
@@ -181,7 +214,8 @@ def makeGroupLists(groups):
             if mime[1] == 'gzip':
                 read_open = gzip.open
         except:
-            raise InvalidParameterSetException('Error when guessing groups file mimetype')
+            raise InvalidParameterSetException( \
+                'Error when guessing groups file mimetype')
 
         with read_open(g, "r") as t_fh:
             tmp_groups = []
@@ -206,10 +240,12 @@ def makeGroupLists(groups):
                             tmp_groups.append(t)
 
                 if len(tmp_groups) == 0:
-                    raise InvalidParameterSetException('No groups in list: %s' % g)
+                    raise InvalidParameterSetException( \
+                        'No groups in list: %s' % g)
                 group_lists.append(tmp_groups)
             except:
-                raise InvalidParameterSetException('Something is wrong with the supplied groups file')
+                raise InvalidParameterSetException( \
+                    'Something is wrong with the supplied groups file')
 
     if len(group_lists) == 0:
         raise InvalidParameterSetException('No valid groups supplied')
@@ -335,7 +371,9 @@ if __name__ == '__main__':
         printHelp()
         sys.exit(0)
     elif(sys.argv[1] == '-v' or sys.argv[1] == '--version'):
-        print "BamM: version %s %s %s" % (__version__, __copyright__, __author__)
+        print "BamM: version %s %s %s" % (__version__,
+                                          __copyright__,
+                                          __author__)
         sys.exit(0)
     elif(sys.argv[1] == '-h' or sys.argv[1] == '--help'):
         printHelp()

@@ -82,20 +82,49 @@ def externalExtractWrapper(threadId,
                            ignoreSecondaryAlignments,
                            verbose=False
                            ):
-    """ctypes pointers are unpickleable -- what we need is a hack!
+    '''Single-process BAMfile read extraction.
 
+    cTypes pointers are unpickleable unless they are top level, so this function
+    lives outside the class and has 1,000,000 member variables passed to it.
+    Life would be easier if we could pass the class but any implicit copy
+    operations that follow are somewhat difficult to detect and can cause WOE.
+    Lot's of WOE, believe me...
 
-    """
+    Inputs:
+     threadId - string, a unique Id for this process / thread
+     outFilePrefixes - 3D dict for finding outFilePrefixes based on bamFile,
+                       group and pairing information
+     bamPaths - { bid : string }, full paths to the BAM files
+     prettyBamFileNames - { bid : string }, short, print-friendly BAM names
+     numGroups - int, the number of groups reads are split into
+     perContigGroups - [int], contains groups Ids, insync with contigs array
+     contigs - [string], contig ids as written in the BAM
+     printQueue - Manager.Queue, thread-safe communication with users
+     extractQueue - Manager.Queue, bids (BAMs) yet to be extracted from
+     requestQueue - Manager.Queue, make requests for ReadSets for printing
+     freeQueue - Manager.Queue, tell the RSM when finished with a ReadSet
+     responseQueue - Manager.Queue, recieve copies of ReadSets from the RSM
+     headersOnly - == True -> write read headers only
+     mixGroups - == True -> use one file for all groups
+     minMapQual - int, skip all reads with a lower mapping quality score
+     maxMisMatches - int, skip all reads with more mismatches (NM aux files)
+     useSuppAlignments - == True -> skip supplementary alignments
+     useSecondaryAlignments - == True -> skip secondary alignments
+     verbose - == True -> be verbose
+
+    Outputs:
+     None
+    '''
     while True:
         p_bid = extractQueue.get(block=True, timeout=None)
         if p_bid is None: # poison pill
             break
         else:
             if verbose:
-                printQueue.put("%s Preparing to extract reads from file: %s" % (threadId,
-                                                                                prettyBamFileNames[p_bid] ) )
+                printQueue.put("%s Preparing to extract reads from file: %s" % \
+                                (threadId, prettyBamFileNames[p_bid] ) )
 
-            # before we can get the extraction started we need to C-ify variables
+            # first we need to C-ify variables
             bamfile_c = c.c_char_p()
             bamfile_c = bamPaths[p_bid]
 
@@ -134,29 +163,33 @@ def externalExtractWrapper(threadId,
                                     ignoreSecondaryAlignments)
 
             if verbose:
-                printQueue.put("%s Finished C-based extraction for: %s" % (threadId, prettyBamFileNames[p_bid]))
-                printQueue.put("%s Re-ordering reads before printing" % (threadId))
+                printQueue.put("%s Finished C-based extraction for: %s" \
+                               % (threadId, prettyBamFileNames[p_bid]))
+                printQueue.put("%s Re-ordering reads before printing" % \
+                               (threadId))
 
-            # pBMM is one large linked list consisting of all mapped reads that could
-            # be extracted from the BAM file. We have information about the group and
-            # rpi of each read. The destination for each read is encapsulated in the
-            # structure of the chain_info hash and corresponding "storage" hash.
-            # We will re-order the linked list so that adjacent connections indicate
-            # adjecency in the output file. This is done by setting the "nextPrintRead"
-            # pointer in each BMM struct.
+            # pBMM is one large linked list consisting of all mapped reads that
+            # could be extracted from the BAM file. We have information about
+            # the group and rpi of each read. The destination for each read is
+            # encapsulated in the structure of the chain_info hash and
+            # corresponding "storage" hash. We will re-order the linked list so
+            # that adjacent connections indicate adjacency in the output file.
+            # This is done by setting the "nextPrintRead" pointer in each BMM
 
-            overlapper = {} # keep track of which readSets have the same filename
-            chain_info = {} # store start / end and count of a printing read chain
+            overlapper = {} # keep track of readSets with the same filename
+            chain_info = {} # store start / end and count of a printing chain
 
             # initialise the helper data structures
             for gid in range(numGroups):
                 chain_info[gid] = {}
-                for rpi in [RPI.FIR, RPI.SNGL]: # ReadSets exist for only FIR and SNGL
+                # ReadSets exist for only FIR and SNGL
+                for rpi in [RPI.FIR, RPI.SNGL]:
                     file_name = outFilePrefixes[p_bid][gid][rpi]
                     try:
                         storage = overlapper[file_name]
                     except KeyError:
-                        storage = [None, None, 0] # [start of chain, end of chain, chain length]
+                        # [start of chain, end of chain, chain length]
+                        storage = [None, None, 0]
                         overlapper[file_name] = storage
                     chain_info[gid][rpi] = {'storage' : storage}
 
@@ -188,10 +221,11 @@ def externalExtractWrapper(threadId,
                         r2_rpi = RPI.FIR
                     else:
                         # partner is in a different group
-                        # we should treat as a single, unless we don't care (mixGroups == True)
+                        # we should treat as a single, unless we don't care
+                        # i.e. (mixGroups == True)
                         if mixGroups:
                             # we don't care, print it now as a pair
-                            # RPI.FIR and RPI.SEC ALWAYS point to the same ReadSet
+                            # RPI.FIR and RPI.SEC ALWAYS point to same ReadSet
                             r2_rpi = RPI.FIR
                         else:
                             # we'll treat both paired reads as singles
@@ -208,30 +242,38 @@ def externalExtractWrapper(threadId,
 
                     # set and check the quality info
                     try:
-                        # 'isFastq' is not set above, so on the first go this will
-                        # raise a KeyError
+                        # 'isFastq' is not set above, so on the first go
+                        # this will raise a KeyError
                         if chain_info[group][working_rpi]['isFastq'] ^ has_qual:
                             # this will happen when people have merged BAMs with
                             # and without quality information
-                            raise MixedFileTypesException("You cannot mix Fasta and Fastq reads together in an output file")
+                            raise MixedFileTypesException( \
+                                "You cannot mix Fasta and Fastq reads " \
+                                "together in an output file")
                     except KeyError:
                         # Now we can set the type of the file.
-                        # We will only get here on the first read for each group, rpi
+                        # Only get here on the first read for each group, rpi
                         chain_info[group][working_rpi]['isFastq'] = has_qual
 
                     # build or maintain the chain
                     if chain_info[group][working_rpi]['storage'][1] is None:
                         # this is the first time we've seen this print chain
-                        chain_info[group][working_rpi]['storage'][0] = mappedRead[0]
-                        chain_info[group][working_rpi]['storage'][1] = mappedRead[0]
+                        chain_info[group][working_rpi]['storage'][0] = \
+                            mappedRead[0]
+                        chain_info[group][working_rpi]['storage'][1] = \
+                            mappedRead[0]
                         chain_info[group][working_rpi]['storage'][2] = 1
                     else:
                         # join this pBMM onto the end of the existing chain
-                        CW._setNextPrintRead(c.cast(chain_info[group][working_rpi]['storage'][1],
-                                                    c.POINTER(BM_mappedRead_C)),
+                        CW._setNextPrintRead( \
+                            c.cast(chain_info[group][working_rpi]['storage'][1],
+                                   c.POINTER(BM_mappedRead_C)),
                                              c.cast(mappedRead[0],
-                                                    c.POINTER(BM_mappedRead_C)))
-                        chain_info[group][working_rpi]['storage'][1] = mappedRead[0]
+                                                    c.POINTER(BM_mappedRead_C)
+                                                    )
+                                             )
+                        chain_info[group][working_rpi]['storage'][1] = \
+                            mappedRead[0]
                         chain_info[group][working_rpi]['storage'][2] += 1
 
                 # next!
@@ -239,17 +281,22 @@ def externalExtractWrapper(threadId,
 
             # Write the newly created chains to disk
             if verbose:
-                printQueue.put("%s Re-ordering complete. Preparing to write" % (threadId))
+                printQueue.put("%s Re-ordering complete. Preparing to write" % \
+                               (threadId))
             # search the chain_info hash for printable chains
             for gid in range(numGroups):
                 for rpi in [RPI.FIR, RPI.SNGL]:
                     if chain_info[gid][rpi]['storage'][1] is not None:
                         # if we got here then there should eb a chain to print
-                        pBMM_chain = c.cast(chain_info[gid][rpi]['storage'][0], c.POINTER(BM_mappedRead_C))
+                        pBMM_chain = \
+                            c.cast(chain_info[gid][rpi]['storage'][0],
+                                   c.POINTER(BM_mappedRead_C)
+                                   )
 
-                        # we need to print here, so what we will do is make a request to the RSM
-                        # for a fileName etc. that we can write to. We block on this call
-                        # so we may have to wait for a bit BUT... it's either this, or go single
+                        # we need to print here, so what we will do is make a
+                        # request to the RSM for a fileName etc. that we can
+                        # write to. We block on this call so we may have to
+                        # wait for a bit BUT... it's either this, or go single
                         # threaded. So this is what we'll do.
                         requestQueue.put((threadId,
                                           p_bid,
@@ -265,7 +312,8 @@ def externalExtractWrapper(threadId,
                             # we can print stuff
                             pBMM_destroy = c.POINTER(BM_mappedRead_C)
                             pBMM_destroy = pBMM_chain
-                            RS.writeChain(pBMM_chain, chain_info[gid][rpi]['isFastq'])
+                            RS.writeChain(pBMM_chain,
+                                          chain_info[gid][rpi]['isFastq'])
                             CW._destroyPrintChain(pBMM_destroy)
 
                             # free the RS now
@@ -278,8 +326,9 @@ def externalExtractWrapper(threadId,
                         chain_info[gid][rpi]['storage'][1] = None
 
             if verbose:
-                printQueue.put("%s Read extraction complete for file: %s" % (threadId,
-                                                                             prettyBamFileNames[p_bid] ) )
+                printQueue.put("%s Read extraction complete for file: %s" % \
+                               (threadId, prettyBamFileNames[p_bid])
+                               )
 
 ###############################################################################
 ###############################################################################
@@ -287,30 +336,54 @@ def externalExtractWrapper(threadId,
 ###############################################################################
 
 class BamExtractor:
-    """Main class for reading in and parsing contigs"""
-    def __init__(self): pass
+    '''Class used to manage extracting reads from multiple BAM files'''
+    def __init__(self,
+                 contigs,
+                 bamFiles,
+                 prefix="",
+                 groupNames=[],
+                 outFolder=".",
+                 mixBams=False,
+                 mixGroups=False,
+                 mixReads=False,
+                 interleaved=False,
+                 bigFile=False,
+                 headersOnly=False,
+                 minMapQual=0,
+                 maxMisMatches=1000,
+                 useSuppAlignments=False,
+                 useSecondaryAlignments=False,
+                 ):
+        '''
+        Default constructor.
 
-    def initialise(self,
-                   contigs,                # list of contig IDs or fasta file (used as a filter)
-                   bamFiles,              # list of bamfiles to extract reads from
-                   prefix="",             # append this string to the beginning of all output files
-                   groupNames=[],         # list of names of the groups in the groups list
-                   outFolder=".",         # wriate output to this folder
-                   mixBams=False,         # use one file for all bams
-                   mixGroups=False,       # use one file for all groups
-                   mixReads=False,        # use one file for paired / unpaired reads
-                   interleaved=False,     # use interleaved format for paired reads
-                   bigFile=False,         # do NOT gzip outputs
-                   headersOnly=False,     # write read headers only
-                   minMapQual=0,
-                   maxMisMatches=1000,
-                   useSuppAlignments=False,
-                   useSecondaryAlignments=False,
-                   ):
-        """Set all instance variables, make the ReadSets"""
+        Set all the instance variables, make ReadSets, organise output files
+
+        Inputs:
+         contigs - [[string]], list of list contig IDs (used as a filter)
+         bamFiles - [string], list of bamfiles to extract reads from
+         prefix - string, append this string to the start of all output files
+         groupNames - [string], list of names of the groups in the contigs list
+         outFolder - path, write output to this folder
+         mixBams - == True -> use one file for all bams
+         mixGroups - == True -> use one file for all groups
+         mixReads - == True -> use one file for paired / unpaired reads
+         interleaved - == True -> use interleaved format for paired reads
+         bigFile - == True -> do NOT gzip outputs
+         headersOnly - == True -> write read headers only
+         minMapQual - int, skip all reads with a lower mapping quality score
+         maxMisMatches - int, skip all reads with more mismatches (NM aux files)
+         useSuppAlignments - == True -> DON'T skip supplementary alignments
+         useSecondaryAlignments - == True -> DON'T skip secondary alignments
+
+        Outputs:
+         None
+        '''
         # make sure the output folder exists
         self.outFolder = outFolder
-        self.makeSurePathExists(self.outFolder) # it's a waste if we abort but I like to check if write permissions are intact before I do lots of work.
+        # it's a waste if we abort but I like to check if write permissions
+        # are intact before I do lots of work.
+        self.makeSurePathExists(self.outFolder)
 
         self.bamFiles = bamFiles
         self.prettyBamFileNames = [os.path.basename(bam).replace(".bam", "")
@@ -366,23 +439,23 @@ class BamExtractor:
         # make sure printing to stdout is handled in a threadsafe manner
         self.outputStream = sys.stderr
         self.printQueue = self.manager.Queue()
-        self.printDelay = 0.5   # delay between checking for new print statements
+        self.printDelay = 0.5   # delay between checks for new print statements
 
         self.RSM = ReadSetManager(self.manager)
 
         # make sure the RSM can talk to us
         self.RSM.setPrintQueue(self.printQueue)
 
-        self.outFilePrefixes = self.RSM.organiseOutFiles(self.prettyBamFileNames,
-                                                         self.groupNames,
-                                                         self.zipped,
-                                                         self.interleaved,
-                                                         self.mixBams,
-                                                         self.mixGroups,
-                                                         self.mixReads,
-                                                         self.headersOnly,
-                                                         self.outFolder,
-                                                         self.prefix)
+        self.outFilePrefixes= self.RSM.organiseOutFiles(self.prettyBamFileNames,
+                                                        self.groupNames,
+                                                        self.zipped,
+                                                        self.interleaved,
+                                                        self.mixBams,
+                                                        self.mixGroups,
+                                                        self.mixReads,
+                                                        self.headersOnly,
+                                                        self.outFolder,
+                                                        self.prefix)
 
     def extract(self, threads=1, verbose=False):
         '''Start extracting reads from the BAM files
@@ -539,3 +612,7 @@ class BamExtractor:
             if exception.errno != errno.EEXIST:
                 raise
 
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################

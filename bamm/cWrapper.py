@@ -43,27 +43,34 @@ import ctypes as c
 ###############################################################################
 ###############################################################################
 
-# mapped read structure "C land"
-"""
-typedef struct BM_mappedRead {
-    char * seqId,
-    char * seq,
-    char * qual,
-    uint16_t idLen,
-    uint16_t seqLen,
-    uint16_t qualLen,
-    uint8_t rpi,
-    uint16_t group,
-    BM_mappedRead * nextRead,
-    BM_mappedRead * partnerRead,
-    BM_mappedRead * nextPrintingRead
-} BM_mappedRead;
+# fields defined in cfuhash.c but not accessed at this level
+class cfuhash_table_t(c.Structure):
+    pass
 
-"""
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class BM_mappedRead_C(c.Structure):
     pass
 
 class BM_mappedRead_C(c.Structure):
+    '''
+    typedef struct BM_mappedRead {
+        char * seqId,
+        char * seq,
+        char * qual,
+        uint16_t idLen,
+        uint16_t seqLen,
+        uint16_t qualLen,
+        uint8_t rpi,
+        uint16_t group,
+        BM_mappedRead * nextRead,
+        BM_mappedRead * partnerRead,
+        BM_mappedRead * nextPrintingRead
+    } BM_mappedRead;
+    '''
     _fields_ = [("seqId", c.POINTER(c.c_char)),
                 ("seq", c.POINTER(c.c_char)),
                 ("qual", c.POINTER(c.c_char)),
@@ -82,44 +89,22 @@ class BM_mappedRead_C(c.Structure):
 ###############################################################################
 ###############################################################################
 
-# fields defined in cfuhash.c but not accessed at this level
-class cfuhash_table_t(c.Structure):
-    pass
-
-# links-associated structures "C land"
-"""
-typedef struct {
-    uint16_t reversed1;
-    uint16_t reversed2;
-    uint16_t readLength1;
-    uint16_t readLength2;
-    uint32_t pos1;
-    uint32_t pos2;
-    uint32_t bam_ID;
-    struct BM_linkInfo * nextLink;
-} BM_linkInfo;
-
-typedef struct {
-    uint32_t cid1;
-    uint32_t cid2;
-    uint32_t numLinks;
-    BM_linkInfo * LI;
-} BM_linkPair;
-
-typedef struct {
-    char ** keys;
-    size_t keyCount;
-    size_t numKeys;
-    cfuhash_table_t * linkHash;
-    BM_linkPair * pair;
-    BM_linkInfo * LI;
-} BM_LinkWalker;
-
-"""
 class BM_linkInfo_C(c.Structure):
     pass
 
 class BM_linkInfo_C(c.Structure):
+    '''
+    typedef struct {
+        uint16_t reversed1;
+        uint16_t reversed2;
+        uint16_t readLength1;
+        uint16_t readLength2;
+        uint32_t pos1;
+        uint32_t pos2;
+        uint32_t bam_ID;
+        struct BM_linkInfo * nextLink;
+    } BM_linkInfo;
+    '''
     _fields_ = [("reversed1", c.c_uint16),
                 ("reversed2", c.c_uint16),
                 ("readLength1", c.c_uint16),
@@ -130,14 +115,42 @@ class BM_linkInfo_C(c.Structure):
                 ("nextLink",c.POINTER(BM_linkInfo_C))
                 ]
 
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class BM_linkPair_C(c.Structure):
+    '''
+    typedef struct {
+        uint32_t cid1;
+        uint32_t cid2;
+        uint32_t numLinks;
+        BM_linkInfo * LI;
+    } BM_linkPair;
+    '''
     _fields_ = [("cid1", c.c_uint32),
                 ("cid2", c.c_uint32),
                 ("numLinks", c.c_uint32),
                 ("LI",c.POINTER(BM_linkInfo_C))
                 ]
 
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class BM_LinkWalker_C(c.Structure):
+    '''
+    typedef struct {
+        char ** keys;
+        size_t keyCount;
+        size_t numKeys;
+        cfuhash_table_t * linkHash;
+        BM_linkPair * pair;
+        BM_linkInfo * LI;
+    } BM_LinkWalker;
+    '''
     _fields_= [("keys", c.POINTER(c.POINTER(c.c_char))),
                ("keyCount", c.c_size_t),
                ("numKeys", c.c_size_t),
@@ -151,31 +164,35 @@ class BM_LinkWalker_C(c.Structure):
 ###############################################################################
 ###############################################################################
 
-# BAM files "C land"
-"""
-typedef struct BM_bamType {
-   int orientationType;
-   float insertSize;
-   float insertStdev;
-   int supporting;
-} BM_bamType;
-
-typedef struct BM_bamFile {
-   char * fileName;
-   uint16_t fileNameLength;
-   BM_bamType ** types;
-   int numTypes;
-} BM_bamFile;
-
-"""
 class BM_bamType_C(c.Structure):
+    '''
+    typedef struct BM_bamType {
+       int orientationType;
+       float insertSize;
+       float insertStdev;
+       int supporting;
+    } BM_bamType;
+    '''
     _fields_ = [("orientationType", c.c_int),
                 ("insertSize", c.c_float),
                 ("insertStdev", c.c_float),
                 ("supporting", c.c_int)
                 ]
 
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class BM_bamFile_C(c.Structure):
+    '''
+    typedef struct BM_bamFile {
+       char * fileName;
+       uint16_t fileNameLength;
+       BM_bamType ** types;
+       int numTypes;
+    } BM_bamFile;
+    '''
     _fields_ = [("fileName", c.POINTER(c.c_char)),
                 ("fileNameLength", c.c_uint16),
                 ("types", c.POINTER(c.POINTER(BM_bamType_C))),
@@ -187,25 +204,23 @@ class BM_bamFile_C(c.Structure):
 ###############################################################################
 ###############################################################################
 
-# Bam info structure "C land"
-"""
-typedef struct BM_fileInfo {
-    uint32_t ** plpBp;
-    uint32_t * contigLengths;
-    uint32_t ** contigLengthCorrectors;
-    uint32_t numBams;
-    uint32_t numContigs;
-    BM_bamFile ** bamFiles;
-    char ** contigNames;
-    uint16_t * contigNameLengths;
-    int isLinks;
-    char * coverage_mode;
-    int isIgnoreSupps;
-    cfuhash_table_t * links;
-} BM_fileInfo;
-
-"""
 class BM_fileInfo_C(c.Structure):
+    '''
+    typedef struct BM_fileInfo {
+        uint32_t ** plpBp;
+        uint32_t * contigLengths;
+        uint32_t ** contigLengthCorrectors;
+        uint32_t numBams;
+        uint32_t numContigs;
+        BM_bamFile ** bamFiles;
+        char ** contigNames;
+        uint16_t * contigNameLengths;
+        int isLinks;
+        char * coverage_mode;
+        int isIgnoreSupps;
+        cfuhash_table_t * links;
+    } BM_fileInfo;
+    '''
     _fields_ = [("plpBp", c.POINTER(c.POINTER(c.c_uint32))),
                 ("contigLengths",c.POINTER(c.c_uint32)),
                 ("contigLengthCorrectors",c.POINTER(c.POINTER(c.c_uint32))),
@@ -226,8 +241,21 @@ class BM_fileInfo_C(c.Structure):
 ###############################################################################
 
 class CWrapper:
-    """Can't pickle cTypes pointers and functions. Use this CWrap C-Wrapper as a hack"""
-    def __init__(self, numBams=1, numContigs=0):
+    ''' Multiprocessing can't pickle cTypes pointers and functions.
+    This class is a hack which quarantines the cTypes functions.
+    '''
+    def __init__(self):
+        '''Default constructor.
+
+        Loads libBamM.a and instantiates wrappers to the functions we wish
+        to export
+
+        Inputs:
+         None
+
+        Outputs;
+         None
+        '''
         #---------------------------------
         # load the c library
         #---------------------------------
@@ -240,8 +268,8 @@ class CWrapper:
         # import C functions
         #---------------------------------
 
-        #-----------------
         self._mergeBFI = self.libPMBam.mergeBFIs
+
         #-----------------
         self._destroyBFI = self.libPMBam.destroyBFI
 

@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
-__version__ = "1.0.0"
+__version__ = "1.0.0-b.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -65,11 +65,24 @@ def externalParseWrapper(bAMpARSER,
                          BFI_list,
                          verbose,
                          doContigNames):
-    """ctypes pointers are unpickleable -- what we need is a hack!
+    '''Single-process BAMfile parsing
 
-    See BamParser._parseOneBam for what this function should be doing
-    """
+    cTypes pointers are unpickleable unless they are top level, so this function
+    lives outside the class. In this case wereduce the number of member
+    variables passed to it by passing the class instead. Any implicit copy
+    operations do not affect the workflow as it stands now. If you modify this
+    function you need to be aware of the limitations of python multiprocessing,
+    Queues, pickling and shared memory.
 
+    Extra logic is also contained in BamParser._parseOneBam
+
+    Inputs:
+     bAMpARSER - BamParser instance, a valid BamParser instance
+     parseQueue - Manager.Queue, bids (BAMs) yet to be parsed
+     BFI_list - Manager.List, place all processed BFIs on this list
+     verbose - == True -> be verbose
+     doContigNames - == True -> load contigs names from the C-land BFI struct
+    '''
     CW = CWrapper()
     while True:
         # get the next one off the list
@@ -99,7 +112,8 @@ def externalParseWrapper(bAMpARSER,
             plpBp = \
                 np.array([[int(j) for j in
                            c.cast(i,
-                                  c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in
+                                  c.POINTER(c.c_uint32*BFI.numBams)
+                                  ).contents] for i in
                           c.cast(BFI.plpBp,
                                  c.POINTER(c.POINTER(c.c_uint32*BFI.numBams) \
                                            *BFI.numContigs)).contents
@@ -110,9 +124,9 @@ def externalParseWrapper(bAMpARSER,
             if bAMpARSER.coverageMode == 'outlier':
                 contig_length_correctors = \
                     np.array([[int(j) for j in
-                               c.cast(i,
-                                      c.POINTER(c.c_uint32*BFI.numBams)
-                                      ).contents] for i in
+                        c.cast(i,
+                               c.POINTER(c.c_uint32*BFI.numBams)
+                              ).contents] for i in
                               c.cast(BFI.contigLengthCorrectors,
                                      c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)
                                      ).contents
@@ -179,7 +193,7 @@ def externalParseWrapper(bAMpARSER,
             BF.types.append(BT)
 
         if bAMpARSER.doLinks:
-            links = pythonizeLinks(BFI, BF, contig_lengths)
+            links = pythonizeLinks(BFI, BF)
         else:
             links = {}
 
@@ -204,8 +218,17 @@ def externalParseWrapper(bAMpARSER,
             # we only need to parse the contig names once
             doContigNames = False
 
-def pythonizeLinks(BFI, bamFile, contigLengths):
-    """Unwrap the links-associated C structs and return a python-ized dict"""
+def pythonizeLinks(BFI, bamFile):
+    '''Unpeel the links-associated C structs and return a python dictionary
+    of LinkPair instances
+
+    Inputs:
+     BFI - BM_fileInfo_C, C-land BamFileInfo struct
+     bamFile - uid of the bamFile associated with the BFI
+
+    Outputs:
+     A python dictionary of LinkPair instances
+    '''
     links = {}
     CW = CWrapper()
     pBFI = c.POINTER(BM_fileInfo_C)
@@ -243,7 +266,12 @@ def pythonizeLinks(BFI, bamFile, contigLengths):
 ###############################################################################
 
 class BamParser:
-    """Main class for reading in and parsing contigs"""
+    ''' class for generating coverage profiles and linking read information
+    from several BAM files
+
+    Uses python multiprocessing to parallelize processing
+    '''
+
     def __init__(self,
                  minLength=0,
                  baseQuality=0,
@@ -253,6 +281,23 @@ class BamParser:
                  maxMisMatches=1000,
                  coverageMode='vanilla',
                  ):
+        '''
+        Default constructor.
+
+        Set quality thresholds used in later parsing
+
+        Inputs:
+         minLength - int, ignore contigs shorter than this length
+         mappingQuality - int, ignore positions with a lower base quality score
+         mappingQuality - int, skip all reads with a lower mapping quality score
+         useSuppAlignments - == True -> DON'T skip supplementary alignments
+         useSecondaryAlignments - == True -> DON'T skip secondary alignments
+         maxMisMatches - int, skip all reads with more mismatches (NM aux files)
+         coverageMode - string, type of coverage to calculate
+
+        Outputs:
+         None
+        '''
         #---------------------------------
         # information about how the parser will be used
         #---------------------------------
@@ -299,10 +344,23 @@ class BamParser:
                   types=None,
                   threads=1,
                   verbose=False):
-        """Parse bam files to get coverage and linking reads
+        '''Parse bam files to get coverage and linking reads.
 
-        stores results in internal mapping results list
-        """
+        Manages threading
+        Stores results in internal mapping results list
+
+        Inputs:
+         bamFiles - [string], full paths to BAMs
+         doLinks - == True -> find linking pairs
+         doInserts - == True -> calculate insert size distributions
+         doCovs - == True -> calculate coverage profiles
+         types - [int] or None, number of insert types per bamfile
+         threads - int, max number of threads to use
+         verbose - == True -> be verbose
+
+        Outputs:
+         0 if the parsing worked, 1 otherwise
+        '''
         # set these now
         self.bamFiles = bamFiles
 
@@ -387,7 +445,17 @@ class BamParser:
             return 1
 
     def _parseOneBam(self, bid):
-        """Parse a single BAM file and append the result to the internal mapping results list"""
+        '''Parse a single BAM file and append the result
+        to the internal mapping results list
+
+        Called from the ExternalParseWrapper
+
+        Inputs:
+         bid - unique identifier of the BAM to parse
+
+        Outputs:
+         A populated BM_FileInfo_C  struct containing the parsing results
+        '''
         # destroy needs to be called on this
         # -> it should be called by the calling function
         BFI = BM_fileInfo_C()
@@ -432,7 +500,18 @@ class BamParser:
         return BFI
 
     def collapseBFIs(self, BFI_list):
-        """Collapse multiple BFI objects into one and make it the member variable"""
+        '''Collapse multiple BFI objects into one and
+        set it as member variable BFI
+
+        Only one of the threads will bother to parse contig names. Find it's
+        BFI and then merge all the other BFIs (from other threads) into it
+
+        Inputs:
+         BFI_list - Manager.List, list of all BFIs created during parsing
+
+        Outputs:
+         None
+        '''
         baseBFI_index = 0
         if self.doCovs or self.doLinks:
             # all the BFIs are made. Only one has the contig IDs. find it.
@@ -451,6 +530,15 @@ class BamParser:
 # Printing and IO
 
     def printBamTypes(self, fileName=""):
+        '''Print template size and orientation information
+        to a file or to stdout.
+
+        Inputs:
+         fileName - string, full path to output file or ""
+
+        Outputs:
+         None
+        '''
         if self.BFI is None:
             raise NoBAMSFoundException
         else:
@@ -461,6 +549,14 @@ class BamParser:
                     self.BFI.printBamTypes(fh)
 
     def printCoverages(self, fileName=""):
+        '''Print coverage profile information to a file or to stdout
+
+        Inputs:
+         fileName - string, full path to output file or ""
+
+        Outputs:
+         None
+        '''
         if self.BFI is None:
             raise NoBAMSFoundException
         else:
@@ -471,6 +567,14 @@ class BamParser:
                     self.BFI.printCoverages(fh)
 
     def printLinks(self, fileName=""):
+        '''Print paired links information to a file or to stdout
+
+        Inputs:
+         fileName - string, full path to output file or ""
+
+        Outputs:
+         None
+        '''
         if self.BFI is None:
             raise NoBAMSFoundException
         else:
