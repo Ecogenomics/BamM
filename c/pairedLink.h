@@ -35,7 +35,8 @@
 
 
 // Link types
-typedef enum {LT_NONE, LT_SS, LT_SE, LT_ES, LT_EE, LT_ERROR} LT;   // Do contigs point start to start, end to end etc...
+// Do contigs point start to start, end to end etc...
+typedef enum {LT_NONE, LT_SS, LT_SE, LT_ES, LT_EE, LT_ERROR} LT;
 
 /*! @typedef
  * @abstract Structure for storing information about specific links
@@ -134,8 +135,9 @@ BM_linkInfo * cloneLinkInfo(BM_linkInfo * LI);
  * @param  cid2       tid of contig 2
  * @return void
  *
- * @discussion The contigs can be added in any order hovever the pos and reversed1
- * variables must match this ordering. The code will sort cids accordingly.
+ * @discussion The contigs can be added in any order hovever the pos and
+ * reversed1 variables must match this ordering.
+ * The code will sort cids accordingly.
  */
 void addLink(cfuhash_table_t * linkHash,
              BM_linkInfo * LI,
@@ -216,7 +218,9 @@ char * LT2Str(LT type);
  * @param  linkHash         hash containing all the links
  * @return void
  */
-void printLinks(cfuhash_table_t * linkHash, char ** bamNames, char ** contigNames);
+void printLinks(cfuhash_table_t * linkHash,
+                char ** bamNames,
+                char ** contigNames);
 
 /*!
  * @abstract Print contigs in pair and number of links joining them

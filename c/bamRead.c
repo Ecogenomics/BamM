@@ -35,6 +35,31 @@
 // local includes
 #include "bamRead.h"
 
+/*
+ * convert mapping information to a readable string
+ * SEE: bamRead.h for deets
+ */
+
+static const char MITEXT[6][2][12] = {{"p_PR_PM_UG;\0",   // FIR, U
+                                       "p_PR_PM_PG;\0"},  // FIR, P
+                                      {"p_PR_PM_UG;\0",  // SEC, U
+                                       "p_PR_PM_PG;\0"},  // SEC, P
+                                      {"p_PR_UM_NG;\0",  // SNGL_FIR, U
+                                       "p_PR_EM_NG;\0"},  // SNGL_FIR, P
+                                      {"p_PR_UM_NG;\0",  // SNGL_SEC, U
+                                       "p_PR_EM_NG;\0"},  // SNGL_SEC, P
+                                      {"p_UR_NM_NG;\0",  // SNGL, U
+                                       "p_UR_EM_NG;\0"},  // SNGL, P
+                                      {"p_ER_NM_NG;\0",  // ERR, U
+                                       "p_ER_NM_NG;\0"}}; // ERR, P
+
+void getMITEXT(int rpi, int paired, char * buffer) {
+    int i = 0;
+    for(;i<12;++i) {
+        buffer[i] = MITEXT[rpi][paired][i];
+    }
+}
+
 BM_mappedRead * makeMappedRead(char * seqId,
                                 char * seq,
                                 char * qual,
@@ -44,19 +69,20 @@ BM_mappedRead * makeMappedRead(char * seqId,
                                 uint8_t rpi,
                                 uint16_t group,
                                 BM_mappedRead * prev_MR) {
+
     BM_mappedRead * MR = calloc(1, sizeof(BM_mappedRead));
     MR->seqId = strdup(seqId);
     if( 0 != seq ) {
         MR->seq = strdup(seq);
-     }
-     else {
-         MR->seq = 0;
-     }
+    }
+    else {
+        MR->seq = 0;
+    }
     MR->rpi = rpi;
     MR->idLen = idLen;
     MR->seqLen = seqLen;
     MR->qualLen = qualLen;
-    MR->group = group; // fprintf(stdout, "%d\n", group); fflush(stdout);
+    MR->group = group;
     if( 0 != qual )
         MR->qual = strdup(qual);
     else
@@ -85,14 +111,16 @@ void setNextPrintRead(BM_mappedRead * baseMR, BM_mappedRead * nextMR) {
 }
 
 BM_mappedRead * getPartner(BM_mappedRead * MR) {
-    return MR->partnerRead;
+    if(MR->partnerRead)
+        return MR->partnerRead;
+    fprintf(stdout, "1. nein partner %d\n", MR->rpi);
+    return (BM_mappedRead *)0;
 }
 
 int partnerInSameGroup(BM_mappedRead * MR) {
-    if(MR->partnerRead) {
-        // there is a partner
+    if(MR->partnerRead)
         return ((MR->partnerRead)->group == MR->group);
-    }
+    fprintf(stdout, "2. nein partner %d\n", MR->rpi);
     return 0;
 }
 
@@ -120,40 +148,128 @@ void destroyPrintChain(BM_mappedRead * root_MR) {
     }
 }
 
-void printMappedRead(BM_mappedRead * MR, FILE * f) {
+void printMappedRead(BM_mappedRead * MR,
+                     FILE * f,
+                     char * groupName,
+                     int headerOnly,
+                     int pairedOutput) {
     if(0 == f) { f = stdout; }
-    if(MR->qual) {
-        fprintf(f, FASTQ_FORMAT, MR->group, MR->seqId, MR->seq, MR->qual);
+
+    char MI_buffer[12] = "";
+    getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+
+    if(headerOnly) {
+        fprintf(f,
+                HEADER_FORMAT,
+                groupName,
+                MI_buffer,
+                MR->seqId);
     }
     else {
-        fprintf(f, FASTA_FORMAT, MR->group, MR->seqId, MR->seq);
+        if(MR->qual) {
+            fprintf(f,
+                    FASTQ_FORMAT,
+                    groupName,
+                    MI_buffer,
+                    MR->seqId,
+                    MR->seq,
+                    MR->qual);
+        }
+        else {
+            fprintf(f,
+                    FASTA_FORMAT,
+                    groupName,
+                    MI_buffer,
+                    MR->seqId,
+                    MR->seq);
+        }
     }
 }
 
-void sprintMappedRead(BM_mappedRead * MR, char * buffer, int * count) {
-    if(MR->qual) {
-        *count = sprintf(buffer, FASTQ_FORMAT, MR->group, MR->seqId, MR->seq, MR->qual);
+void sprintMappedRead(BM_mappedRead * MR,
+                      char * buffer,
+                      int * count,
+                      char * groupName,
+                      int headerOnly,
+                      int pairedOutput) {
+    char MI_buffer[12] = "";
+    getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+
+    if(headerOnly) {
+        *count = sprintf(buffer,
+                         HEADER_FORMAT,
+                         groupName,
+                         MI_buffer,
+                         MR->seqId);
     }
     else {
-        *count = sprintf(buffer, FASTA_FORMAT, MR->group, MR->seqId, MR->seq);
+        if(MR->qual) {
+            *count = sprintf(buffer,
+                             FASTQ_FORMAT,
+                             groupName,
+                             MI_buffer,
+                             MR->seqId,
+                             MR->seq,
+                             MR->qual);
+        }
+        else {
+            *count = sprintf(buffer,
+                             FASTA_FORMAT,
+                             groupName,
+                             MI_buffer,
+                             MR->seqId,
+                             MR->seq);
+        }
     }
 }
 
-void printMappedReads(BM_mappedRead * root_MR, FILE * f) {
+void printMappedReads(BM_mappedRead * root_MR,
+                      FILE * f,
+                      char ** groupNames,
+                      int headersOnly,
+                      int pairedOutput) {
 
     if(0 == f) { f = stdout; }
+
+    char MI_buffer[12] = "";
 
     BM_mappedRead * MR = root_MR;
-    if(MR->qual) {
+    if(headersOnly) {
         while(MR) {
-            fprintf(f, FASTQ_FORMAT, MR->group, MR->seqId, MR->seq, MR->qual);
+            getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+            fprintf(f,
+                    HEADER_FORMAT,
+                    groupNames[MR->group],
+                    MI_buffer,
+                    MR->seqId);
             MR = MR->nextRead;
         }
     }
     else {
-        while(MR) {
-            fprintf(f, FASTA_FORMAT, MR->group, MR->seqId, MR->seq);
-            MR = MR->nextRead;
+        if(MR->qual) {
+            while(MR) {
+                getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+                fprintf(f,
+                        FASTQ_FORMAT,
+                        groupNames[MR->group],
+                        MI_buffer,
+                        MR->seqId,
+                        MR->seq,
+                        MR->qual);
+                MR = MR->nextRead;
+            }
+        }
+        else {
+            while(MR) {
+                getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+                fprintf(f,
+                        FASTA_FORMAT,
+                        groupNames[MR->group],
+                        MI_buffer,
+                        MR->seqId,
+                        MR->seq);
+                MR = MR->nextRead;
+            }
         }
     }
 }

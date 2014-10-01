@@ -40,22 +40,51 @@
 extern "C" {
 #endif
 
-// style for printing out fasta and fastq sequences
-#define FASTA_FORMAT ">t_%d;%s\n%s\n"
-#define FASTQ_FORMAT "@t_%d;%s\n%s\n+\n%s\n"
+// style for printing headers, fasta and fastq sequences
+#define FASTA_FORMAT ">g_%s;%s%s\n%s\n"
+#define FASTQ_FORMAT "@g_%s;%s%s\n%s\n+\n%s\n"
+#define HEADER_FORMAT "g_%s;%s%s\n"
 
 /*
-    Read pairing info
+ *   Read pairing info
+ *
+ *   ERROR       just for fun
+ *   FIR         means first in properly paired mapping
+ *   SEC         means second "
+ *   SNGL_FIR    means first paired but unpaired in mapping
+ *   SNGL_SEC    means second paired but unpaired in mapping
+ *   SNGL        means cannonical unpaired read
+ */
+typedef enum {RPI_ERROR,
+              RPI_FIR,
+              RPI_SEC,
+              RPI_SNGL_FIR,
+              RPI_SNGL_SEC,
+              RPI_SNGL} RPI;
 
-    FIR         means first in properly paired mapping
-    SEC         means second "
-    SNGL_FIR    means first paired but unpaired in mapping
-    SNGL_SEC    means second paired but unpaired in mapping
-    SNGL        means cannonical unpaired read
-    ERROR       just for fun
-*/
-typedef enum {RPI_FIR, RPI_SEC, RPI_SNGL_FIR, RPI_SNGL_SEC, RPI_SNGL, RPI_ERROR} RPI;
-
+/*
+ * Convert mapping information to a readable string
+ * We can tell if a read was mapped as a pair but is unpaired from a group
+ * perspective. SNGL_FIR, SNGL_SEC indicate pairs mapped singly. FIR when
+ * written to an unpaired file indicates that it was mapped as a pair but
+ * is unmapped in a group sense. The string stored in MITEXT encodes this
+ * information in a print-ready form.
+ *
+ * MITEXT[RPI type][printing mode] = printing string.
+ *
+ * MITEXT strings have the format:
+ *
+ * p_[UPE]R_[UPEN]M_[UPEN]G;
+ *
+ * Where P = paired, U = unpaired, E = error and N = not applicable
+ *
+ * Examples:
+ * p_PR_PM_UG; indicates that it is a paired read where both ends mapped
+ * however the ends are in separate groups.
+ * p_UR_NM_NG; indicates an unpaired read. NM and NG indicate that this
+ * information is not applicable
+ */
+static const char MITEXT[6][2][12];
 
 /*! @typedef
  * @abstract Structure for storing a mapped read (linked list style)
@@ -170,29 +199,52 @@ void destroyPrintChain(BM_mappedRead * root_MR);
 /*!
  * @abstract Pretty print a BM_mappedRead struct
  *
- * @param  MR    BM_mappedRead struct to print
+ * @param  MR          BM_mappedRead struct to print
+ * @param  f           file handle to print to or 0 for stdout
+ * @param  groupName    string representing the mapping target's name
+ * @param  headerOnly  1 if should print only read header
+ * @param  pairedOutput 1 if printing to a paired output file
  * @return void
  */
-void printMappedRead(BM_mappedRead * MR, FILE * f);
+void printMappedRead(BM_mappedRead * MR,
+                     FILE * f,
+                     char * groupName,
+                     int headerOnly,
+                     int pairedOutput);
 
 /*!
  * @abstract Pretty print a BM_mappedRead struct to a string
  *
- * @param  MR      BM_mappedRead struct to print
- * @param  buffer  character buffer to write to
- * @param  count   number of characters written into buffer
+ * @param  MR           BM_mappedRead struct to print
+ * @param  buffer       character buffer to write to
+ * @param  count        number of characters written into buffer
+ * @param  groupName    string representing the mapping target's name
+ * @param  headerOnly   1 if should print only read headers
+ * @param  pairedOutput 1 if printing to a paired output file
  * @return void
  */
-void sprintMappedRead(BM_mappedRead * MR, char * buffer, int * count);
+void sprintMappedRead(BM_mappedRead * MR,
+                      char * buffer,
+                      int * count,
+                      char * groupName,
+                      int headerOnly,
+                      int pairedOutput);
 
 /*!
  * @abstract Pretty print BM_mappedRead structs
  *
- * @param  root_MR    first BM_mappedRead struct to print
- * @param  f          file handle to print to or 0 for stdout
+ * @param  root_MR      first BM_mappedRead struct to print
+ * @param  f            file handle to print to or 0 for stdout
+ * @param  groupNames   [ string ] representing the mapping targets' name
+ * @param  headersOnly  1 if should print only read headers
+ * @param  pairedOutput 1 if printing to a paired output file
  * @return void
  */
-void printMappedReads(BM_mappedRead * root_MR, FILE * f);
+void printMappedReads(BM_mappedRead * root_MR,
+                      FILE * f,
+                      char ** groupNames,
+                      int headersOnly,
+                      int pairedOutput);
 
 #ifdef __cplusplus
 }

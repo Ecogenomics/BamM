@@ -19,10 +19,10 @@ BMM_EXTRACTOR = bamExtractor
 BMM_LIB = libBamM.a
 
 PARSER_SOURCES = examples/parser.c bamParser.c pairedLink.c
-EXTRACTOR_SOURCES = examples/extractor.c bamExtractor.c bamParser.c pairedLink.c bamRead.c zpipe.c
-LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c zpipe.c
+EXTRACTOR_SOURCES = examples/extractor.c bamExtractor.c bamParser.c pairedLink.c bamRead.c 
+LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c
 
-LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o zpipe.o bamRead.o
+LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o
 
 # make these c blobs if you care, they are not supported though
 #all: parser extractor library

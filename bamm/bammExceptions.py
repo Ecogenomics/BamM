@@ -41,7 +41,9 @@ import sys
 
 def printError(error):
     """Make a string kinda errory"""
-    sys.stderr.write("*******************************************************************************\n\nERROR:\n\n" + str(error) + "\n\n*******************************************************************************\n\n")
+    sys.stderr.write("%s\n\nERROR:\n\n%s\n\n%s\n\n" % (''.join(["*"]*80),
+                                                       str(error),
+                                                       ''.join(["*"]*80)))
 
 class BamMException(BaseException): pass
 class InvalidCoverageModeException(BamMException): pass

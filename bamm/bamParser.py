@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
-__version__ = "0.2.0"
+__version__ = "1.0.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -60,7 +60,11 @@ from bammExceptions import *
 ###############################################################################
 ###############################################################################
 
-def externalParseWrapper(bAMpARSER, parseQueue, BFI_list, verbose, doContigNames):
+def externalParseWrapper(bAMpARSER,
+                         parseQueue,
+                         BFI_list,
+                         verbose,
+                         doContigNames):
     """ctypes pointers are unpickleable -- what we need is a hack!
 
     See BamParser._parseOneBam for what this function should be doing
@@ -86,39 +90,87 @@ def externalParseWrapper(bAMpARSER, parseQueue, BFI_list, verbose, doContigNames
 
         # only do this if we are doing covs or links (or both)
         if bAMpARSER.doCovs or bAMpARSER.doLinks:
-            contig_lengths = np.array([int(i) for i in c.cast(BFI.contigLengths, c.POINTER(c.c_uint32*BFI.numContigs)).contents])
+            contig_lengths = \
+                np.array([int(i) for i in
+                          c.cast(BFI.contigLengths,
+                                 c.POINTER(c.c_uint32*BFI.numContigs)).contents
+                          ])
 
-            plpBp = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.plpBp,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
+            plpBp = \
+                np.array([[int(j) for j in
+                           c.cast(i,
+                                  c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in
+                          c.cast(BFI.plpBp,
+                                 c.POINTER(c.POINTER(c.c_uint32*BFI.numBams) \
+                                           *BFI.numContigs)).contents
+                          ])
 
             # transfer the coverages over
             coverages = np.zeros((BFI.numContigs, BFI.numBams))
             if bAMpARSER.coverageMode == 'outlier':
-                contig_length_correctors = np.array([[int(j) for j in c.cast(i, c.POINTER(c.c_uint32*BFI.numBams)).contents] for i in c.cast(BFI.contigLengthCorrectors,c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)).contents])
+                contig_length_correctors = \
+                    np.array([[int(j) for j in
+                               c.cast(i,
+                                      c.POINTER(c.c_uint32*BFI.numBams)
+                                      ).contents] for i in
+                              c.cast(BFI.contigLengthCorrectors,
+                                     c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)
+                                     ).contents
+                              ]
+                             )
+
                 for c_idx in range(int(BFI.numContigs)):
                     for b_idx in range(int(BFI.numBams)):
-                        coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx] - contig_length_correctors[c_idx])
+                        coverages[c_idx,b_idx] = \
+                            float(plpBp[c_idx,b_idx]) / \
+                            float(contig_lengths[c_idx] - \
+                                  contig_length_correctors[c_idx])
             else:
                 for c_idx in range(BFI.numContigs):
                     for b_idx in range(BFI.numBams):
-                        if contig_lengths[c_idx] != 0:  # need to handle this edge case
-                            coverages[c_idx,b_idx] = float(plpBp[c_idx,b_idx])/float(contig_lengths[c_idx])
+                        # need to handle this edge case
+                        if contig_lengths[c_idx] != 0:
+                            coverages[c_idx,b_idx] = \
+                                float(plpBp[c_idx,b_idx]) / \
+                                float(contig_lengths[c_idx])
                         else:
                             coverages[c_idx,b_idx] = 0.
 
             # we only need to do the contig names for one of the threads
             if doContigNames:
                 contig_names = []
-                contig_name_lengths = np.array([int(i) for i in c.cast(BFI.contigNameLengths, c.POINTER(c.c_uint16*BFI.numContigs)).contents])
-                contig_name_array = c.cast(BFI.contigNames, c.POINTER(c.POINTER(c.c_char)*BFI.numContigs)).contents
+                contig_name_lengths = \
+                    np.array([int(i) for i in
+                              c.cast(BFI.contigNameLengths,
+                                     c.POINTER(c.c_uint16*BFI.numContigs)
+                                     ).contents
+                              ])
+
+                contig_name_array = \
+                    c.cast(BFI.contigNames,
+                           c.POINTER(c.POINTER(c.c_char)*BFI.numContigs)
+                           ).contents
+
                 for i in range(BFI.numContigs):
-                    contig_names.append((c.cast(contig_name_array[i], c.POINTER(c.c_char*contig_name_lengths[i])).contents).value)
+                    contig_names.append((c.cast(contig_name_array[i],
+                                                c.POINTER(c.c_char * \
+                                                          contig_name_lengths[i]
+                                                          )
+                                                ).contents
+                                         ).value
+                                        )
 
         # we always populate the bam file type information classes
         bam_file_name = bAMpARSER.bamFiles[bid]
         BF = BM_bamFile(bid, bam_file_name)
-        BF_C = (c.cast(BFI.bamFiles, c.POINTER(c.POINTER(BM_bamFile_C)*1)).contents)[0].contents
+        BF_C = \
+            (c.cast(BFI.bamFiles,
+                    c.POINTER(c.POINTER(BM_bamFile_C)*1)).contents)[0].contents
+
         num_types = BF_C.numTypes
-        BTs_C = c.cast(BF_C.types, c.POINTER(c.POINTER(BM_bamType_C)*num_types)).contents
+        BTs_C = c.cast(BF_C.types,
+                       c.POINTER(c.POINTER(BM_bamType_C)*num_types)).contents
+
         for bt_c in BTs_C:
             BT = BM_bamType((bt_c.contents).orientationType,
                             (bt_c.contents).insertSize,
@@ -169,9 +221,10 @@ def pythonizeLinks(BFI, bamFile, contigLengths):
         while(ret_val != 0):
             if ret_val == 2:
                 # need a new contig pair
-                LP = BM_linkPair(((LW.pair).contents).cid1, ((LW.pair).contents).cid2)
-                key = "%d,%d" % (((LW.pair).contents).cid1, ((LW.pair).contents).cid2)
-                links[key] = LP
+                LP = BM_linkPair(((LW.pair).contents).cid1,
+                                 ((LW.pair).contents).cid2)
+                # makeKey should return unique ID
+                links[LP.makeKey()] = LP
             # add a link
             LI = (LW.LI).contents
             LP.addLink(LI.reversed1,
@@ -192,11 +245,13 @@ def pythonizeLinks(BFI, bamFile, contigLengths):
 class BamParser:
     """Main class for reading in and parsing contigs"""
     def __init__(self,
-                 baseQuality=0,
                  minLength=0,
+                 baseQuality=0,
                  mappingQuality=0,
+                 useSuppAlignments=False,
+                 useSecondaryAlignments=False,
+                 maxMisMatches=1000,
                  coverageMode='vanilla',
-                 ignoreSuppAlignments=True
                  ):
         #---------------------------------
         # information about how the parser will be used
@@ -204,14 +259,21 @@ class BamParser:
         self.baseQuality = baseQuality
         self.mappingQuality = mappingQuality
         self.minLength = minLength
+        self.maxMisMatches = maxMisMatches
 
-        if ignoreSuppAlignments:
-            self.ignoreSuppAlignments = 1
-        else:
+        if useSuppAlignments:
             self.ignoreSuppAlignments = 0
+        else:
+            self.ignoreSuppAlignments = 1
+
+        if useSuppAlignments:
+            self.ignoreSecondaryAlignments = 0
+        else:
+            self.ignoreSecondaryAlignments = 1
 
         if coverageMode not in ['vanilla', 'outlier']:
-             raise InvalidCoverageModeException("Unknown coverage mode '%s' supplied" % coverageMode)
+             raise InvalidCoverageModeException("Unknown coverage mode '%s' "\
+                                                "supplied" % coverageMode)
         self.coverageMode = coverageMode
 
         #---------------------------------
@@ -251,7 +313,9 @@ class BamParser:
             self.types = types
 
         if len(self.types) != len(self.bamFiles):
-            raise InvalidNumberOfTypesException("%d types for %d BAM files" % (len(self.types), len(self.bamFiles)))
+            raise InvalidNumberOfTypesException("%d types for %d BAM files" % \
+                                                (len(self.types),
+                                                 len(self.bamFiles)))
 
         # make sure (again) that we're doing something
         self.doLinks = doLinks
@@ -264,9 +328,10 @@ class BamParser:
         # check that the bam files and their indexes exist
         for bam in bamFiles:
             if not os.path.isfile(bam):
-                raise BAMFileNotFoundException("BAM file %s could not be found" % bam)
+                raise BAMFileNotFoundException("BAM file %s not found" % bam)
             elif not os.path.isfile("%s.bai" % bam):
-                raise BAMIndexNotFoundException("Index file %s could not be found" % ("%s.bai" % bam))
+                raise BAMIndexNotFoundException("Index file %s not found" % \
+                                                ("%s.bai" % bam))
 
         # start running the parser in multithreaded mode
         parse_queue = mp.Queue()
@@ -283,9 +348,23 @@ class BamParser:
 
         try:
             # only the first thread and the first job should parse contig names
-            parse_proc = [mp.Process(target=externalParseWrapper, args = (self, parse_queue, BFI_list, verbose, True))]
+            parse_proc = [mp.Process(target=externalParseWrapper,
+                                     args = (self,
+                                             parse_queue,
+                                             BFI_list,
+                                             verbose,
+                                             True)
+                                     )
+                          ]
             # all the other threads will not parse contig names
-            parse_proc += [mp.Process(target=externalParseWrapper, args = (self, parse_queue, BFI_list, verbose, True)) for _ in range(threads-1)]
+            parse_proc += [mp.Process(target=externalParseWrapper,
+                                      args = (self,
+                                              parse_queue,
+                                              BFI_list,
+                                              verbose,
+                                              True)
+                                      ) for _ in range(threads-1)
+                           ]
 
             for p in parse_proc:
                 p.start()
@@ -299,7 +378,7 @@ class BamParser:
             # success
             return 0
 
-        except:
+        except  (KeyboardInterrupt, SystemExit):
             # ctrl-c! Make sure all processes are terminated
             for p in parse_proc:
                 p.terminate()
@@ -309,7 +388,9 @@ class BamParser:
 
     def _parseOneBam(self, bid):
         """Parse a single BAM file and append the result to the internal mapping results list"""
-        BFI = BM_fileInfo_C()        # destroy needs to be called on this -> it should be called by the calling function
+        # destroy needs to be called on this
+        # -> it should be called by the calling function
+        BFI = BM_fileInfo_C()
         pBFI = c.POINTER(BM_fileInfo_C)
         pBFI = c.pointer(BFI)
 
@@ -326,8 +407,10 @@ class BamParser:
                                       self.baseQuality,
                                       self.mappingQuality,
                                       self.minLength,
+                                      self.maxMisMatches,
                                       types_c_arr,
                                       self.ignoreSuppAlignments,
+                                      self.ignoreSecondaryAlignments,
                                       c.create_string_buffer(self.coverageMode),
                                       bamfiles_c_array,
                                       pBFI)
@@ -338,7 +421,9 @@ class BamParser:
                                       0,
                                       0,
                                       0,
+                                      0,
                                       types_c_arr,
+                                      1,
                                       1,
                                       c.create_string_buffer("none"),
                                       bamfiles_c_array,
@@ -350,7 +435,7 @@ class BamParser:
         """Collapse multiple BFI objects into one and make it the member variable"""
         baseBFI_index = 0
         if self.doCovs or self.doLinks:
-            # all the BFIs are made. Only one has the contig IDs. find it's index
+            # all the BFIs are made. Only one has the contig IDs. find it.
             for i in range(len(BFI_list)):
                 if len(BFI_list[i].contigNames) > 0:
                     baseBFI_index = i

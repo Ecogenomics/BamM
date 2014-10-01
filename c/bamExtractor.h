@@ -49,9 +49,13 @@ extern "C" {
  * @param  bamFile          BAM filename to extract from
  * @param  contigs          array of contigs (targets) to extract reads for
  * @param  numContigs       number of contigs (targets) to extract reads for
- * @param  groups           array of IDs indicating the target group each contig belongs to
- * @param  prettyName       string used for displaying BAM file name in read header
+ * @param  groups           array indicating the target groups contig belongs to
+ * @param  prettyName       string for displaying BAM file name in read header
  * @param  headersOnly      == 0 -> extract only headers otherwise do seq + qual
+ * @param  minMapQual       minimum mapping quality to accept
+ * @param  maxMisMatches    maximum number of mismatches to accept (NM flag)
+ * @param ignoreSuppAlignments  == 1 -> ignore supplmentary alignments
+ * @param ignoreSecondaryAlignments  == 1 -> ignore secondary alignments
  * @return BM_mappedRead *  start of list of mapped reads
  *
  * @discussion This function expects BFI to be initialised.
@@ -61,16 +65,21 @@ BM_mappedRead * extractReads(char * bamFile,
                              int numContigs,
                              uint16_t * groups,
                              char * prettyName,
-                             int headersOnly);
+                             int headersOnly,
+                             int minMapQual,
+                             int maxMisMatches,
+                             int ignoreSuppAlignments,
+                             int ignoreSecondaryAlignments);
 
 /*!
- * @abstract Strip read pair information from a read Id
+ * @abstract Strip read pair information from a read Id and add the opposite
  *
  * @param  longId   the Id to try strip
  * @param  idLen    length of the Id
+ * @param  target   == 1 | 2 indicates the pairing of the read that must match
  * @return char *   the stripped Id or 0 if not stripped
  */
-char * pairStripper(char * longId, int idLen);
+char * pairStripper(char * longId, int idLen, char target);
 
 #ifdef __cplusplus
 }

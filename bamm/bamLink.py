@@ -1,9 +1,9 @@
 #!/usr/bin/env python
 ###############################################################################
 #                                                                             #
-#    bamLink.py                                                              #
+#    bamLink.py                                                               #
 #                                                                             #
-#    Class for storing information about links between contigs                #
+#    Class for storing information about paired links between contigs         #
 #                                                                             #
 #    Copyright (C) Michael Imelfort                                           #
 #                                                                             #
@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
-__version__ = "0.1.0"
+__version__ = "1.0.0-b.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -61,7 +61,15 @@ global OT
 OT = enum('OUT', 'SAME', 'IN', 'NONE', 'ERROR')
 
 def OT2Str(ot):
-    """For the humans!"""
+
+    '''Convert an orientation type into a human readable string
+
+    Inputs:
+     ot - OT to convert
+
+    Outputs:
+     Human readable string
+    '''
     if ot == OT.OUT:
         return 'OUT'
     if ot == OT.SAME:
@@ -70,7 +78,6 @@ def OT2Str(ot):
         return 'IN'
     if ot == OT.NONE:
         return 'NONE'
-
     return 'ERROR'
 
 ###############################################################################
@@ -80,28 +87,90 @@ def OT2Str(ot):
 
 # links-associated structures "Python land"
 class BM_linkInfo(object):
+    '''A single link joining two contigs'''
+
     def __init__(self,
                  r1,
                  r2,
                  p1,
                  p2,
                  bid = None):
+        '''Default constructor.
+
+        Initializes a BM_LinkInfo instance with the provided set of properties.
+
+        Inputs:
+         r1 - int, == 1 if the read maps to contig 1 in reverse orientation
+         r2 - int, == 1 if the read maps to contig 2 in reverse orientation
+         pos1 - int, leftmost position of read on contig 1
+         pos2 - int, leftmost position of read on contig 2
+         bid - unique identifier for the bam file describing this link
+
+        Outputs:
+         None
+        '''
         self.reversed1 = r1
         self.reversed2 = r2
         self.pos1 = p1
         self.pos2 = p2
         self.bamID = bid
 
-    def __str__(self):
-        return "%d\t%d\t%d\t%d\t%s" % (self.pos1, self.reversed1, self.pos2, self.reversed2, self.bamID)
+    def printMore(self,
+                  bamFileNames,
+                  len1,
+                  len2):
+        '''Advanced string function
 
-    def printMore(self, bamFileNames, len1, len2):
-        return "%d\t%d\t%d\t%d\t%d\t%d\t%s" % (len1, self.pos1, self.reversed1, len2, self.pos2, self.reversed2, bamFileNames[self.bamID])
+        used for creating output to links file
+
+        Inputs:
+         bamFileNames - { bamId : string }, storage for long bam file names
+         len1 - int, length of contig 1
+         len1 - int, length of contig 2
+
+        Outputs:
+         String descrtibing the link
+        '''
+        return "%d\t%d\t%d\t%d\t%d\t%d\t%s" % (len1,
+                                               self.pos1,
+                                               self.reversed1,
+                                               len2,
+                                               self.pos2,
+                                               self.reversed2,
+                                               bamFileNames[self.bamID])
+
+    def __str__(self):
+        '''override basic string function'''
+        return "%d\t%d\t%d\t%d\t%s" % (self.pos1,
+                                       self.reversed1,
+                                       self.pos2,
+                                       self.reversed2,
+                                       self.bamID)
+
+
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 class BM_linkPair(object):
+    '''Container class for storing all links joining two contigs'''
+
     def __init__(self,
                  cid1,
                  cid2):
+        '''Default constructor.
+
+        Initializes a BM_LinkPair instance with the provided set of properties.
+
+        Inputs:
+         cid1 - unique identifier for contig 1
+         cid2 - unique identifier for contig 2
+
+        Outputs:
+         None
+        '''
         self.cid1 = cid1
         self.cid2 = cid2
         self.numLinks = 0
@@ -113,7 +182,18 @@ class BM_linkPair(object):
                 p1,
                 p2,
                 bamFile):
+        '''Add a link between the two contigs
 
+        Inputs:
+         r1 - int, == 1 if the read maps to contig 1 in reverse orientation
+         r2 - int, == 1 if the read maps to contig 2 in reverse orientation
+         pos1 - int, leftmost position of read on contig 1
+         pos2 - int, leftmost position of read on contig 2
+         bamFile - BM_bamFile instance that describes this link
+
+        Outputs:
+         None
+        '''
         LI = BM_linkInfo(r1,
                          r2,
                          p1,
@@ -122,19 +202,44 @@ class BM_linkPair(object):
         self.links.append(LI)
         self.numLinks += 1
 
-    def __str__(self):
-        return "\n".join(["%s\t%s\t%s" % (self.cid1, self.cid2, link) for link in self.links])
+    def makeKey(self):
+        '''Return a unique key for this link pair'''
+        return "%d,%d" % (self.cid1, self.cid2)
 
     def printMore(self,
                   contigNames,
                   contigLengths,
                   bamFileNames):
+        '''Advanced string function
+
+        used for creating output to links file
+        calls link.printmore()
+
+        Inputs:
+         contigNames - { cid : string }, storage for long contig names
+         contigLengths - { cid : int }, storage for contig lengths
+         bamFileNames - { bamId : string }, storage for long bam file names
+
+        Outputs:
+         Multi-line string descrtibing all the links between the two contigs
+        '''
+
         """Print function used to export a tabular format"""
-        return "\n".join(["%s\t%s\t%s" % (contigNames[self.cid1],
-                                          contigNames[self.cid2],
-                                          link.printMore(bamFileNames, contigLengths[self.cid1], contigLengths[self.cid2])
+        return "\n".join(["%s\t%s\t%s"%(contigNames[self.cid1],
+                                        contigNames[self.cid2],
+                                        link.printMore(bamFileNames,
+                                                       contigLengths[self.cid1],
+                                                       contigLengths[self.cid2]
+                                                       )
                                           )
                           for link in self.links])
+
+    def __str__(self):
+        '''override basic string function'''
+        return "\n".join(["%s\t%s\t%s" % (self.cid1,
+                                          self.cid2,
+                                          link) for link in self.links]
+                         )
 
 ###############################################################################
 ###############################################################################

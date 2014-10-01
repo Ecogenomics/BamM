@@ -69,10 +69,17 @@ def enum(*sequential, **named):
 # ERROR just for fun
 #
 global RPI
-RPI = enum('FIR', 'SEC', 'SNGL_FIR', 'SNGL_SEC', 'SNGL', 'ERROR')
+RPI = enum('ERROR', 'FIR', 'SEC', 'SNGL_FIR', 'SNGL_SEC', 'SNGL')
 
 def RPI2Str(rpi):
-    """For the humans!"""
+    '''Convert an RPI into a human readable string
+
+    Inputs:
+     rpi - RPI to convert
+
+    Outputs:
+     Human readable string
+    '''
     if rpi == RPI.FIR:
         return 'First'
     elif rpi == RPI.SEC:
@@ -86,7 +93,8 @@ def RPI2Str(rpi):
     return 'ERROR'
 
 # RPI.SNGL_FIR needs to be written to the singles file etc...
-RPIConv = {RPI.FIR:RPI.FIR,
+RPIConv = {RPI.ERROR:RPI.ERROR,
+           RPI.FIR:RPI.FIR,
            RPI.SEC:RPI.SEC,
            RPI.SNGL_FIR:RPI.SNGL,
            RPI.SNGL_SEC:RPI.SNGL,
@@ -110,8 +118,10 @@ class ReadSetManager(object):
         Initializes a ReadSet instance with the provided set of properties.
 
         Inputs:
-         manager - multiprocessing.Manager() instance owned by the BamExtractor
-                   use this to make all Queues.
+         manager - multiprocessing.Manager() instance owned by the
+                   BamExtractor use this to make all Queues.
+        Outputs:
+         None
         '''
         # We use two data structures to manage ReadSets
         # self.outFiles is a nested hash that links bamFile Id
@@ -222,7 +232,8 @@ class ReadSetManager(object):
          None
 
         Raises:
-         InvalidParameterSetException - if the supplied information doesn't make sense
+         InvalidParameterSetException - if the supplied information
+                                        doesn't make sense
         '''
         read_set = self.outFiles[bid][gid][rpi]
         file_prefix = read_set.getConstFP()
@@ -231,9 +242,14 @@ class ReadSetManager(object):
                 if self.readSetInUse[file_prefix] == threadId:
                     del self.readSetInUse[file_prefix]
                 else:
-                    raise InvalidParameterSetException("%s owned by %s, not %s" % (file_prefix, self.readSetInUse[file_prefix], threadId))
+                    raise InvalidParameterSetException( \
+                         "%s owned by %s, not %s" % \
+                             (file_prefix,
+                              self.readSetInUse[file_prefix],
+                              threadId))
             except KeyError:
-                raise InvalidParameterSetException("%s not owned by anyone" % file_prefix)
+                raise InvalidParameterSetException("%s not owned by anyone" % \
+                                                   file_prefix)
                 pass
 
     def manageRequests(self):
@@ -248,7 +264,8 @@ class ReadSetManager(object):
         Outputs:
          None
         '''
-        while self._threadsAreValid: # loop on a global, so that way we can kill threads as needed
+        # loop on a global, so that way we can kill threads as needed
+        while self._threadsAreValid:
             item = self.requestQueue.get(timeout=None, block=True)
             if item is None:
                 break
@@ -264,10 +281,16 @@ class ReadSetManager(object):
                         # the read_set is in use by another thread. Pop an entry
                         # off the top of the freeQueue and see if that helps
                         try:
-                            (f_thread_id, f_bid, f_gid, f_rpi) = self.freeQueue.get(block=True,
-                                                                                    timeout=2)
+                            (f_thread_id,
+                             f_bid,
+                             f_gid,
+                             f_rpi) = self.freeQueue.get(block=True,
+                                                         timeout=2)
                             try:
-                                self.freeReadSet(f_bid, f_gid, f_rpi, f_thread_id)
+                                self.freeReadSet(f_bid,
+                                                 f_gid,
+                                                 f_rpi,
+                                                 f_thread_id)
                             except InvalidParameterSetException: pass
                         except Queue.Empty:
                             # avoid wheel spinning
@@ -296,10 +319,10 @@ class ReadSetManager(object):
                          groupNames,
                          zipped,
                          interleaved,
-                         ignoreUnpaired,
                          mixBams,
                          mixGroups,
                          mixReads,
+                         headersOnly,
                          outFolder,
                          prefix,
                          ):
@@ -318,17 +341,18 @@ class ReadSetManager(object):
          groupNames - [ string ] identify contig groups. EX: [bin1, bin2]
          zipped - bool, True if the output should be zipped
          interleaved - bool, True if the output should be interleaved
-         ignoreUnpaired - bool, True if unpaired reads should be ignored
          mixBams - bool, True if BAM file origin should be ignored
          mixGroups - bool, True if group origin should be ignored
-         mixReads - bool, True if paired / unpaired distinction should be ignored
+         mixReads - bool, True if (un)paired distinction should be ignored
+         headersOnly - bool, True if only headers should be printed
          outFolder - string, folder to write output to
          prefix - string, prefix to apply to all output files
 
         Outputs:
-         of_prefixes - { bamId : { groupId : { rpi : outFile prefix } } }, this hash can
-                       be used to get the file name prefix for a read set based on
-                       BAM file origin, group origin and pairing information.
+         of_prefixes - { bamId : { groupId : { rpi : outFile prefix } } },
+                       this hash can be used to get the file name prefix for a
+                       read set based on BAM file origin, group origin and
+                       pairing information.
         '''
         of_prefixes = {}
         base_path = os.path.join(os.path.abspath(outFolder), prefix)
@@ -365,7 +389,10 @@ class ReadSetManager(object):
                     try:
                         read_set_P = self.fnPrefix2ReadSet[working_fn]
                     except KeyError:
-                        read_set_P = ReadSet(working_fn, zipped=zipped)
+                        read_set_P = ReadSet(groupNames,
+                                             working_fn,
+                                             zipped=zipped,
+                                             headersOnly=headersOnly)
                         self.fnPrefix2ReadSet[working_fn] = read_set_P
                     read_set_S = read_set_P
 
@@ -376,13 +403,20 @@ class ReadSetManager(object):
                     try:
                         read_set_P = self.fnPrefix2ReadSet[working_fn_P]
                     except KeyError:
-                        read_set_P = ReadSet(working_fn_P, paired=True, zipped=zipped)
+                        read_set_P = ReadSet(groupNames,
+                                             working_fn_P,
+                                             paired=True,
+                                             zipped=zipped,
+                                             headersOnly=headersOnly)
                         self.fnPrefix2ReadSet[working_fn_P] = read_set_P
 
                     try:
                         read_set_S = self.fnPrefix2ReadSet[working_fn_S]
                     except KeyError:
-                        read_set_S = ReadSet(working_fn_S, zipped=zipped)
+                        read_set_S = ReadSet(groupNames,
+                                             working_fn_S,
+                                             zipped=zipped,
+                                             headersOnly=headersOnly)
                         self.fnPrefix2ReadSet[working_fn_S] = read_set_S
 
                 else:
@@ -393,13 +427,21 @@ class ReadSetManager(object):
                     try:
                         read_set_P = self.fnPrefix2ReadSet[working_fn_1]
                     except KeyError:
-                        read_set_P = ReadSet(working_fn_1, outPrefix2=working_fn_2, paired=True, zipped=zipped)
+                        read_set_P = ReadSet(groupNames,
+                                             working_fn_1,
+                                             outPrefix2=working_fn_2,
+                                             paired=True,
+                                             zipped=zipped,
+                                             headersOnly=headersOnly)
                         self.fnPrefix2ReadSet[working_fn_1] = read_set_P
 
                     try:
                         read_set_S = self.fnPrefix2ReadSet[working_fn_S]
                     except KeyError:
-                        read_set_S = ReadSet(working_fn_S, zipped=zipped)
+                        read_set_S = ReadSet(groupNames,
+                                             working_fn_S,
+                                             zipped=zipped,
+                                             headersOnly=headersOnly)
                         self.fnPrefix2ReadSet[working_fn_S] = read_set_S
 
                 # we use the filenames to link everything up below
@@ -408,20 +450,12 @@ class ReadSetManager(object):
                 of_prefixes[bid][gid][RPI.FIR] = read_set_P.getConstFP()
                 of_prefixes[bid][gid][RPI.SEC] = read_set_P.getConstFP()
 
-                if ignoreUnpaired:
-                    self.outFiles[bid][gid][RPI.SNGL] = None
-                    self.outFiles[bid][gid][RPI.SNGL_FIR] = None
-                    self.outFiles[bid][gid][RPI.SNGL_SEC] = None
-                    of_prefixes[bid][gid][RPI.SNGL] = ""
-                    of_prefixes[bid][gid][RPI.SNGL_FIR] = ""
-                    of_prefixes[bid][gid][RPI.SNGL_SEC] = ""
-                else:
-                    self.outFiles[bid][gid][RPI.SNGL] = read_set_S
-                    self.outFiles[bid][gid][RPI.SNGL_FIR] = read_set_S
-                    self.outFiles[bid][gid][RPI.SNGL_SEC] = read_set_S
-                    of_prefixes[bid][gid][RPI.SNGL] = read_set_S.getConstFP()
-                    of_prefixes[bid][gid][RPI.SNGL_FIR] = read_set_S.getConstFP()
-                    of_prefixes[bid][gid][RPI.SNGL_SEC] = read_set_S.getConstFP()
+                self.outFiles[bid][gid][RPI.SNGL] = read_set_S
+                self.outFiles[bid][gid][RPI.SNGL_FIR] = read_set_S
+                self.outFiles[bid][gid][RPI.SNGL_SEC] = read_set_S
+                of_prefixes[bid][gid][RPI.SNGL] = read_set_S.getConstFP()
+                of_prefixes[bid][gid][RPI.SNGL_FIR] = read_set_S.getConstFP()
+                of_prefixes[bid][gid][RPI.SNGL_SEC] = read_set_S.getConstFP()
 
         return of_prefixes
 
@@ -436,25 +470,31 @@ class ReadSet(object):
     This class manages file properties and writing functionality.'''
 
     def __init__(self,
+                 groupNames,
                  outPrefix1,
                  outPrefix2 = None,
                  paired=False,
-                 zipped=True
+                 zipped=True,
+                 headersOnly=False
                  ):
         '''Default constructor.
 
         Initializes a ReadSet instance with the provided set of properties.
 
         Inputs:
-         outPrefix1 - prefix of the first output file (read1 / forward read).
-         outPrefix2 - prefix of the second output file or None for interleaved
-                      or unpaired files.
+         groupNames - [ string ], target names, one for each target group.
+         outPrefix1 - string prefix of the first output file (read1).
+         outPrefix2 - string prefix of the second output file or None for
+                      interleaved or unpaired files.
          isPaired - bool, True if the file is a paired read file.
          zipped - bool, True if the data should be compressed for writing.
+         headersOnly - bool, True if only headers should be printed.
         '''
         # output read file properties
+        self.groupNames = groupNames
         self.isPaired = paired
         self.zipOutput = zipped
+        self.headersOnly = headersOnly
 
         # prefixes of the files we'll be writing to
         self._outPrefix1 = outPrefix1
@@ -502,10 +542,13 @@ class ReadSet(object):
          (fileName1, fileName2)
          fileName2 will be None for unpaired or interleaved-paired files
         '''
-        if isFastq:
-            ext = ".fq"
+        if self.headersOnly:
+            ext = ".list"
         else:
-            ext = ".fna"
+            if isFastq:
+                ext = ".fq"
+            else:
+                ext = ".fna"
 
         if self.zipOutput:
             ext += ".gz"
@@ -531,25 +574,38 @@ class ReadSet(object):
         of the first read in the chain (determined by the BamExtractor) and
         passed to this function as isFastq.
 
+        NOTE: This function does NOT free any memory associated with pBMM.
+
         Inputs:
          pBMM - c.POINTER(BM_mappedRead_C), the start of a linked list of
                 mapped reads, pre-ordered for printing by the BamExtractor
          isFastq - bool, True if reads have quality information.
-         printQueue - Managed by the BamExtractor. Place all printing strings here
-                      Acts as a verbose flag.
+         printQueue - Managed by the BamExtractor. Place all printing strings
+                      here. Acts as a verbose flag.
         Outputs:
          None
         '''
         CW = CWrapper()
 
         # reads are written (in C land) to this string buffer
-        buffer_c = c.create_string_buffer(2000)
+        # is 20000 bases enough for PAC-bio?
+        buffer_c = c.create_string_buffer(20000)
         pbuffer_c = c.POINTER(c.c_char_p)
         pbuffer_c = c.pointer(buffer_c)
 
         # this variable records how much of the buffer is used for each read
         str_len_c = c.c_int(0)
         pstr_len_c = c.cast(c.addressof(str_len_c), c.POINTER(c.c_int))
+
+        paired_c = c.c_int(1)
+        unpaired_c = c.c_int(0)
+        headers = c.c_int(self.headersOnly)
+
+        # buffer to hold the group name in C format
+        # it's a bit of a waste of time to pass a string to C only to have it
+        # passed right back, but this approach reduces complexity and makes the
+        # C code more useful, so it's preferred.
+        group_name_c = c.c_char_p()
 
         # get the fileNames to write to
         (out_file1, out_file2) = self.determineFileSuffix(isFastq)
@@ -581,19 +637,30 @@ class ReadSet(object):
             fh1 = self._writeOpen(out_file1, open_mode)
             if out_file2 is None:
                 if printQueue:
-                    printQueue.put(" %s interleaved file: %s" % (mode_desc, out_file1))
+                    printQueue.put(" %s interleaved file: %s" % (mode_desc,
+                                                                 out_file1))
                 fh2 = fh1
             else:
                 if printQueue:
-                    printQueue.put(" %s coupled files: %s %s" % (mode_desc, out_file1, out_file2))
+                    printQueue.put(" %s coupled files: %s %s" % (mode_desc,
+                                                                 out_file1,
+                                                                 out_file2))
                 fh2 = self._writeOpen(out_file2, open_mode)
 
             # write
             while pBMM and self._threadsAreValid:
                 # get C to write the read into the string buffer
-                CW._sprintMappedRead(pBMM, pbuffer_c, pstr_len_c)
+                group_name_c = self.groupNames[pBMM.contents.group]
+                CW._sprintMappedRead(pBMM,
+                                     pbuffer_c,
+                                     pstr_len_c,
+                                     group_name_c,
+                                     headers,
+                                     paired_c)
                 # unwrap the buffer and transport into python land
-                printable_string = (c.cast(pbuffer_c, c.POINTER(c.c_char*str_len_c.value)).contents).value
+                printable_string = \
+                    (c.cast(pbuffer_c,
+                            c.POINTER(c.c_char*str_len_c.value)).contents).value
                 if isFh1:
                     fh1.write(printable_string)
                     isFh1 = False
@@ -611,10 +678,20 @@ class ReadSet(object):
         else:
             with self._writeOpen(out_file1, open_mode) as fh:
                 if printQueue:
-                    printQueue.put(" %s unpaired file: %s (%s)" % (mode_desc, out_file1, self))
+                    printQueue.put(" %s unpaired file: %s (%s)" % (mode_desc,
+                                                                   out_file1,
+                                                                   self))
                 while pBMM and self._threadsAreValid:
-                    CW._sprintMappedRead(pBMM, pbuffer_c, pstr_len_c)
-                    printable_string = (c.cast(pbuffer_c, c.POINTER(c.c_char*str_len_c.value)).contents).value
+                    group_name_c = self.groupNames[pBMM.contents.group]
+                    CW._sprintMappedRead(pBMM,
+                                         pbuffer_c,
+                                         pstr_len_c,
+                                         group_name_c,
+                                         headers,
+                                         unpaired_c)
+                    printable_string = \
+                      (c.cast(pbuffer_c,
+                      c.POINTER(c.c_char*str_len_c.value)).contents).value
                     fh.write(printable_string)
                     pBMM = CW._getNextPrintRead(pBMM)
 

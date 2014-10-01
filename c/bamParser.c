@@ -89,7 +89,8 @@ void initBFI(BM_fileInfo * BFI,
         }
 
         // make BAM file structs
-        BFI->bamFiles = (BM_bamFile**) calloc(BFI->numBams, sizeof(BM_bamFile*));
+        BFI->bamFiles = (BM_bamFile**) calloc(BFI->numBams,
+                                              sizeof(BM_bamFile*));
         for (i = 0; i < numBams; ++i) {
             BM_bamFile * BF = (BM_bamFile*) calloc(1, sizeof(BM_bamFile));
             BF->fileName = strdup(bamFiles[i]);
@@ -101,9 +102,11 @@ void initBFI(BM_fileInfo * BFI,
             if((strcmp(coverageMode, "none") != 0) || BFI->isLinks) {
                 if(links != 0) {
                     BF->numTypes = links[i];
-                    BF->types = (BM_bamType**) calloc(BF->numTypes, sizeof(BM_bamType*));
+                    BF->types = (BM_bamType**) calloc(BF->numTypes,
+                                                      sizeof(BM_bamType*));
                     for(j = 0; j < BF->numTypes; ++j) {
-                        BM_bamType * BT = (BM_bamType*) calloc(1, sizeof(BM_bamType));
+                        BM_bamType * BT = \
+                            (BM_bamType*) calloc(1, sizeof(BM_bamType));
                         BT->orientationType = OT_NONE;
                         BT->insertSize = 0;
                         BT->insertStdev = 0;
@@ -129,9 +132,11 @@ void initBFI(BM_fileInfo * BFI,
         // only allocate if we NEED to
         //----------------------------
         if (strcmp(BFI->coverage_mode, "outlier") == 0) {
-            BFI->contigLengthCorrectors = calloc(BFI->numContigs, sizeof(uint32_t*));
+            BFI->contigLengthCorrectors = calloc(BFI->numContigs,
+                                                 sizeof(uint32_t*));
             for(i = 0; i < BFI->numContigs; ++i) {
-                BFI->contigLengthCorrectors[i] = calloc(BFI->numBams, sizeof(uint32_t));
+                BFI->contigLengthCorrectors[i] = calloc(BFI->numBams,
+                                                        sizeof(uint32_t));
             }
         }
 
@@ -148,7 +153,10 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
     int i = 0, j = 0, k = 0;
     if(BFI_A->numContigs != BFI_B->numContigs) {
         char str[80];
-        sprintf(str, "Unequal number of contigs in BFI structs to be merged (Num contigs: %d, %d)", BFI_A->numContigs, BFI_B->numContigs);
+        sprintf(str,
+                "Unequal number of contigs in BFI structs to be merged " \
+                "(Num contigs: %d, %d)",
+                BFI_A->numContigs, BFI_B->numContigs);
         printError(str, __LINE__);
         return;
     }
@@ -159,7 +167,11 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
         if(i < BFI_A->numContigs) {
             if(BFI_A->contigLengths[i] != BFI_B->contigLengths[i]) {
                 char str[80];
-                sprintf(str, "Unequal contig lengths in BFI structs to be merged (Contig#: %d, Lengths: %d, %d)", i, BFI_A->numContigs, BFI_B->numContigs);
+                sprintf(str,
+                        "Unequal contig lengths in BFI structs to be merged " \
+                        "(Contig#: %d, Lengths: %d, %d)",
+                        i,
+                        BFI_A->numContigs, BFI_B->numContigs);
                 printError(str, __LINE__);
                 return;
             }
@@ -169,7 +181,7 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
         }
     }
 
-    // we can assume that the headers are the same. So now time to merge the data
+    // we can assume that the headers are the same. Merge the data
     // keep a backup of these guys
     uint32_t old_numBams = BFI_A->numBams;
     BM_bamFile ** old_bamFiles = BFI_A->bamFiles;
@@ -180,7 +192,8 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
     // BAM files
     BFI_A->numBams += BFI_B->numBams;
     // realloc the memory for BFI_A
-    BFI_A->bamFiles = (BM_bamFile**) calloc(BFI_A->numBams, sizeof(BM_bamFile*));
+    BFI_A->bamFiles = (BM_bamFile**) calloc(BFI_A->numBams,
+                                            sizeof(BM_bamFile*));
     for (i = 0; i < old_numBams; ++i) {
         BFI_A->bamFiles[i] = old_bamFiles[i];
     }
@@ -224,17 +237,21 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
     // Contig length correctors
     //
     if (strcmp(BFI_A->coverage_mode, "outlier") == 0) {
-        BFI_A->contigLengthCorrectors = calloc(BFI_A->numContigs, sizeof(uint32_t*));
+        BFI_A->contigLengthCorrectors = calloc(BFI_A->numContigs,
+                                               sizeof(uint32_t*));
         for(i = 0; i < BFI_A->numContigs; ++i) {
-            BFI_A->contigLengthCorrectors[i] = calloc(BFI_A->numBams, sizeof(uint32_t));
+            BFI_A->contigLengthCorrectors[i] = calloc(BFI_A->numBams,
+                                                      sizeof(uint32_t));
         }
         for(k = 0; k < BFI_A->numContigs; ++k)
         {
             for (i = 0; i < old_numBams; ++i) {
-                BFI_A->contigLengthCorrectors[k][i] = old_contigLengthCorrectors[k][i];
+                BFI_A->contigLengthCorrectors[k][i] = \
+                    old_contigLengthCorrectors[k][i];
             }
             for (j = 0; j < BFI_B->numBams; ++j) {
-                BFI_A->contigLengthCorrectors[k][i] = BFI_B->contigLengthCorrectors[k][j];
+                BFI_A->contigLengthCorrectors[k][i] = \
+                    BFI_B->contigLengthCorrectors[k][j];
                 ++i;
             }
         }
@@ -254,7 +271,10 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
         char **keys = NULL;
         size_t *key_sizes = NULL;
         size_t key_count = 0;
-        keys = (char **)cfuhash_keys_data(BFI_B->links, &key_count, &key_sizes, 0);
+        keys = (char **)cfuhash_keys_data(BFI_B->links,
+                                          &key_count,
+                                          &key_sizes,
+                                          0);
         for (i = 0; i < (int)key_count; i++) {
             BM_linkPair * LP = cfuhash_get(BFI_B->links, keys[i]);
             free(keys[i]);
@@ -278,11 +298,18 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
 int read_bam(void *data,
              bam1_t *b) // read level filters better go here to avoid pileup
 {
-    aux_t *aux = (aux_t*)data; // data in fact is a pointer to an auxiliary structure
-    int ret = aux->iter? hts_itr_next(aux->fp, aux->iter, b, 0) : bam_read1(aux->fp, b);
+    aux_t *aux = (aux_t*)data; // data in fact is a pointer to an aux structure
+    int ret = \
+        aux->iter? \
+            hts_itr_next(aux->fp, aux->iter, b, 0) : \
+            bam_read1(aux->fp, b);
     if (!(b->core.flag&BAM_FUNMAP)) {
         if ((int)b->core.qual < aux->min_mapQ) b->core.flag |= BAM_FUNMAP;
-        else if (aux->min_len && bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b)) < aux->min_len) b->core.flag |= BAM_FUNMAP;
+        else if (aux->min_len &&
+                 ( bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b)) <
+                 aux->min_len )) {
+            b->core.flag |= BAM_FUNMAP;
+        }
     }
     return ret;
 }
@@ -292,15 +319,20 @@ int parseCoverageAndLinks(int typeOnly,
                           int baseQ,
                           int mapQ,
                           int minLen,
+                          int maxMisMatches,
                           int * links,
                           int ignoreSuppAlignments,
+                          int ignoreSecondaryAlignments,
                           char* coverageMode,
                           char* bamFiles[],
                           BM_fileInfo * BFI
-) {
+                          ) {
     int supp_check = 0x0; // include supp mappings
     if (ignoreSuppAlignments) {
-        supp_check = BM_BAM_FSUPP;
+        supp_check |= BAM_FSUPPLEMENTARY;
+    }
+    if (ignoreSecondaryAlignments) {
+        supp_check |= BAM_FSECONDARY;
     }
 
     // initialize the auxiliary data structures
@@ -310,7 +342,7 @@ int parseCoverageAndLinks(int typeOnly,
     bam_mplp_t mplp;
     int tid = 0, *n_plp, i = 0;
     // load contig names and BAM index.
-    data = (aux_t**) calloc(numBams, sizeof(aux_t*)); // data[i] for the i-th input
+    data = (aux_t**) calloc(numBams, sizeof(aux_t*)); // data[i], the i-th input
     int beg = 0, end = 1<<30;  // set the default region
 
     for (i = 0; i < numBams; ++i) {
@@ -319,10 +351,11 @@ int parseCoverageAndLinks(int typeOnly,
         data[i]->fp = bgzf_open(bamFiles[i], "r"); // open BAM
         data[i]->min_mapQ = mapQ;                  // set the mapQ filter
         data[i]->min_len  = minLen;                // set the qlen filter
-        htmp = bam_hdr_read(data[i]->fp);          // read the BAM header ( I think this must be done for each file for legitness!)
+        // ( I think this must be done for each file for legitness!)
+        htmp = bam_hdr_read(data[i]->fp);          // read the BAM header
         if (i == 0) {
             h = htmp; // keep the header of the 1st BAM
-        } else { bam_hdr_destroy(htmp); } // if not the 1st BAM, trash the header
+        } else { bam_hdr_destroy(htmp); } // if not the 1st BAM, kill the header
     }
 
     // initialise the BFI struct
@@ -355,18 +388,22 @@ int parseCoverageAndLinks(int typeOnly,
 
     // the core multi-pileup loop
     mplp = bam_mplp_init(numBams, read_bam, (void**)data); // initialization
-    n_plp = calloc(numBams, sizeof(int)); // n_plp[i] is the number of covering reads from the i-th BAM
-    plp = calloc(numBams, sizeof(void*)); // plp[i] points to the array of covering reads (internal in mplp)
+    // n_plp[i] is the number of covering reads from the i-th BAM
+    n_plp = calloc(numBams, sizeof(int));
+    // plp[i] points to the array of covering reads (internal in mplp)
+    plp = calloc(numBams, sizeof(void*));
 
     // initialise
     int prev_tid = -1;  // the id of the previous positions tid
     int j, rejects = 0;
     int pos = 0; // current position in the contig ( 1 indexed )
-    uint32_t ** position_holder; // hold the pileup count at each position in the contig
+    // hold the pileup count at each position in the contig
+    uint32_t ** position_holder;
     position_holder = calloc(numBams, sizeof(uint32_t*));
     // go through each of the contigs in the file, from tid == 0 --> end
 
-    while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) { // come to the next covered position
+    while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
+        // come to the next covered position
         if (pos < beg || pos >= end) continue; // out of range; skip
         if(tid != prev_tid) {  // we've arrived at a new contig
             if(prev_tid != -1) {
@@ -378,7 +415,8 @@ int parseCoverageAndLinks(int typeOnly,
             }
             for (i = 0; i < numBams; ++i) {
                 // reset for next contig
-                position_holder[i] = calloc(BFI->contigLengths[tid], sizeof(uint32_t));
+                position_holder[i] = calloc(BFI->contigLengths[tid],
+                                            sizeof(uint32_t));
             }
             prev_tid = tid;
         }
@@ -386,31 +424,42 @@ int parseCoverageAndLinks(int typeOnly,
             rejects = 0;
             // for each read in the pileup
             for (j = 0; j < n_plp[i]; ++j) {
-                const bam_pileup1_t *p = plp[i] + j; // DON'T modfity plp[][] unless you really know
-                if (p->is_del || p->is_refskip) {++rejects;} // having dels or refskips at tid:pos
-                else if (bam_get_qual(p->b)[p->qpos] < baseQ) {++rejects;} // low base quality
+                // DON'T modfity plp[][] unless you really know
+                const bam_pileup1_t *p = plp[i] + j;
+                // having dels or refskips at tid:pos
+                if (p->is_del || p->is_refskip) {++rejects;}
+                // low base quality
+                else if (bam_get_qual(p->b)[p->qpos] < baseQ) {++rejects;}
                 else if(BFI->isLinks) {
                     // now we do links if we've been asked to
                     bam1_core_t core = p->b[0].core;
-                    //printf("-->%d %d %d %d %d %d\n", (core.flag & BAM_FPAIRED), (core.flag & BAM_FREAD1), ((core.flag & BM_BAM_FMAPPED) == 0), ((core.flag & supp_check) == 0), core.tid, core.mtid);
-                    // check to see if this is a proper linking paired read
-                    if ((core.pos == pos) &&                        // make sure it's the first time we've seen this link
-                        (core.flag & BAM_FPAIRED) &&                // read is a paired read
-                        (core.flag & BAM_FREAD1) &&                 // read is first in pair (avoid dupe links)
-                        ((core.flag & BM_BAM_FMAPPED) == 0) &&      // both ends are mapped
-                        ((core.flag & supp_check) == 0) &&          // is primary mapping (optional)
-                        core.tid != core.mtid) {                    // hits different contigs
-
+                    // make sure it's the first time we've seen this link
+                    if (core.pos != pos) {}
+                    // read is first in pair (avoid dupe links)
+                    else if (0 == (core.flag & BAM_FREAD1)) {}
+                    // read is a paired read
+                    else if (0 == (core.flag & BAM_FPAIRED)) {}
+                    // both ends are mapped
+                    else if (0 != (core.flag & BM_BAM_FMAPPED)) {}
+                    // is primary mapping (optional)
+                    else if (0 != (core.flag & supp_check)) {}
+                    // hits different contigs
+                    else if(core.tid == core.mtid) {}
+                    // not too many mismatches
+                    else if(bam_aux2i(bam_aux_get(&(p->b[0]), "NM")) > \
+                                maxMisMatches) {}
+                    else {
                         // looks legit
                         // get a link info
-                        BM_linkInfo * LI = makeLinkInfo(core.tid,                           // contig 1
-                                                        core.mtid,                          // contig 2
-                                                        core.pos,                           // pos 1
-                                                        core.mpos,                          // pos 2
-                                                        ((core.flag&BAM_FREVERSE) != 0),    // 1 == reversed
-                                                        ((core.flag&BAM_FMREVERSE) != 0),   // 0 = agrees
-                                                        i                                   // bam file ID
-                                                        );
+                        BM_linkInfo * LI = \
+                            makeLinkInfo(core.tid,
+                                         core.mtid,
+                                         core.pos,
+                                         core.mpos,
+                                         ((core.flag&BAM_FREVERSE) != 0),
+                                         ((core.flag&BAM_FMREVERSE) != 0),
+                                         i
+                                        );
 
                         // add the link
                         addLink(BFI->links,
@@ -420,7 +469,8 @@ int parseCoverageAndLinks(int typeOnly,
                     }
                 }
             }
-            position_holder[i][pos] = n_plp[i] - rejects; // add this position's depth
+            // add this position's depth
+            position_holder[i][pos] = n_plp[i] - rejects;
         }
     }
 
@@ -455,11 +505,14 @@ void typeBamFiles(BM_fileInfo * BFI) {
     int i = 0, j = 0;
 
     // always ignoreSuppAlignments
-    int supp_check = BM_BAM_FSUPP;
+    int supp_check = BAM_FSUPPLEMENTARY | BAM_FSECONDARY;
 
-    uint32_t * num_found = calloc(BFI->numBams, sizeof(uint32_t));     // the number of good links found for each bam
-    uint32_t *** inserts = calloc(BFI->numBams, sizeof(uint32_t**));   // observed insert sizes per bam per OT
-    int ** orient_counts = calloc(BFI->numBams, sizeof(int*));         // hold counts for each of the orientation types we'll see
+    // the number of good links found for each bam
+    uint32_t * num_found = calloc(BFI->numBams, sizeof(uint32_t));
+    // observed insert sizes per bam per OT
+    uint32_t *** inserts = calloc(BFI->numBams, sizeof(uint32_t**));
+    // hold counts for each of the orientation types we'll see
+    int ** orient_counts = calloc(BFI->numBams, sizeof(int*));
 
     for (i = 0; i < BFI->numBams; ++i) {
         num_found[i] = 0;
@@ -489,9 +542,11 @@ void typeBamFiles(BM_fileInfo * BFI) {
 
         // retrieve alignments in specified regions
         bam1_t *b;
-        hts_idx_t *idx = sam_index_load(in, (BFI->bamFiles[i])->fileName); // load index
+        // load index
+        hts_idx_t *idx = sam_index_load(in, (BFI->bamFiles[i])->fileName);
         if (idx == 0) { // index is unavailable
-            fprintf(stderr, "ERROR: Random alignment retrieval only works for indexed BAM or CRAM files.\n");
+            fprintf(stderr, "ERROR: Random alignment retrieval only works for "\
+                            "indexed BAM or CRAM files.\n");
             if (in) sam_close(in);
             if ( header ) bam_hdr_destroy(header);
             continue;
@@ -501,7 +556,10 @@ void typeBamFiles(BM_fileInfo * BFI) {
 
         int hh;
         for (hh = 0; hh < header->n_targets; ++hh) {
-            hts_itr_t *iter = sam_itr_querys(idx, header, header->target_name[hh]); // parse a region in the format like `chr2:100-200'
+            // parse a region in the format like `chr2:100-200'
+            hts_itr_t *iter = sam_itr_querys(idx,
+                                             header,
+                                             header->target_name[hh]);
             if (iter == NULL) { // reference name is not found
                 hts_itr_destroy(iter);
                 continue;
@@ -514,14 +572,15 @@ void typeBamFiles(BM_fileInfo * BFI) {
             }
             int upper_bound = contig_length - BM_IGNORE_FROM_END;
             // fetch alignments
-            while ((num_found[i] <= BM_PAIRS_FOR_TYPE) && ((result = sam_itr_next(in, iter, b)) >= 0)) {
+            while ((num_found[i] <= BM_PAIRS_FOR_TYPE) &&
+                   ((result = sam_itr_next(in, iter, b)) >= 0)) {
                 bam1_core_t core = b->core;
                 // check to see if this is a proper linking paired read
-                if ((core.flag & BAM_FPAIRED) &&                // read is a paired read
-                    (core.flag & BAM_FREAD1) &&                 // read is first in pair (avoid dupe links)
-                    ((core.flag & BM_BAM_FMAPPED) == 0) &&      // both ends are mapped
-                    ((core.flag & supp_check) == 0) &&          // is primary mapping (optional)
-                    core.tid == core.mtid) {                    // hits same contig
+                if ((core.flag & BAM_FPAIRED) &&        // read is a paired read
+                    (core.flag & BAM_FREAD1) &&         // read is first in pair
+                    ((core.flag & BM_BAM_FMAPPED) == 0) && // both ends mapped
+                    ((core.flag & supp_check) == 0) && // is primary mapping
+                    core.tid == core.mtid) {           // hits same contig
 
                     // make sure we're not too close to the end of the contig
                     int isize = abs(core.mpos - core.pos) + core.l_qseq;
@@ -536,17 +595,17 @@ void typeBamFiles(BM_fileInfo * BFI) {
 
                     // get orientation type
                     int ot = OT_NONE;
-                    if((core.flag&BAM_FREVERSE) != 0) {             // <-1--
+                    if((core.flag&BAM_FREVERSE) != 0) {      // <-1--
                         if((core.flag&BAM_FMREVERSE) != 0)
-                            ot = OT_SAME;                              // <-1-- <-2--
+                            ot = OT_SAME;                       // <-1-- <-2--
                         else
-                            ot = OT_OUT;                               // <-1-- --2->
+                            ot = OT_OUT;                        // <-1-- --2->
                     }
-                    else {                                          // --1->
+                    else {                                   // --1->
                         if((core.flag&BAM_FMREVERSE) != 0)
-                            ot = OT_IN;                                // --1-> <-2--
+                            ot = OT_IN;                         // --1-> <-2--
                         else
-                            ot = OT_SAME;                              // --1-> --2->
+                            ot = OT_SAME;                       // --1-> --2->
                     }
 
                     // check to see if it's about face
@@ -567,7 +626,9 @@ void typeBamFiles(BM_fileInfo * BFI) {
 
             hts_itr_destroy(iter);
             if (result < -1) {
-                fprintf(stderr, "ERROR: retrieval of reads from contig: \"%s\" failed due to truncated file or corrupt BAM index file\n", header->target_name[hh]);
+                fprintf(stderr, "ERROR: retrieval of reads from: \"%s\" "\
+                                "failed due to truncated file or corrupt BAM "\
+                                "index file\n", header->target_name[hh]);
                 break;
             }
 
@@ -593,8 +654,12 @@ void typeBamFiles(BM_fileInfo * BFI) {
             }
             int type_index = BFI->bamFiles[i]->numTypes - num_to_find;
             ((BFI->bamFiles[i])->types[type_index])->orientationType = type;
-            ((BFI->bamFiles[i])->types[type_index])->insertSize = BM_mean(inserts[i][type], max);
-            ((BFI->bamFiles[i])->types[type_index])->insertStdev = BM_stdDev(inserts[i][type], max, ((BFI->bamFiles[i])->types[type_index])->insertSize);
+            ((BFI->bamFiles[i])->types[type_index])->insertSize =
+                BM_mean(inserts[i][type], max);
+            ((BFI->bamFiles[i])->types[type_index])->insertStdev =
+                BM_stdDev(inserts[i][type],
+                          max,
+                          ((BFI->bamFiles[i])->types[type_index])->insertSize);
             ((BFI->bamFiles[i])->types[type_index])->supporting = max;
             // reset this so that we find the next best one
             orient_counts[i][type] = 0;
@@ -627,11 +692,14 @@ void adjustPlpBp(BM_fileInfo * BFI,
         for(i = 0; i < num_bams; ++i) {
             // set the cut off at a stdev either side of the mean
             float m = BM_mean(positionHolder[i], BFI->contigLengths[tid]);
-            float std = BM_stdDev(positionHolder[i], BFI->contigLengths[tid], m);
+            float std = BM_stdDev(positionHolder[i],
+                                  BFI->contigLengths[tid],
+                                  m);
             float lower_cut = ((m-std) < 0) ? 0 : (m-std);
             float upper_cut = m+std;
             for(pos = 0; pos < BFI->contigLengths[tid]; ++pos) {
-                if((positionHolder[i][pos] <= upper_cut) && (positionHolder[i][pos] >= lower_cut)) {
+                if((positionHolder[i][pos] <= upper_cut) &&
+                    (positionHolder[i][pos] >= lower_cut)) {
                     // OK
                     plp_sum[i] += positionHolder[i][pos];
                 } else {
@@ -664,11 +732,15 @@ float ** calculateCoverages(BM_fileInfo * BFI) {
                 for(j = 0; j < BFI->numBams; ++j) {
                     // print average coverages
                     if(strcmp(BFI->coverage_mode, "outlier") == 0) {
-                        // the counts are reduced so we should reduce the contig length accordingly
-                        ret_matrix[i][j] = (float)BFI->plpBp[i][j]/(float)(BFI->contigLengths[i]-BFI->contigLengthCorrectors[i][j]);
+                        // the counts are reduced so we should reduce
+                        // the contig length accordingly
+                        ret_matrix[i][j] =
+                            (float)BFI->plpBp[i][j] / \
+                            (float)(BFI->contigLengths[i]-BFI->contigLengthCorrectors[i][j]);
                     } else {
                         // otherwise it's just a straight up average
-                        ret_matrix[i][j] = (float)BFI->plpBp[i][j]/(float)BFI->contigLengths[i];
+                        ret_matrix[i][j] =
+                            (float)BFI->plpBp[i][j]/(float)BFI->contigLengths[i];
                     }
                 }
             }
@@ -795,7 +867,8 @@ void printBFI(BM_fileInfo * BFI) {
     int i = 0, j = 0;
     if(BFI->numContigs != 0 && BFI->numBams != 0) {
         if(BFI->plpBp != NULL) {
-            float ** covs = calculateCoverages(BFI); // get the coverages we want
+            // get the coverages we want
+            float ** covs = calculateCoverages(BFI);
             if(covs != NULL) {
                 // print away!
                 printf("#contig\tlength");
@@ -804,7 +877,9 @@ void printBFI(BM_fileInfo * BFI) {
                 }
                 printf("\n");
                 for(i = 0; i < BFI->numContigs; ++i) {
-                    printf("%s\t%d", BFI->contigNames[i], BFI->contigLengths[i]);
+                    printf("%s\t%d",
+                           BFI->contigNames[i],
+                           BFI->contigLengths[i]);
                     for(j = 0; j < BFI->numBams; ++j) {
                         printf("\t%0.4f", covs[i][j]);
                     }

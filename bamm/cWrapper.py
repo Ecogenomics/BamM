@@ -151,6 +151,80 @@ class BM_LinkWalker_C(c.Structure):
 ###############################################################################
 ###############################################################################
 
+# BAM files "C land"
+"""
+typedef struct BM_bamType {
+   int orientationType;
+   float insertSize;
+   float insertStdev;
+   int supporting;
+} BM_bamType;
+
+typedef struct BM_bamFile {
+   char * fileName;
+   uint16_t fileNameLength;
+   BM_bamType ** types;
+   int numTypes;
+} BM_bamFile;
+
+"""
+class BM_bamType_C(c.Structure):
+    _fields_ = [("orientationType", c.c_int),
+                ("insertSize", c.c_float),
+                ("insertStdev", c.c_float),
+                ("supporting", c.c_int)
+                ]
+
+class BM_bamFile_C(c.Structure):
+    _fields_ = [("fileName", c.POINTER(c.c_char)),
+                ("fileNameLength", c.c_uint16),
+                ("types", c.POINTER(c.POINTER(BM_bamType_C))),
+                ("numTypes", c.c_int)
+                ]
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+# Bam info structure "C land"
+"""
+typedef struct BM_fileInfo {
+    uint32_t ** plpBp;
+    uint32_t * contigLengths;
+    uint32_t ** contigLengthCorrectors;
+    uint32_t numBams;
+    uint32_t numContigs;
+    BM_bamFile ** bamFiles;
+    char ** contigNames;
+    uint16_t * contigNameLengths;
+    int isLinks;
+    char * coverage_mode;
+    int isIgnoreSupps;
+    cfuhash_table_t * links;
+} BM_fileInfo;
+
+"""
+class BM_fileInfo_C(c.Structure):
+    _fields_ = [("plpBp", c.POINTER(c.POINTER(c.c_uint32))),
+                ("contigLengths",c.POINTER(c.c_uint32)),
+                ("contigLengthCorrectors",c.POINTER(c.POINTER(c.c_uint32))),
+                ("numBams",c.c_uint32),
+                ("numContigs",c.c_uint32),
+                ("bamFiles",c.POINTER(c.POINTER(BM_bamFile_C))),
+                ("contigNames",c.POINTER(c.POINTER(c.c_char))),
+                ("contigNameLengths",c.POINTER(c.c_uint16)),
+                ("isLinks",c.c_int),
+                ("coverage_mode",c.POINTER(c.c_char)),
+                ("isIgnoreSupps",c.c_int),
+                ("links",c.POINTER(cfuhash_table_t))
+                ]
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class CWrapper:
     """Can't pickle cTypes pointers and functions. Use this CWrap C-Wrapper as a hack"""
     def __init__(self, numBams=1, numContigs=0):
@@ -178,6 +252,10 @@ class CWrapper:
                                        c.c_int,
                                        c.POINTER(c.c_uint16),
                                        c.POINTER(c.c_char),
+                                       c.c_int,
+                                       c.c_int,
+                                       c.c_int,
+                                       c.c_int,
                                        c.c_int]
         self._extractReads.restype = c.POINTER(BM_mappedRead_C)
 

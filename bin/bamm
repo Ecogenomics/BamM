@@ -43,6 +43,7 @@ import argparse
 import sys
 import gzip
 import mimetypes
+import os
 
 # local imports
 from bamm.bamParser import BamParser
@@ -95,9 +96,12 @@ def doWork( args ):
             BS.BMs[0].removeDatabase()
 
     elif(args.subparser_name == 'parse'):
-        BP = BamParser(baseQuality=args.base_quality,
-                       minLength=args.length,
+        BP = BamParser(minLength=args.length,
+                       baseQuality=args.base_quality,
                        mappingQuality=args.mapping_quality,
+                       maxMisMatches=args.max_distance,
+                       useSuppAlignments=args.use_supplementary,
+                       useSecondaryAlignments=args.use_secondary,
                        coverageMode=args.coverage_mode)
 
         # if called with no mode then just print types to stdout
@@ -136,15 +140,20 @@ def doWork( args ):
             BE.initialise(groups,
                           args.bamfiles,
                           prefix=args.prefix,
-                          groupNames=args.groups,
+                          groupNames=[os.path.basename(group).replace(".bam",
+                                                                      "")
+                                   for group in args.groups],
                           outFolder=args.out_folder,
                           mixBams=args.mix_bams,
                           mixGroups=args.mix_groups,
                           mixReads=args.mix_reads,
-                          ignoreUnpaired=args.ignore_unpaired,
                           interleaved=args.interleave,
                           bigFile=args.no_gzip,
-                          headersOnly=args.headers_only)
+                          headersOnly=args.headers_only,
+                          minMapQual=args.mapping_quality,
+                          maxMisMatches=args.max_distance,
+                          useSuppAlignments=args.use_supplementary,
+                          useSecondaryAlignments=args.use_secondary)
 
         except InvalidParameterSetException as e:
             printError(e)
@@ -263,7 +272,7 @@ if __name__ == '__main__':
     make_parser.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
 
     make_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
-    make_parser.add_argument("-t", "--threads", type=int, default="1", help="maximum number of threads to use")
+    make_parser.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
     make_parser.add_argument("-m", "--memory", type=int, default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads)")
 
     #-------------------------------------------------
@@ -280,9 +289,12 @@ if __name__ == '__main__':
     parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
     parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverage)", default='vanilla', choices=['vanilla', 'outlier'])
 
-    parse_parser.add_argument('-L', '--length', help="minimum Q length", type=int, default=50)
-    parse_parser.add_argument('-q', '--base_quality', help="base quality threshold (Qscore)", type=int, default=20)
-    parse_parser.add_argument('-Q', '--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)
+    parse_parser.add_argument('--base_quality', help="base quality threshold (Qscore)", type=int, default=20)
+    parse_parser.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    parse_parser.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
+    parse_parser.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    parse_parser.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
 
     parse_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
     parse_parser.add_argument('-t', '--threads', help="maximum number of threads to use", type=int, default=1)
@@ -303,8 +315,12 @@ if __name__ == '__main__':
     extract_parser.add_argument('--mix_bams', action="store_true", default=False, help="use the same file for multiple bam files")
     extract_parser.add_argument('--mix_groups', action="store_true", default=False, help="use the same files for multiple group groups")
     extract_parser.add_argument('--mix_reads', action="store_true", default=False, help="use the same files for paired/unpaired reads")
-    extract_parser.add_argument('--ignore_unpaired', action="store_true", default=False, help="ignore unpaired reads")
     extract_parser.add_argument('--interleave', action="store_true", default=False, help="interleave paired reads in ouput files")
+
+    extract_parser.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    extract_parser.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    extract_parser.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
+    extract_parser.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
 
     extract_parser.add_argument('--no_gzip', action="store_true", default=False, help="do not gzip output files")
     extract_parser.add_argument('--headers_only', action="store_true", default=False, help="extract only (unique) headers")

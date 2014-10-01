@@ -51,12 +51,11 @@ typedef BGZF bamFile;
 extern "C" {
 #endif
 
-// proper linking read is a properly paired, (primary alignment) of the first read in thr pair
-#define BM_BAM_FSUPP (BAM_FSECONDARY | BAM_FSUPPLEMENTARY)
+// proper linking read is a properly paired
 #define BM_BAM_FMAPPED (BAM_FMUNMAP | BAM_FUNMAP)
 
-// Orientation types
-typedef enum {OT_OUT, OT_SAME, OT_IN, OT_NONE, OT_ERROR} OT;  // relative orientation of paired reads
+// relative orientation of paired reads
+typedef enum {OT_OUT, OT_SAME, OT_IN, OT_NONE, OT_ERROR} OT;
 
 /*! @typedef
  * @abstract Auxiliary data structure used in read_bam
@@ -73,7 +72,8 @@ typedef struct {                    //
 } aux_t;
 
 /*! @typedef
- * @abstract Structure for storing information about the orientation type and insert sizes for a given bam file
+ * @abstract Structure for storing information about the orientation type
+ *           and insert sizes for a given bam file
  *
  * @field orientationType     orientation of the reads in this mapping
  * @field insertSize          insert size of the reads (outer)
@@ -81,7 +81,9 @@ typedef struct {                    //
  * @field numTested           number of reads tested to get these stats
  */
  typedef struct BM_bamType {
-    int orientationType;                // actually going to use the ENUM, but worried about how to get around this with python ctypes
+    int orientationType;                // actually going to use the ENUM,
+                                        // but worried about how to get around
+                                        // this with python ctypes
     float insertSize;
     float insertStdev;
     int supporting;
@@ -93,7 +95,8 @@ typedef struct {                    //
  *
  * @field fileName            filename of the BAM
  * @field fileNameLength      length of the filename
- * @field types               the orientation types and insert sizes accociated with the bam file
+ * @field types               the orientation types and insert sizes
+ *                            accociated with the bam file
  * @field numTypes            the number of orientation types for the bam file
  */
  typedef struct BM_bamFile {
@@ -108,14 +111,14 @@ typedef struct {                    //
  *
  * @field plpBp                       number of bases piled up on each contig
  * @field contigLengths               lengths of the referene sequences
- * @field contigLengthCorrectors      corrections to contig lengths used when doing outlier coverage
+ * @field contigLengthCorrectors      correct contig lengths for outlier coverage
  * @field numBams                     number of BAM files parsed
  * @field numContigs                  number of reference sequences
- * @field bamFiles                    array of pointers to BM_bamFile's used in this mapping result
+ * @field bamFiles                    array of pointers to BM_bamFile's
  * @field contigNames                 names of the reference sequences
- * @field contigNameLengths           lengths of the names of the reference sequences
+ * @field contigNameLengths           lengths reference sequence names
  * @field isLinks                     are links being calculated
- * @field coverage_mode               type of coverage to be calculate ['vanilla', 'outlier']
+ * @field coverage_mode               type of coverage ['vanilla', 'outlier']
  * @field isIgnoreSupps               are supplementary alignments being ignored
  * @field links                       linking pairs
  */
@@ -142,7 +145,7 @@ typedef struct BM_fileInfo {
  *
  * @return BM_fileInfo *
  *
- * @discussion Allocates the memore which should be initialised at some point in time.
+ * @discussion Allocates the memory which should be initialised
  * You call destroyBFI to free this memory
  */
 BM_fileInfo * createBFI(void);
@@ -150,12 +153,13 @@ BM_fileInfo * createBFI(void);
 /*!
  * @abstract Initialise the mapping results struct
  *
- * @param BFI                    mapping results struct to initialise
+ * @param BFI                   mapping results struct to initialise
  * @param BAM_header            htslib BAM header
  * @param numBams               number of BAM files to parse
  * @param bamFiles              filenames of BAMs parsed
  * @param links                 array of OT counts per bam or 0
- * @param coverageMode          type of coverage to be calculated ("none" if we're just extracting reads)
+ * @param coverageMode          type of coverage to be calculated
+ *                              ("none" if we're just extracting reads)
  * @param ignoreSuppAlignments  only use primary alignments
  * @return void
  *
@@ -181,7 +185,7 @@ void initBFI(BM_fileInfo * BFI,
  * @discussion BFI_B remains unchanged.
  * BFI_A is updated to include all the info contained in BFI_B
  *
- * NOTE: We assume that all the haders of all the files are in sync. If they
+ * NOTE: We assume that all the headers of all the files are in sync. If they
  * are not, if contigs have been removed etc, then doom will swiftly follow.
  * Also, we assume that flags like do_links, do_outlier match... ...or DOOM!
  *
@@ -201,15 +205,17 @@ int read_bam(void *data,
 /*!
  * @abstract Initialise the mapping results struct <- read in the BAM files
  *
- * @param typeOnly              work out the type of the BAMs and return
- * @param numBams               number of BAM files to parse
- * @param baseQ                 base quality threshold
- * @param mapQ                  mapping quality threshold
- * @param minLen                min query length
- * @param links                 0 if no links, otherwise should point to an array of ints.
- * @param ignoreSuppAlignments  only use primary alignments
- * @param coverageMode          type of coverage to be calculated
- * @param bamFiles              filenames of BAM files to parse
+ * @param  typeOnly             work out the type of the BAMs and return
+ * @param  numBams              number of BAM files to parse
+ * @param  baseQ                base quality threshold
+ * @param  mapQ                 mapping quality threshold
+ * @param  minLen               min query length
+ * @param  maxMisMatches        maximum number of mismatches to accept (NM flag)
+ * @param  links                == 0 -> no links, else points to array of ints.
+ * @param  ignoreSuppAlignments == 1 -> ignore supplmentary alignments
+ * @param  ignoreSecondaryAlignments  == 1 -> ignore secondary alignments
+ * @param  coverageMode         type of coverage to be calculated
+ * @param  bamFiles             filenames of BAM files to parse
  * @param  BFI                  BM_bamFileInfo struct to write to
  * @return 0 for success
  *
@@ -217,7 +223,7 @@ int read_bam(void *data,
  * initBFI and stores info accordingly. TL;DR If you call this function
  * then you MUST call destroyBFI when you're done.
  *
- * Each item in the links array is the number of orienation types for the corresponding bam
+ * Each item in the links array is the number of orienation types for the bam
  *
  */
 int parseCoverageAndLinks(int typeOnly,
@@ -225,8 +231,10 @@ int parseCoverageAndLinks(int typeOnly,
                           int baseQ,
                           int mapQ,
                           int minLen,
+                          int maxMisMatches,
                           int * links,
                           int ignoreSuppAlignments,
+                          int ignoreSecondaryAlignments,
                           char* coverageMode,
                           char* bamFiles[],
                           BM_fileInfo * BFI);
@@ -239,8 +247,10 @@ int parseCoverageAndLinks(int typeOnly,
  *
  * @discussion This function expects BFI to be initialised.
  */
-#define BM_PAIRS_FOR_TYPE 10000    // only need to parse this many pairs to infer the type of the bam file
-#define BM_IGNORE_FROM_END 3000    // ignore reads with centers mapping this far from end of contig
+// only need to parse this many pairs to infer the type of the bam file
+#define BM_PAIRS_FOR_TYPE 10000
+// ignore reads with centers mapping this far from end of contig
+#define BM_IGNORE_FROM_END 3000
 void typeBamFiles(BM_fileInfo * BFI);
 
 /*!
