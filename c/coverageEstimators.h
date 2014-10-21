@@ -118,7 +118,7 @@ void estimate_PM_Coverage(float * coverageValues,
 
 
 /*!
- * @abstract Estimate tuncated mean (outlier) pileup coverage along a single
+ * @abstract Estimate truncated mean (outlier) pileup coverage along a single
  *           contig given pileup information and a symetric stdev cutoff
  *
  * @param  coverageValues   array of floats to set (len == numBams)
@@ -133,6 +133,30 @@ void estimate_PM_Coverage(float * coverageValues,
 void estimate_PMO_Coverage(float * coverageValues,
                            uint32_t ** pileupValues,
                            float stdevs,
+                           uint32_t contigLength,
+                           uint32_t numBams
+                           );
+
+
+/*!
+ * @abstract Estimate trimmed mean pileup coverage (not truncated, outlier coverage)
+ *           along a single contig given pileup information and percentages of the data
+ *           to exclude at the upper and lower limits
+ *
+ * @param  coverageValues   array of floats to set (len == numBams)
+ * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  lowerPercent     lower percent to remove
+ * @param  upperPercent     upper percent to remove
+ * @param  contigLength     Length of the contig being assesed
+ * @param  numBams          the number of bams responsible for the pileup
+ * @return void
+ *
+ * @discussion This function updates the values in coverageValues before exiting
+ */
+void estimate_trimmed_mean_Coverage(float * coverageValues,
+                           uint32_t ** pileupValues,
+                           float lowerPercent,
+                           float upperPercent,
                            uint32_t contigLength,
                            uint32_t numBams
                            );

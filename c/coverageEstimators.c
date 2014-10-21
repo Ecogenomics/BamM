@@ -32,6 +32,20 @@
 // local includes
 #include "coverageEstimators.h"
 
+//****************** partial quicksort includes and defines *********/
+#include "pqsort.h"
+static inline int IntCmp(const int a, const int b) {
+        return (a - b);
+}
+define_pqsort(my_int, int, IntCmp);
+#define DUMP()  printf("{ "); \
+        for (int i = 0; i < nvalues; i++)  \
+                printf("%d, ", values[i]); \
+        printf("}\n");
+//*******************************************************************/
+
+
+
 void estimateCoverages(float * coverageValues,
                        uint32_t ** pileupValues,
                        BM_coverageType * covType,
@@ -113,6 +127,38 @@ void estimate_PM_Coverage(float * coverageValues,
         }
         coverageValues[b] = (float)(plp_sum) / (float)(contigLength);
     }
+}
+
+void estimate_trimmed_mean_Coverage(float * coverageValues,
+                                    uint32_t ** pileupValues,
+                                    float lowerPercent,
+                                    float upperPercent,
+                                    uint32_t contigLength,
+                                    uint32_t numBams
+) {
+  // Convert the top and bottom percentages to an absolute number
+  // of pileups to remove and keep, respectively.
+  uint32_t numToRemoveOffBottom = (uint32_t) (lowerPercent*contigLength);
+  uint32_t numToRemoveOffTop = (uint32_t) (upperPercent*contigLength);
+
+  uint32_t divisor = contigLength-numToRemoveOffBottom-numToRemoveOffTop;
+
+  int pos = 0, b = 0;
+  uint32_t plp_sum;
+
+  //for each bam file, calc and set coverage
+  for(; b < numBams; ++b) {
+    // pqsort the coverage array around the upper and lower limits
+    pqsort(pileupValues[b], contigLength, 0, numToRemoveOffBottom); //bottom
+    pqsort(pileupValues[b], contigLength, contigLength-numToRemoveOffTop, numToRemoveOffTop); //top
+
+    // calculate the mean of those values between the limits
+    plp_sum = 0;
+    for(pos = numToRemoveOffBottom; pos < contigLength-numToRemoveOffTop; ++pos) {
+      plp_sum += pileupValues[b][pos];
+    }
+    coverageValues[b] = (float)(plp_sum) / divisor;
+  }
 }
 
 float BM_mean(uint32_t * values, uint32_t size) {
