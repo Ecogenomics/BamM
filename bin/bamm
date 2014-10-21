@@ -46,11 +46,12 @@ import mimetypes
 import os
 
 # local imports
-from bamm.bamParser import BamParser, BM_coverageType
-from bamm.bamMaker import BamMaker, BamScheduler
-from bamm.bamExtractor import BamExtractor
-from bamm.bammExceptions import *
-from bamm.cWrapper import *
+sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..','bamm'))
+from bamParser import BamParser, BM_coverageType
+from bamMaker import BamMaker, BamScheduler
+from bamExtractor import BamExtractor
+from bammExceptions import *
+from cWrapper import *
 
 ###############################################################################
 ###############################################################################
@@ -349,7 +350,7 @@ if __name__ == '__main__':
     parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
 
     parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
-    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean'])
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean', 'tpmean'])
     parse_parser.add_argument('-r', '--cutoff_range', type=float, help="range used to calculate upper and lower bounds", default=None)
 
     parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)

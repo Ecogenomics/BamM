@@ -34,14 +34,10 @@
 
 //****************** partial quicksort includes and defines *********/
 #include "pqsort.h"
-static inline int IntCmp(const int a, const int b) {
+static inline int Uint32_tCmp(const uint32_t a, const uint32_t b) {
         return (a - b);
 }
-define_pqsort(my_int, int, IntCmp);
-#define DUMP()  printf("{ "); \
-        for (int i = 0; i < nvalues; i++)  \
-                printf("%d, ", values[i]); \
-        printf("}\n");
+define_pqsort(my_uint32_t, uint32_t, Uint32_tCmp);
 //*******************************************************************/
 
 
@@ -56,10 +52,10 @@ void estimateCoverages(float * coverageValues,
         case CT_NONE:
             break;
         case CT_COUNT:
-            estimate_RC_Coverage(coverageValues,
+           /* estimate_RC_Coverage(coverageValues,
                                  pileupValues,
                                  contigLength,
-                                 numBams);
+                                 numBams);*/
             break;
         case CT_C_MEAN:
             break;
@@ -72,6 +68,12 @@ void estimateCoverages(float * coverageValues,
         case CT_P_MEDIAN:
             break;
         case CT_P_MEAN_TRIMMED:
+            estimateTrimmedMeanCoverage(coverageValues,
+                                        pileupValues,
+                                        covType->range,
+                                        covType->range,
+                                        contigLength,
+                                        numBams);
             break;
         case CT_P_MEAN_OUTLIER:
             estimate_PMO_Coverage(coverageValues,
@@ -129,35 +131,44 @@ void estimate_PM_Coverage(float * coverageValues,
     }
 }
 
-void estimate_trimmed_mean_Coverage(float * coverageValues,
-                                    uint32_t ** pileupValues,
-                                    float lowerPercent,
-                                    float upperPercent,
-                                    uint32_t contigLength,
-                                    uint32_t numBams
+void estimateTrimmedMeanCoverage(float * coverageValues,
+                                 uint32_t ** pileupValues,
+                                 float lowerPercent,
+                                 float upperPercent,
+                                 uint32_t contigLength,
+                                 uint32_t numBams
 ) {
   // Convert the top and bottom percentages to an absolute number
   // of pileups to remove and keep, respectively.
-  uint32_t numToRemoveOffBottom = (uint32_t) (lowerPercent*contigLength);
-  uint32_t numToRemoveOffTop = (uint32_t) (upperPercent*contigLength);
+  uint32_t numToRemoveOffBottom = (uint32_t) (lowerPercent/100*contigLength);
+  uint32_t numToRemoveOffTop = (uint32_t) (upperPercent/100*contigLength);
 
   uint32_t divisor = contigLength-numToRemoveOffBottom-numToRemoveOffTop;
 
   int pos = 0, b = 0;
   uint32_t plp_sum;
 
-  //for each bam file, calc and set coverage
-  for(; b < numBams; ++b) {
-    // pqsort the coverage array around the upper and lower limits
-    pqsort(pileupValues[b], contigLength, 0, numToRemoveOffBottom); //bottom
-    pqsort(pileupValues[b], contigLength, contigLength-numToRemoveOffTop, numToRemoveOffTop); //top
-
-    // calculate the mean of those values between the limits
-    plp_sum = 0;
-    for(pos = numToRemoveOffBottom; pos < contigLength-numToRemoveOffTop; ++pos) {
-      plp_sum += pileupValues[b][pos];
+  // to avoid dividing by zero
+  if (divisor==0){
+    for(; b < numBams; ++b) {
+      coverageValues[b] = 0.0;
     }
-    coverageValues[b] = (float)(plp_sum) / divisor;
+  } else {
+    //usual sensible length contig
+
+    //for each bam file, calc and set coverage
+    for(; b < numBams; ++b) {
+      // pqsort the coverage array around the upper and lower limits
+      my_uint32_t_pqsort(pileupValues[b], contigLength, 0, numToRemoveOffBottom); //bottom
+      my_uint32_t_pqsort(pileupValues[b], contigLength, contigLength-numToRemoveOffTop, numToRemoveOffTop); //top
+
+      // calculate the mean of those values between the limits
+      plp_sum = 0;
+      for(pos = numToRemoveOffBottom; pos < contigLength-numToRemoveOffTop; ++pos) {
+        plp_sum += pileupValues[b][pos];
+      }
+      coverageValues[b] = (float)(plp_sum) / divisor;
+    }
   }
 }
 

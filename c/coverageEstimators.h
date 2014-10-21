@@ -98,24 +98,6 @@ void estimate_PM_Coverage(float * coverageValues,
                           uint32_t numBams
                           );
 
-/*!
- * @abstract Estimate the mean pileup coverage along a single contig given
- *           pileup information
- *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
- * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
- *
- * @discussion This function updates the values in coverageValues before exiting
-*/
-void estimate_PM_Coverage(float * coverageValues,
-                          uint32_t ** pileupValues,
-                          uint32_t contigLength,
-                          uint32_t numBams
-                          );
-
 
 /*!
  * @abstract Estimate truncated mean (outlier) pileup coverage along a single
@@ -151,15 +133,15 @@ void estimate_PMO_Coverage(float * coverageValues,
  * @param  numBams          the number of bams responsible for the pileup
  * @return void
  *
- * @discussion This function updates the values in coverageValues before exiting
+ * @discussion This function records the coverage estimates in coverageValues before exiting
  */
-void estimate_trimmed_mean_Coverage(float * coverageValues,
-                           uint32_t ** pileupValues,
-                           float lowerPercent,
-                           float upperPercent,
-                           uint32_t contigLength,
-                           uint32_t numBams
-                           );
+void estimateTrimmedMeanCoverage(float * coverageValues,
+                                 uint32_t ** pileupValues,
+                                 float lowerPercent,
+                                 float upperPercent,
+                                 uint32_t contigLength,
+                                 uint32_t numBams
+                                );
 
         /***********************
         ***   MATHY EXTRAS   ***
