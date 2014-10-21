@@ -43,9 +43,65 @@ import ctypes as c
 ###############################################################################
 ###############################################################################
 
+# C-style enums FTW!
+def enum(*sequential, **named):
+    enums = dict(zip(sequential, range(len(sequential))), **named)
+    return type('Enum', (), enums)
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 # fields defined in cfuhash.c but not accessed at this level
 class cfuhash_table_t(c.Structure):
     pass
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+# Managing paired and unparied reads (and relative ordering)
+#
+# NOTE: This RPI definition corresponds to the definition in bamRead.h
+#
+# FIR   means first in properly paired mapping
+# SEC   means second "
+# SNGLP means paired in BAM but unpaired in mapping
+# SNGL  means unpaired in BAM
+# ERROR just for fun
+#
+global RPI
+RPI = enum('ERROR', 'FIR', 'SEC', 'SNGL_FIR', 'SNGL_SEC', 'SNGL')
+
+def RPI2Str(rpi):
+    '''Convert an RPI into a human readable string
+
+    Inputs:
+     rpi - RPI to convert
+
+    Outputs:
+     Human readable string
+    '''
+    if rpi == RPI.FIR:
+        return 'First'
+    elif rpi == RPI.SEC:
+        return 'Second'
+    elif rpi == RPI.SNGL_FIR:
+        return 'First_single'
+    elif rpi == RPI.SNGL_SEC:
+        return 'Second_single'
+    elif rpi == RPI.SNGL:
+        return 'Single'
+    return 'ERROR'
+
+# RPI.SNGL_FIR needs to be written to the singles file etc...
+RPIConv = {RPI.ERROR:RPI.ERROR,
+           RPI.FIR:RPI.FIR,
+           RPI.SEC:RPI.SEC,
+           RPI.SNGL_FIR:RPI.SNGL,
+           RPI.SNGL_SEC:RPI.SNGL,
+           RPI.SNGL:RPI.SNGL}
 
 ###############################################################################
 ###############################################################################
@@ -163,6 +219,42 @@ class BM_LinkWalker_C(c.Structure):
 ###############################################################################
 ###############################################################################
 ###############################################################################
+#------------------------------------------------------------------------------
+# Managing orientation and linking types
+#
+# NOTE: This OT definition corresponds to the definition in bamParser.h
+#
+# Read orientations
+# type 0 <--- --->
+# type 1 ---> --->
+# type 2 ---> <---
+global OT
+OT = enum('OUT', 'SAME', 'IN', 'NONE', 'ERROR')
+
+def OT2Str(ot):
+
+    '''Convert an orientation type into a human readable string
+
+    Inputs:
+     ot - OT to convert
+
+    Outputs:
+     Human readable string
+    '''
+    if ot == OT.OUT:
+        return 'OUT'
+    if ot == OT.SAME:
+        return 'SAME'
+    if ot == OT.IN:
+        return 'IN'
+    if ot == OT.NONE:
+        return 'NONE'
+    return 'ERROR'
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 class BM_bamType_C(c.Structure):
     '''
@@ -203,34 +295,97 @@ class BM_bamFile_C(c.Structure):
 ###############################################################################
 ###############################################################################
 ###############################################################################
+# Managing different ways to calculate coverage
+#
+# NOTE: This CT definition corresponds to the definition in coverageEstimators.h
+#
+# CT_NONE            do not calculate coverage
+# CT_COUNT           read counts, unaffected by contig length
+# CT_C_MEAN          read counts, divided by contig length
+# CT_P_MEAN          mean pileup depth
+# CT_P_MEDIAN        median pileup depth
+# CT_P_MEAN_TRIMMED  pileup mean trancated based on upper lower %
+# CT_P_MEAN_OUTLIER  pileup mean trancated based on distributions
+
+global CT
+CT = enum('NONE',
+          'COUNT',
+          'C_MEAN',
+          'P_MEAN',
+          'P_MEDIAN',
+          'P_MEAN_TRIMMED',
+          'P_MEAN_OUTLIER')
+
+def CT2Str(ct):
+    '''Convert a CT into a human readable string
+
+    Inputs:
+     ct - CT to convert
+
+    Outputs:
+     Human readable string
+    '''
+    if ct == CT.NONE:
+        return 'None'
+    elif ct == CT.COUNT:
+        return 'Read_counts'
+    elif ct == CT.C_MEAN:
+        return 'Mean_read_counts'
+    elif ct == CT.P_MEAN:
+        return 'Mean_pileup_depth'
+    elif ct == CT.P_MEDIAN:
+        return 'Median_pileup_depth'
+    elif ct == CT.P_MEAN_TRIMMED:
+        return 'Mean_trimmed_pileup_depth'
+    elif ct == CT.P_MEAN_OUTLIER:
+        return 'Mean_outlier_pileup_depth'
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
+class BM_coverageType_C(c.Structure):
+    '''
+    typedef struct BM_coverageType {
+        CT type;
+        float range;
+    } BM_coverageType;
+    '''
+    _fields_ = [("type", c.c_int),
+                ("range", c.c_float)
+                ]
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 class BM_fileInfo_C(c.Structure):
     '''
     typedef struct BM_fileInfo {
-        uint32_t ** plpBp;
+        float ** coverages;
         uint32_t * contigLengths;
-        uint32_t ** contigLengthCorrectors;
         uint32_t numBams;
         uint32_t numContigs;
         BM_bamFile ** bamFiles;
         char ** contigNames;
         uint16_t * contigNameLengths;
         int isLinks;
-        char * coverage_mode;
+        BM_coverageType * coverageType;
         int isIgnoreSupps;
         cfuhash_table_t * links;
     } BM_fileInfo;
     '''
-    _fields_ = [("plpBp", c.POINTER(c.POINTER(c.c_uint32))),
+    _fields_ = [("coverages", c.POINTER(c.POINTER(c.c_float))),
                 ("contigLengths",c.POINTER(c.c_uint32)),
-                ("contigLengthCorrectors",c.POINTER(c.POINTER(c.c_uint32))),
                 ("numBams",c.c_uint32),
                 ("numContigs",c.c_uint32),
                 ("bamFiles",c.POINTER(c.POINTER(BM_bamFile_C))),
                 ("contigNames",c.POINTER(c.POINTER(c.c_char))),
                 ("contigNameLengths",c.POINTER(c.c_uint16)),
                 ("isLinks",c.c_int),
-                ("coverage_mode",c.POINTER(c.c_char)),
+                ("coverageType",c.POINTER(BM_coverageType_C)),
                 ("isIgnoreSupps",c.c_int),
                 ("links",c.POINTER(cfuhash_table_t))
                 ]
@@ -328,15 +483,6 @@ class CWrapper:
 
         #-----------------
         self._parseCoverageAndLinks = self.libPMBam.parseCoverageAndLinks
-
-        #-----------------
-        self._adjustPlpBp = self.libPMBam.adjustPlpBp
-
-        #-----------------
-        self._calculateCoverages = self.libPMBam.calculateCoverages
-
-        #-----------------
-        self._destroyCoverages = self.libPMBam.destroyCoverages
 
         #-----------------
         self._initLW = self.libPMBam.initLW

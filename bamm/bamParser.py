@@ -109,46 +109,8 @@ def externalParseWrapper(bAMpARSER,
                                  c.POINTER(c.c_uint32*BFI.numContigs)).contents
                           ])
 
-            plpBp = \
-                np.array([[int(j) for j in
-                           c.cast(i,
-                                  c.POINTER(c.c_uint32*BFI.numBams)
-                                  ).contents] for i in
-                          c.cast(BFI.plpBp,
-                                 c.POINTER(c.POINTER(c.c_uint32*BFI.numBams) \
-                                           *BFI.numContigs)).contents
-                          ])
-
-            # transfer the coverages over
-            coverages = np.zeros((BFI.numContigs, BFI.numBams))
-            if bAMpARSER.coverageMode == 'outlier':
-                contig_length_correctors = \
-                    np.array([[int(j) for j in
-                        c.cast(i,
-                               c.POINTER(c.c_uint32*BFI.numBams)
-                              ).contents] for i in
-                              c.cast(BFI.contigLengthCorrectors,
-                                     c.POINTER(c.POINTER(c.c_uint32*BFI.numBams)*BFI.numContigs)
-                                     ).contents
-                              ]
-                             )
-
-                for c_idx in range(int(BFI.numContigs)):
-                    for b_idx in range(int(BFI.numBams)):
-                        coverages[c_idx,b_idx] = \
-                            float(plpBp[c_idx,b_idx]) / \
-                            float(contig_lengths[c_idx] - \
-                                  contig_length_correctors[c_idx])
-            else:
-                for c_idx in range(BFI.numContigs):
-                    for b_idx in range(BFI.numBams):
-                        # need to handle this edge case
-                        if contig_lengths[c_idx] != 0:
-                            coverages[c_idx,b_idx] = \
-                                float(plpBp[c_idx,b_idx]) / \
-                                float(contig_lengths[c_idx])
-                        else:
-                            coverages[c_idx,b_idx] = 0.
+            coverages = np.array([[float(j) for j in c.cast(i, c.POINTER(c.c_float*BFI.numBams)).contents] for i in
+                                  c.cast(BFI.coverages, c.POINTER(c.POINTER(c.c_float*BFI.numBams)*BFI.numContigs)).contents])
 
             # we only need to do the contig names for one of the threads
             if doContigNames:
@@ -273,13 +235,13 @@ class BamParser:
     '''
 
     def __init__(self,
+                 coverageType,
                  minLength=0,
                  baseQuality=0,
                  mappingQuality=0,
                  useSuppAlignments=False,
                  useSecondaryAlignments=False,
-                 maxMisMatches=1000,
-                 coverageMode='vanilla',
+                 maxMisMatches=1000
                  ):
         '''
         Default constructor.
@@ -287,13 +249,13 @@ class BamParser:
         Set quality thresholds used in later parsing
 
         Inputs:
+         coverageType - BM_coverageType, stores type of coverage to calculate
          minLength - int, ignore contigs shorter than this length
          mappingQuality - int, ignore positions with a lower base quality score
          mappingQuality - int, skip all reads with a lower mapping quality score
          useSuppAlignments - == True -> DON'T skip supplementary alignments
          useSecondaryAlignments - == True -> DON'T skip secondary alignments
          maxMisMatches - int, skip all reads with more mismatches (NM aux files)
-         coverageMode - string, type of coverage to calculate
 
         Outputs:
          None
@@ -316,10 +278,7 @@ class BamParser:
         else:
             self.ignoreSecondaryAlignments = 1
 
-        if coverageMode not in ['vanilla', 'outlier']:
-             raise InvalidCoverageModeException("Unknown coverage mode '%s' "\
-                                                "supplied" % coverageMode)
-        self.coverageMode = coverageMode
+        self.coverageType = coverageType
 
         #---------------------------------
         # internal variables
@@ -330,7 +289,6 @@ class BamParser:
         self.bamFiles = []
         self.types = []
         self.doLinks = False
-        self.doInserts = False
         self.doCovs = False
 
 #------------------------------------------------------------------------------
@@ -339,7 +297,6 @@ class BamParser:
     def parseBams(self,
                   bamFiles,
                   doLinks=False,
-                  doInserts=False,
                   doCovs=False,
                   types=None,
                   threads=1,
@@ -352,7 +309,6 @@ class BamParser:
         Inputs:
          bamFiles - [string], full paths to BAMs
          doLinks - == True -> find linking pairs
-         doInserts - == True -> calculate insert size distributions
          doCovs - == True -> calculate coverage profiles
          types - [int] or None, number of insert types per bamfile
          threads - int, max number of threads to use
@@ -378,10 +334,6 @@ class BamParser:
         # make sure (again) that we're doing something
         self.doLinks = doLinks
         self.doCovs = doCovs
-        if not (self.doCovs or self.doLinks):
-            self.doInserts = True
-        else:
-            self.doInserts = doInserts
 
         # check that the bam files and their indexes exist
         for bam in bamFiles:
@@ -462,38 +414,47 @@ class BamParser:
         pBFI = c.POINTER(BM_fileInfo_C)
         pBFI = c.pointer(BFI)
 
+        BCT = BM_coverageType_C()
+        BCT.type = self.coverageType.cType
+        BCT.range = self.coverageType.cRange
+        pBCT = c.POINTER(BM_coverageType_C)
+        pBCT = c.pointer(BCT)
+
         bamfiles_c_array = (c.c_char_p * 1)()
         bamfiles_c_array[:] = [self.bamFiles[bid]]
 
-        types_c_arr = (c.c_int * 1)()
-        types_c_arr[:] = [self.types[bid]]
+        types_c_array = (c.c_int * 1)()
+        types_c_array[:] = [self.types[bid]]
 
         CW = CWrapper()
         if self.doLinks or self.doCovs:
-            CW._parseCoverageAndLinks(0,        # unset typeOnly flag
-                                      1,
+            CW._parseCoverageAndLinks(self.doLinks,
+                                      self.doCovs,
+                                      1,        # numBams always one here
                                       self.baseQuality,
                                       self.mappingQuality,
                                       self.minLength,
                                       self.maxMisMatches,
-                                      types_c_arr,
+                                      types_c_array,
                                       self.ignoreSuppAlignments,
                                       self.ignoreSecondaryAlignments,
-                                      c.create_string_buffer(self.coverageMode),
+                                      pBCT,
                                       bamfiles_c_array,
                                       pBFI)
         else:
             # types only
-            CW._parseCoverageAndLinks(1,        # set typeOnly flag
+            BCT.type = CT.NONE # just to be sure!
+            CW._parseCoverageAndLinks(self.doLinks,
+                                      self.doCovs,
+                                      1,        # numBams always one here
+                                      0,
+                                      0,
+                                      0,
+                                      0,
+                                      types_c_array,
                                       1,
-                                      0,
-                                      0,
-                                      0,
-                                      0,
-                                      types_c_arr,
                                       1,
-                                      1,
-                                      c.create_string_buffer("none"),
+                                      pBCT,
                                       bamfiles_c_array,
                                       pBFI)
 

@@ -46,45 +46,6 @@ from cWrapper import *
 ###############################################################################
 ###############################################################################
 
-#------------------------------------------------------------------------------
-# Managing orientation and linking types
-
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    return type('Enum', (), enums)
-
-# Read orientations
-# type 0 <--- --->
-# type 1 ---> --->
-# type 2 ---> <---
-global OT
-OT = enum('OUT', 'SAME', 'IN', 'NONE', 'ERROR')
-
-def OT2Str(ot):
-
-    '''Convert an orientation type into a human readable string
-
-    Inputs:
-     ot - OT to convert
-
-    Outputs:
-     Human readable string
-    '''
-    if ot == OT.OUT:
-        return 'OUT'
-    if ot == OT.SAME:
-        return 'SAME'
-    if ot == OT.IN:
-        return 'IN'
-    if ot == OT.NONE:
-        return 'NONE'
-    return 'ERROR'
-
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-
 # links-associated structures "Python land"
 class BM_linkInfo(object):
     '''A single link joining two contigs'''

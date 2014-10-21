@@ -4,8 +4,8 @@
 //
 //   Engine for parsing BAM files - non-parallel
 //   Functions include:
+//   BAM parsing to produce pileup information
 //   Determine "type" of bam file (insert size, orientation of reads etc...)
-//   Determine average coverage values
 //   Find linking read pairs
 //
 //   Copyright (C) Michael Imelfort
@@ -43,6 +43,7 @@
 // local includes
 #include "bamParser.h"
 #include "pairedLink.h"
+#include "coverageEstimators.h"
 
 BM_fileInfo * createBFI(void) {
     return (BM_fileInfo*) calloc(1, sizeof(BM_fileInfo));
@@ -52,39 +53,26 @@ void initBFI(BM_fileInfo * BFI,
              bam_hdr_t * BAM_header,
              int numBams,
              char * bamFiles[],
-             int * links,
-             char * coverageMode,
+             int * types,
+             int isLinks,
+             BM_coverageType * coverageType,
              int ignoreSuppAlignments
             ) {
-    // check for a valid coverage mode
-    int valid_coverage_mode = strcmp(coverageMode, "vanilla");
-    if(valid_coverage_mode != 0)
-    { valid_coverage_mode = strcmp(coverageMode, "outlier"); }
-    if(valid_coverage_mode != 0)
-    { valid_coverage_mode = strcmp(coverageMode, "none"); }
-    if(valid_coverage_mode != 0) {
-        char str[80];
-        sprintf(str, "Invalid coverage mode '%s'", coverageMode);
-        printError(str, __LINE__);
-        return;
-    }
-
     int i = 0; int j = 0;
     BFI->numContigs = BAM_header->n_targets;
     BFI->numBams = numBams;
-    BFI->isLinks = (links != 0);
-    BFI->coverage_mode = strdup(coverageMode);
+    BFI->isLinks = isLinks;
+    BFI->coverageType = coverageType;
     BFI->isIgnoreSupps = ignoreSuppAlignments;
-    BFI->contigLengthCorrectors = 0;
     BFI->links = 0;
 
     if(BFI->numContigs != 0 && BFI->numBams != 0) {
-        if(strcmp(coverageMode, "none") != 0) {
+        if((BFI->coverageType)->type != CT_NONE) {
             // unless this is an extraction run we will
             // need to make room to store read counts
-            BFI->plpBp = calloc(BFI->numContigs, sizeof(uint32_t*));
+            BFI->coverages = calloc(BFI->numContigs, sizeof(float*));
             for(i = 0; i < BFI->numContigs; ++i) {
-                BFI->plpBp[i] = calloc(BFI->numBams, sizeof(uint32_t));
+                BFI->coverages[i] = calloc(BFI->numBams, sizeof(float));
             }
         }
 
@@ -97,23 +85,17 @@ void initBFI(BM_fileInfo * BFI,
             BF->fileNameLength = strlen(bamFiles[i]);
 
             // support for mixed insert sizes in one bam (i.e. shadow library)
-            BF->numTypes = 0;
-            BF->types = 0;
-            if((strcmp(coverageMode, "none") != 0) || BFI->isLinks) {
-                if(links != 0) {
-                    BF->numTypes = links[i];
-                    BF->types = (BM_bamType**) calloc(BF->numTypes,
-                                                      sizeof(BM_bamType*));
-                    for(j = 0; j < BF->numTypes; ++j) {
-                        BM_bamType * BT = \
-                            (BM_bamType*) calloc(1, sizeof(BM_bamType));
-                        BT->orientationType = OT_NONE;
-                        BT->insertSize = 0;
-                        BT->insertStdev = 0;
-                        BT->supporting = 0;
-                        BF->types[j] = BT;
-                    }
-                }
+            BF->numTypes = types[i];
+            BF->types = (BM_bamType**) calloc(BF->numTypes,
+                                              sizeof(BM_bamType*));
+            for(j = 0; j < BF->numTypes; ++j) {
+                BM_bamType * BT = \
+                    (BM_bamType*) calloc(1, sizeof(BM_bamType));
+                BT->orientationType = OT_NONE;
+                BT->insertSize = 0;
+                BT->insertStdev = 0;
+                BT->supporting = 0;
+                BF->types[j] = BT;
             }
             BFI->bamFiles[i] = BF;
         }
@@ -126,18 +108,6 @@ void initBFI(BM_fileInfo * BFI,
             BFI->contigNames[i] = strdup(BAM_header->target_name[i]);
             BFI->contigNameLengths[i] = strlen(BAM_header->target_name[i]);
             BFI->contigLengths[i] = (uint32_t)BAM_header->target_len[i];
-        }
-
-        //----------------------------
-        // only allocate if we NEED to
-        //----------------------------
-        if (strcmp(BFI->coverage_mode, "outlier") == 0) {
-            BFI->contigLengthCorrectors = calloc(BFI->numContigs,
-                                                 sizeof(uint32_t*));
-            for(i = 0; i < BFI->numContigs; ++i) {
-                BFI->contigLengthCorrectors[i] = calloc(BFI->numBams,
-                                                        sizeof(uint32_t));
-            }
         }
 
         if(BFI->isLinks) {
@@ -185,8 +155,7 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
     // keep a backup of these guys
     uint32_t old_numBams = BFI_A->numBams;
     BM_bamFile ** old_bamFiles = BFI_A->bamFiles;
-    uint32_t ** old_contigLengthCorrectors = BFI_A->contigLengthCorrectors;
-    uint32_t ** old_plpBp = BFI_A->plpBp;
+    float ** old_coverages = BFI_A->coverages;
 
     //-----
     // BAM files
@@ -209,59 +178,28 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
 
     //-----
     // Pileups
-    BFI_A->plpBp = calloc(BFI_A->numContigs, sizeof(uint32_t*));
+    BFI_A->coverages = calloc(BFI_A->numContigs, sizeof(float*));
     for(i = 0; i < BFI_A->numContigs; ++i) {
-        BFI_A->plpBp[i] = calloc(BFI_A->numBams, sizeof(uint32_t));
+        BFI_A->coverages[i] = calloc(BFI_A->numBams, sizeof(float));
     }
     for(k = 0; k < BFI_A->numContigs; ++k)
     {
         for (i = 0; i < old_numBams; ++i) {
-            //printf("A: %d, %d, %d\n", k, i, old_plpBp[k][i]);
-            BFI_A->plpBp[k][i] = old_plpBp[k][i];
+            //printf("A: %d, %d, %d\n", k, i, old_coverages[k][i]);
+            BFI_A->coverages[k][i] = old_coverages[k][i];
         }
         for (j = 0; j < BFI_B->numBams; ++j) {
-            //printf("B: %d, %d, %d\n", k, i, BFI_B->plpBp[k][j]);
-            BFI_A->plpBp[k][i] = BFI_B->plpBp[k][j];
+            //printf("B: %d, %d, %d\n", k, i, BFI_B->coverages[k][j]);
+            BFI_A->coverages[k][i] = BFI_B->coverages[k][j];
             ++i;
         }
     }
-    if(old_plpBp != 0) {
+    if(old_coverages != 0) {
         for(i = 0; i < BFI_A->numContigs; ++i) {
-            if(old_plpBp[i] != 0)
-                free(old_plpBp[i]);
+            if(old_coverages[i] != 0)
+                free(old_coverages[i]);
         }
-        free(old_plpBp);
-    }
-
-    //-----
-    // Contig length correctors
-    //
-    if (strcmp(BFI_A->coverage_mode, "outlier") == 0) {
-        BFI_A->contigLengthCorrectors = calloc(BFI_A->numContigs,
-                                               sizeof(uint32_t*));
-        for(i = 0; i < BFI_A->numContigs; ++i) {
-            BFI_A->contigLengthCorrectors[i] = calloc(BFI_A->numBams,
-                                                      sizeof(uint32_t));
-        }
-        for(k = 0; k < BFI_A->numContigs; ++k)
-        {
-            for (i = 0; i < old_numBams; ++i) {
-                BFI_A->contigLengthCorrectors[k][i] = \
-                    old_contigLengthCorrectors[k][i];
-            }
-            for (j = 0; j < BFI_B->numBams; ++j) {
-                BFI_A->contigLengthCorrectors[k][i] = \
-                    BFI_B->contigLengthCorrectors[k][j];
-                ++i;
-            }
-        }
-        if(old_contigLengthCorrectors != 0) {
-            for(i = 0; i < BFI_A->numContigs; ++i) {
-                if(old_contigLengthCorrectors[i] != 0)
-                    free(old_contigLengthCorrectors[i]);
-            }
-            free(old_contigLengthCorrectors);
-        }
+        free(old_coverages);
     }
 
     //-----
@@ -314,19 +252,21 @@ int read_bam(void *data,
     return ret;
 }
 
-int parseCoverageAndLinks(int typeOnly,
+int parseCoverageAndLinks(int doLinks,
+                          int doCovs,
                           int numBams,
                           int baseQ,
                           int mapQ,
                           int minLen,
                           int maxMisMatches,
-                          int * links,
+                          int * types,
                           int ignoreSuppAlignments,
                           int ignoreSecondaryAlignments,
-                          char* coverageMode,
+                          BM_coverageType * coverageType,
                           char* bamFiles[],
                           BM_fileInfo * BFI
-                          ) {
+) {
+
     int supp_check = 0x0; // include supp mappings
     if (ignoreSuppAlignments) {
         supp_check |= BAM_FSUPPLEMENTARY;
@@ -340,20 +280,20 @@ int parseCoverageAndLinks(int typeOnly,
     bam_hdr_t *h = 0; // BAM header of the 1st input
     aux_t **data;
     bam_mplp_t mplp;
-    int tid = 0, *n_plp, i = 0;
+    int tid = 0, *n_plp, b = 0;
     // load contig names and BAM index.
-    data = (aux_t**) calloc(numBams, sizeof(aux_t*)); // data[i], the i-th input
+    data = (aux_t**) calloc(numBams, sizeof(aux_t*)); // data[b], the i-th input
     int beg = 0, end = 1<<30;  // set the default region
 
-    for (i = 0; i < numBams; ++i) {
+    for (b = 0; b < numBams; ++b) {
         bam_hdr_t *htmp;
-        data[i] = (aux_t*) calloc(1, sizeof(aux_t));
-        data[i]->fp = bgzf_open(bamFiles[i], "r"); // open BAM
-        data[i]->min_mapQ = mapQ;                  // set the mapQ filter
-        data[i]->min_len  = minLen;                // set the qlen filter
+        data[b] = (aux_t*) calloc(1, sizeof(aux_t));
+        data[b]->fp = bgzf_open(bamFiles[b], "r"); // open BAM
+        data[b]->min_mapQ = mapQ;                  // set the mapQ filter
+        data[b]->min_len  = minLen;                // set the qlen filter
         // ( I think this must be done for each file for legitness!)
-        htmp = bam_hdr_read(data[i]->fp);          // read the BAM header
-        if (i == 0) {
+        htmp = bam_hdr_read(data[b]->fp);          // read the BAM header
+        if (b == 0) {
             h = htmp; // keep the header of the 1st BAM
         } else { bam_hdr_destroy(htmp); } // if not the 1st BAM, kill the header
     }
@@ -363,24 +303,23 @@ int parseCoverageAndLinks(int typeOnly,
             h,
             numBams,
             bamFiles,
-            links,
-            coverageMode,
+            types,
+            doLinks,
+            coverageType,
             ignoreSuppAlignments
            );
 
-    // type the bam files, but only if we're doing links
-    if((links != 0) || typeOnly) {
-        typeBamFiles(BFI);
-    }
+    // always type the bam files
+    typeBamFiles(BFI);
 
     // if we're only here to type the file then we're done
-    if(typeOnly) {
+    if(0 == (doCovs || doLinks)) {
         bam_hdr_destroy(h);
 
-        for (i = 0; i < numBams; ++i) {
-            bgzf_close(data[i]->fp);
-            if (data[i]->iter) bam_itr_destroy(data[i]->iter);
-            free(data[i]);
+        for (b = 0; b < numBams; ++b) {
+            bgzf_close(data[b]->fp);
+            if (data[b]->iter) bam_itr_destroy(data[b]->iter);
+            free(data[b]);
         }
         free(data);
         return 0;
@@ -388,49 +327,68 @@ int parseCoverageAndLinks(int typeOnly,
 
     // the core multi-pileup loop
     mplp = bam_mplp_init(numBams, read_bam, (void**)data); // initialization
-    // n_plp[i] is the number of covering reads from the i-th BAM
+    // n_plp[b] is the number of covering reads from the i-th BAM
     n_plp = calloc(numBams, sizeof(int));
-    // plp[i] points to the array of covering reads (internal in mplp)
+    // plp[b] points to the array of covering reads (internal in mplp)
     plp = calloc(numBams, sizeof(void*));
 
     // initialise
     int prev_tid = -1;  // the id of the previous positions tid
-    int j, rejects = 0;
+    int r, rejects = 0;
     int pos = 0; // current position in the contig ( 1 indexed )
-    // hold the pileup count at each position in the contig
-    uint32_t ** position_holder;
-    position_holder = calloc(numBams, sizeof(uint32_t*));
-    // go through each of the contigs in the file, from tid == 0 --> end
 
+    // hold the pileup count at each position in the contig
+    uint32_t ** pileup_values = 0;
+    // container to hold return values of coverage estimators
+    float * coverage_values = 0;
+    if(doCovs) {
+        pileup_values = calloc(numBams, sizeof(uint32_t*));
+        coverage_values = calloc(numBams, sizeof(float));
+    }
+
+    // go through each of the contigs in the file, from tid == 0 --> end
     while (bam_mplp_auto(mplp, &tid, &pos, n_plp, plp) > 0) {
         // come to the next covered position
         if (pos < beg || pos >= end) continue; // out of range; skip
         if(tid != prev_tid) {  // we've arrived at a new contig
-            if(prev_tid != -1) {
-                // at the end of a contig
-                adjustPlpBp(BFI, position_holder, prev_tid);
-                for (i = 0; i < numBams; ++i) {
-                    free(position_holder[i]); // free this up
+            if(doCovs) {       // only do coverage if forced
+                if(prev_tid != -1) {
+                    // at the end of a contig
+                    estimateCoverages(coverage_values,
+                                      pileup_values,
+                                      BFI->coverageType,
+                                      BFI->contigLengths[prev_tid],
+                                      BFI->numBams);
+
+                    for (b = 0; b < numBams; ++b) {
+                        // load the coverages into the BFI
+                        BFI->coverages[prev_tid][b] = coverage_values[b];
+                        if(pileup_values[b]) {
+                            free(pileup_values[b]); // free this up
+                        }
+                    }
                 }
-            }
-            for (i = 0; i < numBams; ++i) {
-                // reset for next contig
-                position_holder[i] = calloc(BFI->contigLengths[tid],
-                                            sizeof(uint32_t));
+                for (b = 0; b < numBams; ++b) {
+                    // reset for next contig
+                    // this needs to be reset because each contig is a
+                    // different length
+                    pileup_values[b] = calloc(BFI->contigLengths[tid],
+                                                sizeof(uint32_t));
+                }
             }
             prev_tid = tid;
         }
-        for (i = 0; i < numBams; ++i) {
+        for (b = 0; b < numBams; ++b) {
             rejects = 0;
             // for each read in the pileup
-            for (j = 0; j < n_plp[i]; ++j) {
+            for (r = 0; r < n_plp[b]; ++r) {
                 // DON'T modfity plp[][] unless you really know
-                const bam_pileup1_t *p = plp[i] + j;
+                const bam_pileup1_t *p = plp[b] + r;
                 // having dels or refskips at tid:pos
                 if (p->is_del || p->is_refskip) {++rejects;}
                 // low base quality
                 else if (bam_get_qual(p->b)[p->qpos] < baseQ) {++rejects;}
-                else if(BFI->isLinks) {
+                else if(doLinks) {
                     // now we do links if we've been asked to
                     bam1_core_t core = p->b[0].core;
                     // make sure it's the first time we've seen this link
@@ -458,7 +416,7 @@ int parseCoverageAndLinks(int typeOnly,
                                          core.mpos,
                                          ((core.flag&BAM_FREVERSE) != 0),
                                          ((core.flag&BAM_FMREVERSE) != 0),
-                                         i
+                                         b
                                         );
 
                         // add the link
@@ -470,30 +428,52 @@ int parseCoverageAndLinks(int typeOnly,
                 }
             }
             // add this position's depth
-            position_holder[i][pos] = n_plp[i] - rejects;
+            if(doCovs) {
+                pileup_values[b][pos] = n_plp[b] - rejects;
+            }
         }
     }
 
-    if(prev_tid != -1) {
+    if(doCovs && prev_tid != -1) {
         // at the end of a contig
-        adjustPlpBp(BFI, position_holder, prev_tid);
-        for (i = 0; i < numBams; ++i) {
-            free(position_holder[i]);
+        estimateCoverages(coverage_values,
+                          pileup_values,
+                          BFI->coverageType,
+                          BFI->contigLengths[prev_tid],
+                          BFI->numBams);
+        for (b = 0; b < numBams; ++b) {
+            // load the coverages into the BFI
+            BFI->coverages[prev_tid][b] = coverage_values[b];
+            if(pileup_values[b]) {
+                free(pileup_values[b]);
+            }
         }
     }
-    free(position_holder);
+    if (pileup_values)
+        free(pileup_values);
+    if (coverage_values)
+        free(coverage_values);
 
     free(n_plp); free(plp);
     bam_mplp_destroy(mplp);
     bam_hdr_destroy(h);
 
-    for (i = 0; i < numBams; ++i) {
-        bgzf_close(data[i]->fp);
-        if (data[i]->iter) bam_itr_destroy(data[i]->iter);
-        free(data[i]);
+    for (b = 0; b < numBams; ++b) {
+        bgzf_close(data[b]->fp);
+        if (data[b]->iter) bam_itr_destroy(data[b]->iter);
+        free(data[b]);
     }
     free(data);
 
+    /*
+    int c = 0;
+    for (b = 0; b < numBams; ++b) {
+        for (; c < BFI->numContigs; ++c) {
+            fprintf(stdout, "%0.2f, ", BFI->coverages[c][b]);
+        }
+        fprintf(stdout, "\n--------------------------\n");
+    }
+    */
     return 0;
 }
 
@@ -680,76 +660,6 @@ void typeBamFiles(BM_fileInfo * BFI) {
     free(orient_counts);
 }
 
-void adjustPlpBp(BM_fileInfo * BFI,
-                 uint32_t ** positionHolder,
-                 int tid
-) {
-    uint32_t num_bams = BFI->numBams;
-    uint32_t * plp_sum = calloc(num_bams, sizeof(uint32_t));
-    int pos = 0, i = 0;
-    if(strcmp(BFI->coverage_mode, "outlier") == 0) {
-        uint32_t * drops = calloc(num_bams, sizeof(uint32_t));
-        for(i = 0; i < num_bams; ++i) {
-            // set the cut off at a stdev either side of the mean
-            float m = BM_mean(positionHolder[i], BFI->contigLengths[tid]);
-            float std = BM_stdDev(positionHolder[i],
-                                  BFI->contigLengths[tid],
-                                  m);
-            float lower_cut = ((m-std) < 0) ? 0 : (m-std);
-            float upper_cut = m+std;
-            for(pos = 0; pos < BFI->contigLengths[tid]; ++pos) {
-                if((positionHolder[i][pos] <= upper_cut) &&
-                    (positionHolder[i][pos] >= lower_cut)) {
-                    // OK
-                    plp_sum[i] += positionHolder[i][pos];
-                } else {
-                    // DROP
-                    ++drops[i];
-                }
-            }
-            BFI->plpBp[tid][i] = plp_sum[i];
-            BFI->contigLengthCorrectors[tid][i] = drops[i];
-        }
-        free(drops);
-    } else {
-        for(i = 0; i < num_bams; ++i) {
-            for(pos = 0; pos < BFI->contigLengths[tid]; ++pos) {
-                plp_sum[i] += positionHolder[i][pos];
-            }
-            BFI->plpBp[tid][i] = plp_sum[i];
-        }
-    }
-    free(plp_sum);
-}
-
-float ** calculateCoverages(BM_fileInfo * BFI) {
-    int i = 0, j = 0;
-    if(BFI->numContigs != 0 && BFI->numBams != 0) {
-        if(BFI->plpBp != NULL) {
-            float ** ret_matrix = calloc(BFI->numContigs, sizeof(float*));
-            for(i = 0; i < BFI->numContigs; ++i) {
-                ret_matrix[i] = calloc(BFI->numBams, sizeof(float));
-                for(j = 0; j < BFI->numBams; ++j) {
-                    // print average coverages
-                    if(strcmp(BFI->coverage_mode, "outlier") == 0) {
-                        // the counts are reduced so we should reduce
-                        // the contig length accordingly
-                        ret_matrix[i][j] =
-                            (float)BFI->plpBp[i][j] / \
-                            (float)(BFI->contigLengths[i]-BFI->contigLengthCorrectors[i][j]);
-                    } else {
-                        // otherwise it's just a straight up average
-                        ret_matrix[i][j] =
-                            (float)BFI->plpBp[i][j]/(float)BFI->contigLengths[i];
-                    }
-                }
-            }
-            return ret_matrix;
-        }
-    }
-    return NULL;
-}
-
 int initLW(BM_LinkWalker * walker, BM_fileInfo * BFI) {
     return initLinkWalker(walker, BFI->links);
 }
@@ -763,12 +673,12 @@ void destroyBFI(BM_fileInfo * BFI) {
     if(BFI != 0)
     {
         if(BFI->numContigs != 0 && BFI->numBams != 0) {
-            if(BFI->plpBp != 0) {
+            if(BFI->coverages != 0) {
                 for(i = 0; i < BFI->numContigs; ++i) {
-                    if(BFI->plpBp[i] != 0)
-                        free(BFI->plpBp[i]);
+                    if(BFI->coverages[i] != 0)
+                        free(BFI->coverages[i]);
                 }
-                free(BFI->plpBp);
+                free(BFI->coverages);
             }
 
             if(BFI->bamFiles != 0) {
@@ -786,17 +696,7 @@ void destroyBFI(BM_fileInfo * BFI) {
 
             if(BFI->contigLengths != 0)
                 free(BFI->contigLengths);
-
-            if(BFI->contigLengthCorrectors != 0) {
-                for(i = 0; i < BFI->numContigs; ++i) {
-                    if(BFI->contigLengthCorrectors[i] != 0)
-                        free(BFI->contigLengthCorrectors[i]);
-                }
-                free(BFI->contigLengthCorrectors);
-            }
         }
-
-        free(BFI->coverage_mode);
 
         // destroy paired links
         if(BFI->isLinks) {
@@ -805,14 +705,6 @@ void destroyBFI(BM_fileInfo * BFI) {
             cfuhash_destroy(BFI->links);
         }
     }
-}
-
-void destroyCoverages(float ** covs, int numContigs) {
-    int i = 0;
-    for(i = 0; i < numContigs; ++i) {
-        free(covs[i]);
-    }
-    free(covs);
 }
 
 void destroyLW(BM_LinkWalker * walker) {
@@ -866,38 +758,34 @@ void printError(char* errorMessage, int line) {
 void printBFI(BM_fileInfo * BFI) {
     int i = 0, j = 0;
     if(BFI->numContigs != 0 && BFI->numBams != 0) {
-        if(BFI->plpBp != NULL) {
+        if(BFI->coverages != 0) {
             // get the coverages we want
-            float ** covs = calculateCoverages(BFI);
-            if(covs != NULL) {
-                // print away!
-                printf("#contig\tlength");
+            // print away!
+            printf("#contig\tlength");
+            for(j = 0; j < BFI->numBams; ++j) {
+                printf("\t%s",(BFI->bamFiles[j])->fileName);
+            }
+            printf("\n");
+            for(i = 0; i < BFI->numContigs; ++i) {
+                printf("%s\t%d",
+                       BFI->contigNames[i],
+                       BFI->contigLengths[i]);
                 for(j = 0; j < BFI->numBams; ++j) {
-                    printf("\t%s",(BFI->bamFiles[j])->fileName);
+                    printf("\t%0.4f", BFI->coverages[i][j]);
                 }
                 printf("\n");
-                for(i = 0; i < BFI->numContigs; ++i) {
-                    printf("%s\t%d",
-                           BFI->contigNames[i],
-                           BFI->contigLengths[i]);
-                    for(j = 0; j < BFI->numBams; ++j) {
-                        printf("\t%0.4f", covs[i][j]);
-                    }
-                    printf("\n");
+            }
+            printf("---\n");
+            // we're responsible for cleaning up the covs structure
+            if(BFI->isLinks) {
+                char** bfns = calloc(BFI->numBams, sizeof(char*));
+                printf("#file\tinsert\tstdev\torientation\tsupporting\n");
+                for(j = 0; j < BFI->numBams; ++j) {
+                    bfns[j] = (BFI->bamFiles[j])->fileName;
+                    printBamFileType(BFI->bamFiles[j]);
                 }
-                printf("---\n");
-                // we're responsible for cleaning up the covs structure
-                destroyCoverages(covs, BFI->numContigs);
-                if(BFI->isLinks) {
-                    char** bfns = calloc(BFI->numBams, sizeof(char*));
-                    printf("#file\tinsert\tstdev\torientation\tsupporting\n");
-                    for(j = 0; j < BFI->numBams; ++j) {
-                        bfns[j] = (BFI->bamFiles[j])->fileName;
-                        printBamFileType(BFI->bamFiles[j]);
-                    }
-                    printLinks(BFI->links, bfns, BFI->contigNames);
-                    free(bfns);
-                }
+                printLinks(BFI->links, bfns, BFI->contigNames);
+                free(bfns);
             }
         }
     }
@@ -916,37 +804,4 @@ void printBamFileType(BM_bamFile * BF)
                                              BT->supporting);
     }
     printf("---\n");
-}
-
-float BM_mean(uint32_t * values, uint32_t size) {
-    uint32_t sum = 0;
-    int i = 0;
-    for( i = 0; i < size; ++i) {
-        sum += *(values + i);
-    }
-    return (float)sum/(float)size;
-}
-
-float BM_stdDev(uint32_t * values, uint32_t size, float m) {
-    float sum = 0;
-    int i = 0;
-    if(m == -1)
-        m = BM_mean(values, size);
-    for(i = 0; i < size; ++i) {
-        sum += pow((float)*(values + i) - m, 2);
-    }
-    return sqrt(sum/(float)size);
-}
-
-float BM_fakeStdDev(uint32_t * values, uint32_t size) {
-    // everything is 3 stdevs from the mean right?
-    uint32_t max = 0, min = 1<<30;
-    int i = 0;
-    for( i = 0; i < size; ++i) {
-        if (*(values + i) > max)
-            max = *(values + i);
-        else if (*(values + i) < min)
-            min = *(values + i);
-    }
-    return (float)(max-min)/6;
 }

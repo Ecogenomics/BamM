@@ -4,8 +4,8 @@
 //
 //   Engine for parsing BAM files - non-parallel
 //   Functions include:
+//   BAM parsing to produce pileup information
 //   Determine "type" of bam file (insert size, orientation of reads etc...)
-//   Determine average coverage values
 //   Find linking read pairs
 //
 //   Copyright (C) Michael Imelfort
@@ -44,6 +44,7 @@
 
 // local includes
 #include "pairedLink.h"
+#include "coverageEstimators.h"
 
 typedef BGZF bamFile;
 
@@ -109,30 +110,28 @@ typedef struct {                    //
 /*! @typedef
  * @abstract Structure for storing BAM file information
  *
- * @field plpBp                       number of bases piled up on each contig
- * @field contigLengths               lengths of the referene sequences
- * @field contigLengthCorrectors      correct contig lengths for outlier coverage
- * @field numBams                     number of BAM files parsed
- * @field numContigs                  number of reference sequences
- * @field bamFiles                    array of pointers to BM_bamFile's
- * @field contigNames                 names of the reference sequences
- * @field contigNameLengths           lengths reference sequence names
- * @field isLinks                     are links being calculated
- * @field coverage_mode               type of coverage ['vanilla', 'outlier']
- * @field isIgnoreSupps               are supplementary alignments being ignored
- * @field links                       linking pairs
+ * @field coverages              calculated coverage of each contig per bam
+ * @field contigLengths          lengths of the referene sequences
+ * @field numBams                number of BAM files parsed
+ * @field numContigs             number of reference sequences
+ * @field bamFiles               array of pointers to BM_bamFile's
+ * @field contigNames            names of the reference sequences
+ * @field contigNameLengths      lengths reference sequence names
+ * @field isLinks                are links being calculated
+ * @field coverageType           coverage type (see coverageEstimators.h)
+ * @field isIgnoreSupps          are supplementary alignments being ignored
+ * @field links                  linking pairs
  */
 typedef struct BM_fileInfo {
-    uint32_t ** plpBp;
+    float ** coverages;
     uint32_t * contigLengths;
-    uint32_t ** contigLengthCorrectors;
     uint32_t numBams;
     uint32_t numContigs;
     BM_bamFile ** bamFiles;
     char ** contigNames;
     uint16_t * contigNameLengths;
     int isLinks;
-    char * coverage_mode;
+    BM_coverageType * coverageType;
     int isIgnoreSupps;
     cfuhash_table_t * links;
 } BM_fileInfo;
@@ -157,8 +156,9 @@ BM_fileInfo * createBFI(void);
  * @param BAM_header            htslib BAM header
  * @param numBams               number of BAM files to parse
  * @param bamFiles              filenames of BAMs parsed
- * @param links                 array of OT counts per bam or 0
- * @param coverageMode          type of coverage to be calculated
+ * @param types                 array of num orientation types per bam
+ * @param isLinks               == 1 -> links will be calculated (alloc storage)
+ * @param coverageType          type of coverage to be calculated
  *                              ("none" if we're just extracting reads)
  * @param ignoreSuppAlignments  only use primary alignments
  * @return void
@@ -170,8 +170,9 @@ void initBFI(BM_fileInfo * BFI,
              bam_hdr_t * BAM_header,
              int numBams,
              char * bamFiles[],
-             int * links,
-             char * coverageMode,
+             int * types,
+             int isLinks,
+             BM_coverageType * coverageType,
              int ignoreSuppAlignments
 );
 
@@ -205,16 +206,17 @@ int read_bam(void *data,
 /*!
  * @abstract Initialise the mapping results struct <- read in the BAM files
  *
- * @param  typeOnly             work out the type of the BAMs and return
+ * @param  doLinks              == 1 -> calculate linking pairs
+ * @param  doCovs               == 1 -> calculate coverage profiles
  * @param  numBams              number of BAM files to parse
  * @param  baseQ                base quality threshold
  * @param  mapQ                 mapping quality threshold
  * @param  minLen               min query length
  * @param  maxMisMatches        maximum number of mismatches to accept (NM flag)
- * @param  links                == 0 -> no links, else points to array of ints.
+ * @param  types                array of num orientation types per bam
  * @param  ignoreSuppAlignments == 1 -> ignore supplmentary alignments
  * @param  ignoreSecondaryAlignments  == 1 -> ignore secondary alignments
- * @param  coverageMode         type of coverage to be calculated
+ * @param  coverageType         BM_CoverageType (cov type to be calculated)
  * @param  bamFiles             filenames of BAM files to parse
  * @param  BFI                  BM_bamFileInfo struct to write to
  * @return 0 for success
@@ -226,16 +228,17 @@ int read_bam(void *data,
  * Each item in the links array is the number of orienation types for the bam
  *
  */
-int parseCoverageAndLinks(int typeOnly,
+int parseCoverageAndLinks(int doLinks,
+                          int doCovs,
                           int numBams,
                           int baseQ,
                           int mapQ,
                           int minLen,
                           int maxMisMatches,
-                          int * links,
+                          int * types,
                           int ignoreSuppAlignments,
                           int ignoreSecondaryAlignments,
-                          char* coverageMode,
+                          BM_coverageType * coverageType,
                           char* bamFiles[],
                           BM_fileInfo * BFI);
 
@@ -252,33 +255,6 @@ int parseCoverageAndLinks(int typeOnly,
 // ignore reads with centers mapping this far from end of contig
 #define BM_IGNORE_FROM_END 3000
 void typeBamFiles(BM_fileInfo * BFI);
-
-/*!
- * @abstract Adjust (reduce) the number of piled-up bases along a contig
- *
- * @param  BFI              BM_bamFileInfo struct to write to
- * @param  position_holder  array of pileup depths
- * @param  tid              contig currently being processed
- * @return void
- *
- * @discussion This function expects BFI to be initialised.
- * it can change the values of contigLengthCorrectors and plpBp
- */
-void adjustPlpBp(BM_fileInfo * BFI,
-                 uint32_t ** position_holder,
-                 int tid);
-
-/*!
- * @abstract Calculate the coverage for each contig for each BAM
- *
- * @param  BFI         BM_bamFileInfo struct containing data
- * @return matrix of floats (rows = contigs, cols = BAMs)
- *
- * @discussion This function expects BFI to be initialised.
- * NOTE: YOU are responsible for freeing the return value
- * recommended method is to use destroyCoverages
- */
-float ** calculateCoverages(BM_fileInfo * BFI);
 
     /***********************
     ***      LINKS       ***
@@ -309,15 +285,6 @@ int stepLW(BM_LinkWalker * walker);
  * @return void
  */
 void destroyBFI(BM_fileInfo * BFI);
-
-/*!
- * @abstract Destroy the coverages structure made in  calculateCoverages
- *
- * @param covs array to destroy
- * @param numContigs number of rows in array
- * @return void
- */
-void destroyCoverages(float ** covs, int numContigs);
 
 /*!
  * @abstract Destroy the link walker instance
@@ -367,40 +334,6 @@ void printBFI(BM_fileInfo * BFI);
  * @return void
  */
 void printBamFileType(BM_bamFile * BF);
-
-        /***********************
-        ***   MATHY EXTRAS   ***
-        ***********************/
-/*!
- * @abstract Calculate the mean of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @return float        the caluclated mean
- */
-float BM_mean(uint32_t * values, uint32_t size);
-
-/*!
- * @abstract Calculate the standard deviations of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @param  m            mean of the values array
- * @return float        the caluclated standard deviation
- */
-float BM_stdDev(uint32_t * values, uint32_t size, float m);
-
-/*!
- * @abstract Calculate the standard deviations of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @return float        the caluclated standard deviation
- *
- * @discussion Everything is 3 stdevs from the mean right?
-*/
-float BM_fakeStdDev(uint32_t * values, uint32_t size);
-
 
 #ifdef __cplusplus
 }
