@@ -52,59 +52,6 @@ from cWrapper import *
 ###############################################################################
 ###############################################################################
 
-# Managing paired and unparied reads (and relative ordering)
-#
-# NOTE: This RPI definition corresponds to the definition in bamRead.h
-#
-
-def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
-    return type('Enum', (), enums)
-
-#
-# FIR   means first in properly paired mapping
-# SEC   means second "
-# SNGLP means paired in BAM but unpaired in mapping
-# SNGL  means unpaired in BAM
-# ERROR just for fun
-#
-global RPI
-RPI = enum('ERROR', 'FIR', 'SEC', 'SNGL_FIR', 'SNGL_SEC', 'SNGL')
-
-def RPI2Str(rpi):
-    '''Convert an RPI into a human readable string
-
-    Inputs:
-     rpi - RPI to convert
-
-    Outputs:
-     Human readable string
-    '''
-    if rpi == RPI.FIR:
-        return 'First'
-    elif rpi == RPI.SEC:
-        return 'Second'
-    elif rpi == RPI.SNGL_FIR:
-        return 'First_single'
-    elif rpi == RPI.SNGL_SEC:
-        return 'Second_single'
-    elif rpi == RPI.SNGL:
-        return 'Single'
-    return 'ERROR'
-
-# RPI.SNGL_FIR needs to be written to the singles file etc...
-RPIConv = {RPI.ERROR:RPI.ERROR,
-           RPI.FIR:RPI.FIR,
-           RPI.SEC:RPI.SEC,
-           RPI.SNGL_FIR:RPI.SNGL,
-           RPI.SNGL_SEC:RPI.SNGL,
-           RPI.SNGL:RPI.SNGL}
-
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
-
 class ReadSetManager(object):
     '''The principle manager of a collection of ReadSet objects
 

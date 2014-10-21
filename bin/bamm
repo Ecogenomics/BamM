@@ -46,15 +46,19 @@ import mimetypes
 import os
 
 # local imports
-from bamm.bamParser import BamParser
+from bamm.bamParser import BamParser, BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bammExceptions import *
+from bamm.cWrapper import *
 
 ###############################################################################
 ###############################################################################
 ###############################################################################
 ###############################################################################
+
+BM_def_trimmed_range = 10.
+BM_def_outlier_range = 1.
 
 def doWork( args ):
     ''' Wrapper for global workflows
@@ -105,19 +109,38 @@ def doWork( args ):
             BS.BMs[0].removeDatabase()
 
     elif(args.subparser_name == 'parse'):
-        try:
-            BP = BamParser(minLength=args.length,
-                           baseQuality=args.base_quality,
-                           mappingQuality=args.mapping_quality,
-                           maxMisMatches=args.max_distance,
-                           useSuppAlignments=args.use_supplementary,
-                           useSecondaryAlignments=args.use_secondary,
-                           coverageMode=args.coverage_mode)
-        except (InvalidCoverageModeException,
-                InvalidParameterSetException) as e:
-            printError(e)
-            subparsers.choices['parse'].print_help()
-            sys.exit(1)
+        # convert the coverage mode. We know it's legit cause argparse said so
+        ct = CT.NONE
+        cr = args.cutoff_range
+        if args.coverage_mode == "counts":
+            ct = CT.COUNT
+        elif args.coverage_mode == "cmean":
+            ct = CT.C_MEAN
+        elif args.coverage_mode == "pmean":
+            ct = CT.P_MEAN
+        elif args.coverage_mode == "pmedian":
+            ct = CT.P_MEDIAN
+        elif args.coverage_mode == "tpmean":
+            ct = CT.P_MEAN_TRIMMED
+            if cr is None:
+                cr = BM_def_trimmed_range
+        elif args.coverage_mode == "opmean":
+            ct = CT.P_MEAN_OUTLIER
+            if cr is None:
+                cr = BM_def_outlier_range
+
+        # set this to 0 here so we don't confuse matters downstream
+        if cr is None:
+            cr = 0
+
+        BCT = BM_coverageType(ct, cr)
+        BP = BamParser(BCT,
+                       minLength=args.length,
+                       baseQuality=args.base_quality,
+                       mappingQuality=args.mapping_quality,
+                       maxMisMatches=args.max_distance,
+                       useSuppAlignments=args.use_supplementary,
+                       useSecondaryAlignments=args.use_secondary)
 
         # if called with no mode then just print types to stdout
         if (args.links == "") and (args.coverages == ""):
@@ -128,7 +151,6 @@ def doWork( args ):
         try:
             ret = BP.parseBams(args.bamfiles,
                                doLinks=(args.links != ""),
-                               doInserts=doInserts,
                                doCovs=(args.coverages != ""),
                                types=args.num_types,
                                threads=args.threads,
@@ -316,14 +338,19 @@ if __name__ == '__main__':
     parse_parser = subparsers.add_parser('parse',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
-                                        description='get bamfile type and/or coverage profiles and/or linking reads')
+                                        description='get bamfile type and/or coverage profiles and/or linking reads',
+                                        epilog='''Making links -> making coverage. The 'cutoff_range' variable is used for trimmed mean and outlier mean. ''' \
+                                               '''For trimmed mean, the value is interpreted as percent upper and lower coverages to ignore. ''' \
+                                               '''For outlier mean, the value is the number of stdevs used to make upper and lower cutoffs. ''' \
+                                               '''Otherwise it is ignored''')
     parse_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
     parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
     parse_parser.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
     parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
 
     parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
-    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverage)", default='vanilla', choices=['vanilla', 'outlier'])
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean'])
+    parse_parser.add_argument('-r', '--cutoff_range', type=float, help="range used to calculate upper and lower bounds", default=None)
 
     parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)
     parse_parser.add_argument('--base_quality', help="base quality threshold (Qscore)", type=int, default=20)

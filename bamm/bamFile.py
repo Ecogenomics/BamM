@@ -49,6 +49,34 @@ from cWrapper import *
 ###############################################################################
 ###############################################################################
 
+# Coverage types "Python Land"
+class BM_coverageType(object):
+    '''Container class for storing the type of coverage to calculate'''
+
+    def __init__(self,
+                 cType,
+                 cRange):
+        '''
+        Default constructor.
+
+        Inputs:
+         cType -  enum, from the CT enum (see cWrapper.py)
+         cRange - float, percent of coverage values or number of stdevs. used
+                  to determine upper and lover cutoffs when calculating
+                  coverage values
+
+        Outputs:
+         None
+
+        '''
+        self.cType = cType
+        self.cRange = cRange
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 # BAM files "Python land"
 class BM_bamType(object):
     ''' Container class for Storing information about the inserts
@@ -63,7 +91,7 @@ class BM_bamType(object):
         Default constructor.
 
         Inputs:
-         orientationType - enum, from the OT enum (see bamLink.py)
+         orientationType - enum, from the OT enum (see cWrapper.py)
          insertSize - float, estimated mean template size for the library
          insertStdev - float, estimated stdev of the template size
          supporting - int, number or reads used to define stats
