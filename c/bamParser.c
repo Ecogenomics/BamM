@@ -380,56 +380,76 @@ int parseCoverageAndLinks(int doLinks,
         }
         for (b = 0; b < numBams; ++b) {
             rejects = 0;
+
             // for each read in the pileup
             for (r = 0; r < n_plp[b]; ++r) {
                 // DON'T modfity plp[][] unless you really know
                 const bam_pileup1_t *p = plp[b] + r;
-                // having dels or refskips at tid:pos
-                if (p->is_del || p->is_refskip) {++rejects;}
-                // low base quality
-                else if (bam_get_qual(p->b)[p->qpos] < baseQ) {++rejects;}
-                else if(doLinks) {
-                    // now we do links if we've been asked to
-                    bam1_core_t core = p->b[0].core;
-                    // make sure it's the first time we've seen this link
-                    if (core.pos != pos) {}
-                    // read is first in pair (avoid dupe links)
-                    else if (0 == (core.flag & BAM_FREAD1)) {}
-                    // read is a paired read
-                    else if (0 == (core.flag & BAM_FPAIRED)) {}
-                    // both ends are mapped
-                    else if (0 != (core.flag & BM_BAM_FMAPPED)) {}
-                    // is primary mapping (optional)
-                    else if (0 != (core.flag & supp_check)) {}
-                    // hits different contigs
-                    else if(core.tid == core.mtid) {}
-                    // not too many mismatches
-                    else if(bam_aux2i(bam_aux_get(&(p->b[0]), "NM")) > \
-                                maxMisMatches) {}
-                    else {
-                        // looks legit
-                        // get a link info
-                        BM_linkInfo * LI = \
-                            makeLinkInfo(core.tid,
-                                         core.mtid,
-                                         core.pos,
-                                         core.mpos,
-                                         ((core.flag&BAM_FREVERSE) != 0),
-                                         ((core.flag&BAM_FMREVERSE) != 0),
-                                         b
-                                        );
 
-                        // add the link
-                        addLink(BFI->links,
-                                LI,
-                                core.tid,
-                                core.mtid);
+                // always skip on too many mismatches
+                if (bam_aux2i(bam_aux_get(&(p->b[0]), "NM")) > \
+                    maxMisMatches) {
+                         ++rejects;
+                         continue;
+                }
+
+                // see if this is the start of a read
+                bam1_core_t core = p->b[0].core;
+                if (core.pos == pos) {
+                    if(doLinks) {
+                        // read is first in pair (avoid dupe links)
+                        if (0 == (core.flag & BAM_FREAD1)) {}
+                        // read is a paired read
+                        else if (0 == (core.flag & BAM_FPAIRED)) {}
+                        // both ends are mapped
+                        else if (0 != (core.flag & BM_BAM_FMAPPED)) {}
+                        // is primary mapping (optional)
+                        else if (0 != (core.flag & supp_check)) {}
+                        // hits different contigs
+                        else if(core.tid == core.mtid) {}
+                        else {
+                            // looks legit
+                            // get a link info
+                            BM_linkInfo * LI = \
+                                makeLinkInfo(core.tid,
+                                             core.mtid,
+                                             core.pos,
+                                             core.mpos,
+                                             ((core.flag&BAM_FREVERSE) != 0),
+                                             ((core.flag&BAM_FMREVERSE) != 0),
+                                             b
+                                            );
+
+                            // add the link
+                            addLink(BFI->links,
+                                    LI,
+                                    core.tid,
+                                    core.mtid);
+                        }
+                    }
+                    // for read count coverages we just need to add the starts
+                    // usurp pileup counts to mean read starts
+                    if(coverageType->type == CT_COUNT || \
+                       coverageType->type == CT_C_MEAN) {
+                        ++pileup_values[b][pos];
                     }
                 }
+
+                // for pilup coverages we need to filter based
+                // on base-specific metrics
+                if ( (p->is_del || p->is_refskip) || \
+                     // having dels or refskips at tid:pos
+                     (bam_get_qual(p->b)[p->qpos] < baseQ) )
+                     // low base quality
+                    {++rejects;}
             }
+
             // add this position's depth
             if(doCovs) {
-                pileup_values[b][pos] = n_plp[b] - rejects;
+                if(coverageType->type != CT_COUNT && \
+                   coverageType->type != CT_C_MEAN) {
+                    pileup_values[b][pos] = n_plp[b] - rejects;
+                }
             }
         }
     }
@@ -449,6 +469,8 @@ int parseCoverageAndLinks(int doLinks,
             }
         }
     }
+
+    // all done, time to clean up and leave
     if (pileup_values)
         free(pileup_values);
     if (coverage_values)

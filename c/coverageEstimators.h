@@ -79,7 +79,6 @@ void estimateCoverages(float * coverageValues,
                        uint32_t numBams
                        );
 
-
 /*!
  * @abstract Estimate the raw read count coverage along a single contig
  *
@@ -91,11 +90,28 @@ void estimateCoverages(float * coverageValues,
  *
  * @discussion This function updates the values in coverageValues before exiting
 */
-void estimate_RC_Coverage(float * coverageValues,
-                          uint32_t ** readStarts,
-                          uint32_t contigLength,
-                          uint32_t numBams
-                          );
+void estimate_COUNT_Coverage(float * coverageValues,
+                             uint32_t ** readStarts,
+                             uint32_t contigLength,
+                             uint32_t numBams
+                             );
+
+/*!
+ * @abstract Estimate the mean read count coverage along a single contig
+ *
+ * @param  coverageValues   array of floats to set (len == numBams)
+ * @param  readstarts       matrix of int read starts (numBams x contigLength)
+ * @param  contigLength     Length of the contig being assesed
+ * @param  numBams          the number of bams responsible for the pileup
+ * @return void
+ *
+ * @discussion This function updates the values in coverageValues before exiting
+*/
+void estimate_C_MEAN_Coverage(float * coverageValues,
+                              uint32_t ** readStarts,
+                              uint32_t contigLength,
+                              uint32_t numBams
+                              );
 
 /*!
  * @abstract Estimate the mean pileup coverage along a single contig given
@@ -109,12 +125,49 @@ void estimate_RC_Coverage(float * coverageValues,
  *
  * @discussion This function updates the values in coverageValues before exiting
 */
-void estimate_PM_Coverage(float * coverageValues,
-                          uint32_t ** pileupValues,
-                          uint32_t contigLength,
-                          uint32_t numBams
-                          );
+void estimate_P_MEAN_Coverage(float * coverageValues,
+                              uint32_t ** pileupValues,
+                              uint32_t contigLength,
+                              uint32_t numBams
+                              );
 
+/*!
+ * @abstract Estimate the median pileup coverage along a single contig given
+ *           pileup information
+ *
+ * @param  coverageValues   array of floats to set (len == numBams)
+ * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  contigLength     Length of the contig being assesed
+ * @param  numBams          the number of bams responsible for the pileup
+ * @return void
+ *
+ * @discussion This function updates the values in coverageValues before exiting
+ *             This function alters the order of pileupValues
+*/
+void estimate_P_MEDIAN_Coverage(float * coverageValues,
+                                uint32_t ** pileupValues,
+                                uint32_t contigLength,
+                                uint32_t numBams
+                                );
+
+/*!
+ * @abstract Estimate the mean trimmed pileup coverage along a single contig
+ *           given pileup information
+ *
+ * @param  coverageValues   array of floats to set (len == numBams)
+ * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  contigLength     Length of the contig being assesed
+ * @param  numBams          the number of bams responsible for the pileup
+ * @return void
+ *
+ * @discussion This function updates the values in coverageValues before exiting
+*/
+void estimate_P_MEAN_TRIMMED_Coverage(float * coverageValues,
+                                      uint32_t ** pileupValues,
+                                      float percent,
+                                      uint32_t contigLength,
+                                      uint32_t numBams
+                                      );
 
 /*!
  * @abstract Estimate tuncated mean (outlier) pileup coverage along a single
@@ -129,16 +182,32 @@ void estimate_PM_Coverage(float * coverageValues,
  *
  * @discussion This function updates the values in coverageValues before exiting
  */
-void estimate_PMO_Coverage(float * coverageValues,
-                           uint32_t ** pileupValues,
-                           float stdevs,
-                           uint32_t contigLength,
-                           uint32_t numBams
-                           );
+void estimate_P_MEAN_OUTLIER_Coverage(float * coverageValues,
+                                      uint32_t ** pileupValues,
+                                      float stdevs,
+                                      uint32_t contigLength,
+                                      uint32_t numBams
+                                      );
 
         /***********************
         ***   MATHY EXTRAS   ***
         ***********************/
+/*!
+ * @abstract Calculate the median of an array values
+ *
+ * @param  values       array of (integer) values
+ * @param  size         size of values array
+ * @return uint32_t     the caluclated median
+ *
+ * @discussion Algorithm from Numerical recipes in C of 1992
+ *             picked up from:
+ * http://stackoverflow.com/questions/1961173/median-function-in-c-math-library
+ *
+ * MODIFIES THE ORDER OF VALUES IN values ARRAY!
+ */
+#define ELEM_SWAP(a,b) { register int t=(a);(a)=(b);(b)=t; }
+uint32_t BM_median(uint32_t * values, uint32_t size);
+
 /*!
  * @abstract Calculate the mean of an array values
  *

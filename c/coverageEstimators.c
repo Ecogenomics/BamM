@@ -4,7 +4,7 @@
 //
 //   Methods for estimating coverage values from pileups
 //
-//   Copyright (C) Michael Imelfort
+//   Copyright (C) Michael Imelfort, Ben Woodcroft
 //
 //   This library is free software; you can redistribute it and/or
 //   modify it under the terms of the GNU Lesser General Public
@@ -39,65 +39,124 @@ void estimateCoverages(float * coverageValues,
                        uint32_t numBams
 ) {
     switch(covType->type) {
-        case CT_NONE:
-            break;
         case CT_COUNT:
             // pilupValues are interpreted as readStarts
-            estimate_RC_Coverage(coverageValues,
-                                 pileupValues,
-                                 contigLength,
-                                 numBams);
+            estimate_COUNT_Coverage(coverageValues,
+                                    pileupValues,
+                                    contigLength,
+                                    numBams);
             break;
         case CT_C_MEAN:
+            // pilupValues are interpreted as readStarts
+            estimate_C_MEAN_Coverage(coverageValues,
+                                     pileupValues,
+                                     contigLength,
+                                     numBams);
             break;
         case CT_P_MEAN:
-            estimate_PM_Coverage(coverageValues,
-                                 pileupValues,
-                                 contigLength,
-                                 numBams);
+            estimate_P_MEAN_Coverage(coverageValues,
+                                     pileupValues,
+                                     contigLength,
+                                     numBams);
             break;
         case CT_P_MEDIAN:
+            estimate_P_MEDIAN_Coverage(coverageValues,
+                                       pileupValues,
+                                       contigLength,
+                                       numBams);
             break;
         case CT_P_MEAN_TRIMMED:
+            estimate_P_MEAN_TRIMMED_Coverage(coverageValues,
+                                             pileupValues,
+                                             covType->range,
+                                             contigLength,
+                                             numBams);
             break;
         case CT_P_MEAN_OUTLIER:
-            estimate_PMO_Coverage(coverageValues,
-                                  pileupValues,
-                                  covType->range,
-                                  contigLength,
-                                  numBams);
+            estimate_P_MEAN_OUTLIER_Coverage(coverageValues,
+                                             pileupValues,
+                                             covType->range,
+                                             contigLength,
+                                             numBams);
+            break;
+        case CT_NONE:
+        default:
             break;
     }
 }
 
-
-void estimate_RC_Coverage(float * coverageValues,
-                          uint32_t ** readStarts,
-                          uint32_t contigLength,
-                          uint32_t numBams
-) {}
-
-
-void estimate_PM_Coverage(float * coverageValues,
-                          uint32_t ** pileupValues,
-                          uint32_t contigLength,
-                          uint32_t numBams
+//------------------------------------------------------------------------------
+//
+void estimate_COUNT_Coverage(float * coverageValues,
+                             uint32_t ** readStarts,
+                             uint32_t contigLength,
+                             uint32_t numBams
 ) {
     int pos = 0, b = 0;
     for(; b < numBams; ++b) {
-        uint32_t plp_sum = 0;
+        uint32_t rc_sum = 0;
         for(pos = 0; pos < contigLength; ++pos) {
-            plp_sum += pileupValues[b][pos];
+            rc_sum += readStarts[b][pos];
         }
-        coverageValues[b] = (float)(plp_sum) / (float)(contigLength);
+        coverageValues[b] = (float)(rc_sum);
     }
 }
 
-void estimate_PMO_Coverage(float * coverageValues,
-                           uint32_t ** pileupValues,
-                           float stdevs,
-                           uint32_t contigLength,
-                           uint32_t numBams
+//------------------------------------------------------------------------------
+//
+void estimate_C_MEAN_Coverage(float * coverageValues,
+                              uint32_t ** readStarts,
+                              uint32_t contigLength,
+                              uint32_t numBams
+) {
+    int b = 0;
+    for(; b < numBams; ++b) {
+        coverageValues[b] = BM_mean(readStarts[b], contigLength);
+    }
+}
+
+//------------------------------------------------------------------------------
+//
+void estimate_P_MEAN_Coverage(float * coverageValues,
+                              uint32_t ** pileupValues,
+                              uint32_t contigLength,
+                              uint32_t numBams
+) {
+    int b = 0;
+    for(; b < numBams; ++b) {
+        coverageValues[b] = BM_mean(pileupValues[b], contigLength);
+    }
+}
+
+//------------------------------------------------------------------------------
+//
+void estimate_P_MEDIAN_Coverage(float * coverageValues,
+                                uint32_t ** pileupValues,
+                                uint32_t contigLength,
+                                uint32_t numBams
+) {
+    int b = 0;
+    for(; b < numBams; ++b) {
+        coverageValues[b] = BM_median(pileupValues[b], contigLength);
+    }
+}
+
+//------------------------------------------------------------------------------
+//
+void estimate_P_MEAN_TRIMMED_Coverage(float * coverageValues,
+                                      uint32_t ** pileupValues,
+                                      float percent,
+                                      uint32_t contigLength,
+                                      uint32_t numBams
+) {}
+
+//------------------------------------------------------------------------------
+//
+void estimate_P_MEAN_OUTLIER_Coverage(float * coverageValues,
+                                      uint32_t ** pileupValues,
+                                      float stdevs,
+                                      uint32_t contigLength,
+                                      uint32_t numBams
 ) {
     int pos = 0, b = 0;
     for(; b < numBams; ++b) {
@@ -122,6 +181,55 @@ void estimate_PMO_Coverage(float * coverageValues,
         }
         coverageValues[b] = (float)(plp_sum) / (float)(contigLength - drops);
     }
+}
+
+//------------------------------------------------------------------------------
+//
+
+uint32_t BM_median(uint32_t * values,
+                   uint32_t size)
+{
+    uint32_t low, high ;
+    uint32_t median;
+    uint32_t middle, ll, hh;
+    low = 0 ; high = size-1 ; median = (low + high) / 2;
+    for (;;) {
+        if (high <= low) /* One element only */
+            return values[median] ;
+        if (high == low + 1) { /* Two elements only */
+            if (values[low] > values[high])
+                ELEM_SWAP(values[low], values[high]) ;
+            return values[median] ;
+        }
+        /* Find median of low, middle and high items; swap into position low */
+        middle = (low + high) / 2;
+        if (values[middle] > values[high])
+            ELEM_SWAP(values[middle], values[high]) ;
+        if (values[low] > values[high])
+            ELEM_SWAP(values[low], values[high]) ;
+        if (values[middle] > values[low])
+            ELEM_SWAP(values[middle], values[low]) ;
+        /* Swap low item (now in position middle) into position (low+1) */
+        ELEM_SWAP(values[middle], values[low+1]) ;
+        /* Nibble from each end towards middle, swapping items when stuck */
+        ll = low + 1;
+        hh = high;
+        for (;;) {
+            do ll++; while (values[low] > values[ll]) ;
+            do hh--; while (values[hh] > values[low]) ;
+            if (hh < ll)
+                break;
+            ELEM_SWAP(values[ll], values[hh]) ;
+        }
+        /* Swap middle item (in position low) back into correct position */
+        ELEM_SWAP(values[low], values[hh]) ;
+        /* Re-set active partition */
+        if (hh <= median)
+            low = ll;
+        if (hh >= median)
+            high = hh - 1;
+    }
+    return values[median] ;
 }
 
 float BM_mean(uint32_t * values, uint32_t size) {
