@@ -42,6 +42,7 @@ void estimateCoverages(float * coverageValues,
         case CT_NONE:
             break;
         case CT_COUNT:
+            // pilupValues are interpreted as readStarts
             estimate_RC_Coverage(coverageValues,
                                  pileupValues,
                                  contigLength,
@@ -66,6 +67,29 @@ void estimateCoverages(float * coverageValues,
                                   contigLength,
                                   numBams);
             break;
+    }
+}
+
+
+void estimate_RC_Coverage(float * coverageValues,
+                          uint32_t ** readStarts,
+                          uint32_t contigLength,
+                          uint32_t numBams
+) {}
+
+
+void estimate_PM_Coverage(float * coverageValues,
+                          uint32_t ** pileupValues,
+                          uint32_t contigLength,
+                          uint32_t numBams
+) {
+    int pos = 0, b = 0;
+    for(; b < numBams; ++b) {
+        uint32_t plp_sum = 0;
+        for(pos = 0; pos < contigLength; ++pos) {
+            plp_sum += pileupValues[b][pos];
+        }
+        coverageValues[b] = (float)(plp_sum) / (float)(contigLength);
     }
 }
 
@@ -97,21 +121,6 @@ void estimate_PMO_Coverage(float * coverageValues,
             }
         }
         coverageValues[b] = (float)(plp_sum) / (float)(contigLength - drops);
-    }
-}
-
-void estimate_PM_Coverage(float * coverageValues,
-                          uint32_t ** pileupValues,
-                          uint32_t contigLength,
-                          uint32_t numBams
-) {
-    int pos = 0, b = 0;
-    for(; b < numBams; ++b) {
-        uint32_t plp_sum = 0;
-        for(pos = 0; pos < contigLength; ++pos) {
-            plp_sum += pileupValues[b][pos];
-        }
-        coverageValues[b] = (float)(plp_sum) / (float)(contigLength);
     }
 }
 

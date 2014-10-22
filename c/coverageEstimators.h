@@ -81,19 +81,18 @@ void estimateCoverages(float * coverageValues,
 
 
 /*!
- * @abstract Estimate the mean pileup coverage along a single contig given
- *           pileup information
+ * @abstract Estimate the raw read count coverage along a single contig
  *
  * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  readstarts       matrix of int read starts (numBams x contigLength)
  * @param  contigLength     Length of the contig being assesed
  * @param  numBams          the number of bams responsible for the pileup
  * @return void
  *
  * @discussion This function updates the values in coverageValues before exiting
 */
-void estimate_PM_Coverage(float * coverageValues,
-                          uint32_t ** pileupValues,
+void estimate_RC_Coverage(float * coverageValues,
+                          uint32_t ** readStarts,
                           uint32_t contigLength,
                           uint32_t numBams
                           );

@@ -95,8 +95,8 @@ def externalParseWrapper(bAMpARSER,
 
         # go back into the class to do the work
         coverages = []
-        contig_lengths = None
-        contig_names = None
+        contig_lengths = []
+        contig_names = []
         links = {}
 
         BFI = bAMpARSER._parseOneBam(bid)
