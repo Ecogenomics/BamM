@@ -6,18 +6,18 @@
 //
 //   Copyright (C) Michael Imelfort
 //
-//   This program is free software: you can redistribute it and/or modify
-//   it under the terms of the GNU General Public License as published by
-//   the Free Software Foundation, either version 3 of the License, or
-//   (at your option) any later version.
+//   This library is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU Lesser General Public
+//   License as published by the Free Software Foundation; either
+//   version 3.0 of the License, or (at your option) any later version.
 //
-//   This program is distributed in the hope that it will be useful,
+//   This library is distributed in the hope that it will be useful,
 //   but WITHOUT ANY WARRANTY; without even the implied warranty of
-//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//   GNU General Public License for more details.
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//   Lesser General Public License for more details.
 //
-//   You should have received a copy of the GNU General Public License
-//   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//   You should have received a copy of the GNU Lesser General Public
+//   License along with this library.
 //
 //#############################################################################
 
@@ -35,7 +35,8 @@
 
 
 // Link types
-typedef enum {LT_NONE, LT_SS, LT_SE, LT_ES, LT_EE, LT_ERROR} LT;   // Do contigs point start to start, end to end etc...
+// Do contigs point start to start, end to end etc...
+typedef enum {LT_NONE, LT_SS, LT_SE, LT_ES, LT_EE, LT_ERROR} LT;
 
 /*! @typedef
  * @abstract Structure for storing information about specific links
@@ -134,8 +135,9 @@ BM_linkInfo * cloneLinkInfo(BM_linkInfo * LI);
  * @param  cid2       tid of contig 2
  * @return void
  *
- * @discussion The contigs can be added in any order hovever the pos and reversed1
- * variables must match this ordering. The code will sort cids accordingly.
+ * @discussion The contigs can be added in any order hovever the pos and
+ * reversed1 variables must match this ordering.
+ * The code will sort cids accordingly.
  */
 void addLink(cfuhash_table_t * linkHash,
              BM_linkInfo * LI,
@@ -216,7 +218,9 @@ char * LT2Str(LT type);
  * @param  linkHash         hash containing all the links
  * @return void
  */
-void printLinks(cfuhash_table_t * linkHash, char ** bamNames, char ** contigNames);
+void printLinks(cfuhash_table_t * linkHash,
+                char ** bamNames,
+                char ** contigNames);
 
 /*!
  * @abstract Print contigs in pair and number of links joining them

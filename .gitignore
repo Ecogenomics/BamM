@@ -1,11 +1,11 @@
 build/
-c/bam/bamParser
-c/bam/*.o
-c/bam/config.log
-c/bam/config.status
-c/bam/libBamM.a
+c/bamParser
+c/*.o
+c/config.log
+c/config.status
+c/libBamM.a
 install.sh
 lib/
 MANIFEST
 bamm/*.pyc
-c/bam/Makefile
+c/Makefile

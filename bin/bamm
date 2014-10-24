@@ -9,26 +9,26 @@
 #                                                                             #
 ###############################################################################
 #                                                                             #
-#    This program is free software: you can redistribute it and/or modify     #
-#    it under the terms of the GNU General Public License as published by     #
-#    the Free Software Foundation, either version 3 of the License, or        #
-#    (at your option) any later version.                                      #
+#    This library is free software; you can redistribute it and/or            #
+#    modify it under the terms of the GNU Lesser General Public               #
+#    License as published by the Free Software Foundation; either             #
+#    version 3.0 of the License, or (at your option) any later version.       #
 #                                                                             #
-#    This program is distributed in the hope that it will be useful,          #
+#    This library is distributed in the hope that it will be useful,          #
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
-#    GNU General Public License for more details.                             #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU        #
+#    Lesser General Public License for more details.                          #
 #                                                                             #
-#    You should have received a copy of the GNU General Public License        #
-#    along with this program. If not, see <http://www.gnu.org/licenses/>.     #
+#    You should have received a copy of the GNU Lesser General Public         #
+#    License along with this library.                                         #
 #                                                                             #
 ###############################################################################
 
 __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
-__license__ = "GPLv3"
-__version__ = "0.2.1"
+__license__ = "LGPLv3"
+__version__ = "1.0.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -41,104 +41,238 @@ __status__ = "Beta"
 # system imports
 import argparse
 import sys
+import gzip
+import mimetypes
+import os
 
 # local imports
-from bamm.bamParser import BamParser
-from bamm.bamMaker import BamMaker
+from bamm.bamParser import BamParser, BM_coverageType
+from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bammExceptions import *
+from bamm.cWrapper import *
 
 ###############################################################################
 ###############################################################################
 ###############################################################################
 ###############################################################################
+
+BM_def_trimmed_range = 10.
+BM_def_outlier_range = 1.
 
 def doWork( args ):
-    """ Main wrapper"""
+    ''' Wrapper for global workflows
+
+    this is where the program forks off into make, parse and extract modes
+
+    Inputs:
+     args - argparse.args containing user preferences
+
+    Outputs:
+     None
+    '''
     if(args.subparser_name == 'make'):
+        # The BamMaker class is able to take care of making fileNames etc
+        # this outer wrapper is here to allow us to make multiple BAM files
+        # in one go
         # making the class will take care of filenames and make sure that
         # all the parameters are set nicely
         try:
-            BM = BamMaker(args.database,
-                          args.alignment_algorithm,
-                          args.index_algorithm,
-                          args.out_filename,
-                          args.reads_1,
-                          readFile2=args.reads_2,
-                          interleaved=args.interleaved,
-                          singleEnded=args.single,
-                          keptFiles=args.kept,
-                          keepFiles=args.keep,
-                          outputTam=args.output_tam,
-                          numThreads=args.threads,
-                          maxMemory=args.memory,
-                          forceOverwriting=args.force
-                          )
+            BS = BamScheduler(args.database,
+                              args.alignment_algorithm,
+                              args.index_algorithm,
+                              paired=args.coupled,
+                              interleaved=args.interleaved,
+                              singleEnded=args.single,
+                              keptFiles=args.kept,
+                              keepFiles=args.keep,
+                              outputTam=args.output_tam,
+                              numThreads=args.threads,
+                              maxMemory=args.memory,
+                              forceOverwriting=args.force,
+                              verbose=args.verbose
+                              )
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['make'].print_help()
             sys.exit(1)
 
         # create indexes if required
-        if(BM.keptFiles is False):
-            BM.makeDatabase()
+        if(args.kept is False):
+            BS.BMs[0].makeDatabase()
 
         # Now make the TAM/BAM file
-        BM.makeBam()
+        BS.makeBams()
 
         # clean up if we need to
-        if BM.keepFiles is False and BM.keptFiles is False :
-            BM.removeDatabase()
+        if args.keep is False and args.kept is False :
+            BS.BMs[0].removeDatabase()
 
     elif(args.subparser_name == 'parse'):
-        BP = BamParser(baseQuality=args.base_quality,
+        # convert the coverage mode. We know it's legit cause argparse said so
+        ct = CT.NONE
+        cr = args.cutoff_range
+        if args.coverage_mode == "counts":
+            ct = CT.COUNT
+        elif args.coverage_mode == "cmean":
+            ct = CT.C_MEAN
+        elif args.coverage_mode == "pmean":
+            ct = CT.P_MEAN
+        elif args.coverage_mode == "pmedian":
+            ct = CT.P_MEDIAN
+        elif args.coverage_mode == "tpmean":
+            ct = CT.P_MEAN_TRIMMED
+            if cr is None:
+                cr = BM_def_trimmed_range
+        elif args.coverage_mode == "opmean":
+            ct = CT.P_MEAN_OUTLIER
+            if cr is None:
+                cr = BM_def_outlier_range
+
+        # set this to 0 here so we don't confuse matters downstream
+        if cr is None:
+            cr = 0
+
+        BCT = BM_coverageType(ct, cr, cr)
+        BP = BamParser(BCT,
                        minLength=args.length,
+                       baseQuality=args.base_quality,
                        mappingQuality=args.mapping_quality,
-                       coverageMode=args.coverage_mode)
+                       maxMisMatches=args.max_distance,
+                       useSuppAlignments=args.use_supplementary,
+                       useSecondaryAlignments=args.use_secondary)
 
         # if called with no mode then just print types to stdout
         if (args.links == "") and (args.coverages == ""):
-            doTypes = True
+            doInserts = True
         else:
-            doTypes = (args.types != "")
+            doInserts = (args.inserts != "")
 
-        BP.parseBams(args.bamfiles,
-                     doLinks=(args.links != ""),
-                     doTypes=doTypes,
-                     doCovs=(args.coverages != ""),
-                     types=args.num_types,
-                     threads=args.processes)
+        try:
+            ret = BP.parseBams(args.bamfiles,
+                               doLinks=(args.links != ""),
+                               doCovs=(args.coverages != ""),
+                               types=args.num_types,
+                               threads=args.threads,
+                               verbose=args.verbose)
+        except BAMFileNotFoundException as e:
+            printError(e)
+            subparsers.choices['parse'].print_help()
+            sys.exit(1)
 
-        # print nice stuff out as required
-        if doTypes:
-            BP.printBamTypes(args.types)
-        if args.links != "":
-            BP.printLinks(args.links)
-        if args.coverages != "":
-            BP.printCoverages(args.coverages)
+        if ret == 0:
+            # print nice stuff out as required
+            if doInserts:
+                BP.printBamTypes(args.inserts)
+            if args.links != "":
+                BP.printLinks(args.links)
+            if args.coverages != "":
+                BP.printCoverages(args.coverages)
 
     elif(args.subparser_name == 'extract'):
+
+        if args.groups == [] or args.bamfiles == []:
+            printError('-l and -b arguments are mandatory')
+            subparsers.choices['extract'].print_help()
+            sys.exit(1)
+
         try:
-            BE = BamExtractor(args.targets,
+            # get the groups in list form, regardless of how they were passed
+            groups = makeGroupLists(args.groups)
+
+            # now we can make an extractor
+            BE = BamExtractor(groups,
                               args.bamfiles,
                               prefix=args.prefix,
+                              groupNames=[ \
+                                  os.path.basename(group).replace(".bam", "")
+                                  for group in args.groups],
                               outFolder=args.out_folder,
-                              shuffle=args.shuffle,
                               mixBams=args.mix_bams,
-                              ignoreUnpaired=args.ignore_unpaired,
+                              mixGroups=args.mix_groups,
+                              mixReads=args.mix_reads,
+                              interleaved=args.interleave,
                               bigFile=args.no_gzip,
-                              headersOnly=args.headers_only)
+                              headersOnly=args.headers_only,
+                              minMapQual=args.mapping_quality,
+                              maxMisMatches=args.max_distance,
+                              useSuppAlignments=args.use_supplementary,
+                              useSecondaryAlignments=args.use_secondary)
+
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['extract'].print_help()
             sys.exit(1)
 
-        BE.extract()
+        # and then extract!
+        BE.extract(args.threads, args.verbose)
 
     else:
         printError("Unknown mode '%s'" % args.subparser_name)
         parser.print_help()
         sys.exit(1)
+
+def makeGroupLists(groups):
+    '''Convert a (mixed) collection of fasta files and contigs lists into
+    a format that is suitable for the extractor
+
+    Inputs:
+     groups - [ fileName ], array of full paths to files containing fasta
+              sequences or a contig list
+
+    Outputs:
+     An array of arrays of contig identifiers. Each internal array represents
+     a distinct group
+    '''
+    # work out if the groups are lists of contig IDs or just contigs
+    # assume that if the file is fasta then the first character will be ">"
+    # otherwise it must be a list
+    group_lists = []
+    for g in groups:
+        try:
+            read_open = open
+            # handle gzipped files
+            mime = mimetypes.guess_type(g)
+            if mime[1] == 'gzip':
+                read_open = gzip.open
+        except:
+            raise InvalidParameterSetException( \
+                'Error when guessing groups file mimetype')
+
+        with read_open(g, "r") as t_fh:
+            tmp_groups = []
+            first_line = t_fh.readline()
+            try:
+                if first_line[0] == ">":
+                    t = first_line.rstrip()[1:]
+                    if t != "":
+                        tmp_groups.append(t)
+                    for line in t_fh:
+                        if line[0] == ">":
+                            t = line.rstrip()[1:]
+                            if t != "":
+                                tmp_groups.append(t)
+                else:
+                    t = first_line.rstrip()
+                    if t != "":
+                        tmp_groups.append(t)
+                    for line in t_fh:
+                        t = line.rstrip()
+                        if t != "":
+                            tmp_groups.append(t)
+
+                if len(tmp_groups) == 0:
+                    raise InvalidParameterSetException( \
+                        'No groups in list: %s' % g)
+                group_lists.append(tmp_groups)
+            except:
+                raise InvalidParameterSetException( \
+                    'Something is wrong with the supplied groups file')
+
+    if len(group_lists) == 0:
+        raise InvalidParameterSetException('No valid groups supplied')
+
+    return group_lists
 
 ###############################################################################
 ###############################################################################
@@ -148,17 +282,17 @@ def doWork( args ):
 def printHelp():
     print '''\
 
-              ...::: BamM :::...
+                              ...::: BamM :::...
 
-    Working with the BAM, not against it...
+                    Working with the BAM, not against it...
 
-   -----------------------------------------
-                version: %s
-   -----------------------------------------
+   -------------------------------------------------------------------------
+                                  version: %s
+   -------------------------------------------------------------------------
 
-    bamm make     ->  Make a TAM/BAM file (sorted + indexed)
-    bamm parse    ->  Get coverage profiles / linking reads / orientation types
-    bamm extract  ->  Extract reads from BAM files
+    bamm make     ->  Make TAM/BAM files (sorted + indexed)
+    bamm parse    ->  Get coverage profiles / linking reads / insert types
+    bamm extract  ->  Extract reads / headers from BAM files
 
     USE: bamm OPTION -h to see detailed options
     ''' % __version__
@@ -174,70 +308,88 @@ if __name__ == '__main__':
     make_parser = subparsers.add_parser('make',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         help='make a TAM/BAM file (sorted + indexed)',
-                                        description='make a TAM/BAM file (sorted + indexed)')
-    make_parser.add_argument("-1", "--reads_1", default=None, help="The first data of a paired read file")
-    make_parser.add_argument("-2", "--reads_2", default=None, help="The second data of a paired read file")
-    make_parser.add_argument("-d", "--database", default=None, help="The scaffold, query, database...")
+                                        description='make a TAM/BAM file (sorted + indexed)',
+                                        epilog='''EXAMPLE: bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -s reads4_singles.fq.gz -t 40
+                                               will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads''')
 
-    make_parser.add_argument("-i", "--interleaved", action="store_true", default=False, help="The first query file contains interleaved paired sequences")
-    make_parser.add_argument("-s", "--single", action="store_true", default=False, help="Use this for non-paired reads")
+    make_parser.add_argument("-d", "--database", default=None, help="contigs to map onto (in fasta format)")
+    make_parser.add_argument("-i", "--interleaved", nargs='+', default=[], help="map interleaved sequence files (as many as you like) EX: -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz")
+    make_parser.add_argument("-c", "--coupled", nargs='+', default=[], help="map paired sequence files (as many sets as you like) EX: -c reads1_1.fq.gz reads1_2.fq.gz reads2_1.fq.gz reads2_2.fq.gz")
+    make_parser.add_argument("-s", "--single", nargs='+', default=[], help="map Single ended sequence files (as many as you like) EX: -s reads1_singles.fq.gz reads2_singles.fq.gz")
 
-    make_parser.add_argument("--index_algorithm", default=None, help="The algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
-    make_parser.add_argument("--alignment_algorithm", default="mem", help="The algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
+    make_parser.add_argument("--index_algorithm", default=None, help="algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
+    make_parser.add_argument("--alignment_algorithm", default="mem", help="algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
 
-    make_parser.add_argument("-K", "--kept", action="store_true", default=False,
-                           help="Assume the indices already exist, don't re-make them (and don't delete them) (e.g. previously this script was run with -k/--keep")
     make_parser.add_argument("-k", "--keep", action="store_true", default=False,
-                           help="Keep all the database index files etc after (see also --kept)")
+                           help="keep all the database index files etc after (see also --kept)")
+    make_parser.add_argument("-K", "--kept", action="store_true", default=False,
+                           help="assume the indices already exist, don't re-make them (and don't delete them) (e.g. previously this script was run with -k/--keep")
     make_parser.add_argument("-f", "--force", action="store_true", default=False,
-                           help="Force overwriting of index files if they are present")
+                           help="force overwriting of index files if they are present")
 
-    make_parser.add_argument("-o", "--out_filename", default=None,
-                           help="Output a sorted indexed bam file, of this name")
-    make_parser.add_argument("--output_tam", action="store_true", default=False, help="Output TAM file instead of BAM file")
+    make_parser.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
 
-    make_parser.add_argument("-t", "--threads", type=int, default="1", help="The number of threads to use where possible")
-    make_parser.add_argument("-m", "--memory", type=int, default=None, help="The amount of memory to use where possible (default 2GB*number of threads)")
+    make_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
+    make_parser.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
+    make_parser.add_argument("-m", "--memory", type=int, default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads)")
 
     #-------------------------------------------------
     # determine linking reads
     parse_parser = subparsers.add_parser('parse',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
-                                        description='get bamfile type and/or coverage profiles and/or linking reads')
+                                        description='get bamfile type and/or coverage profiles and/or linking reads',
+                                        epilog='''Making links -> making coverage. The 'cutoff_range' variable is used for trimmed mean and outlier mean. ''' \
+                                               '''For trimmed mean, the value is interpreted as percent upper and lower coverages to ignore. ''' \
+                                               '''For outlier mean, the value is the number of stdevs used to make upper and lower cutoffs. ''' \
+                                               '''Otherwise it is ignored''')
     parse_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
-    parse_parser.add_argument('--links', '-l', help="filename to write pairing links to", default="")
-    parse_parser.add_argument('--coverages', '-c', help="filename to write coverage profiles to", default="")
-    parse_parser.add_argument('--types', '-t', help="filename to write bamfile types to", default="")
+    parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
+    parse_parser.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
+    parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
 
-    parse_parser.add_argument('--num_types', '-n', nargs='+', help="number of orientation types per BAM", type=int)
-    parse_parser.add_argument('--coverage_mode' ,'-m', help="how to calculate coverage [vanilla, outlier] (requires --coverage)", default='vanilla')
+    parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean', 'tpmean'])
+    parse_parser.add_argument('-r', '--cutoff_range', type=float, help="range used to calculate upper and lower bounds", default=None)
 
-    parse_parser.add_argument('--length', '-L', help="minimum Q length", type=int, default=50)
-    parse_parser.add_argument('--base_quality', '-q', help="base quality threshold (Qscore)", type=int, default=20)
-    parse_parser.add_argument('--mapping_quality', '-Q', help="mapping quality threshold", type=int, default=0)
+    parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)
+    parse_parser.add_argument('--base_quality', help="base quality threshold (Qscore)", type=int, default=20)
+    parse_parser.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    parse_parser.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
+    parse_parser.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    parse_parser.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
 
-    parse_parser.add_argument('--processes', '-p', help="number of threads to use", type=int, default=1)
+    parse_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
+    parse_parser.add_argument('-t', '--threads', help="maximum number of threads to use", type=int, default=1)
 
     #-------------------------------------------------
     # read extractor
     extract_parser = subparsers.add_parser('extract',
                                         formatter_class=argparse.ArgumentDefaultsHelpFormatter,
                                         help='extract reads from bamfile(s)',
-                                        description='Extract reads which hit the given references')
-    extract_parser.add_argument('targets', help="file containing reference names (1 per line) or contigs file in fasta format")
-    extract_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+                                        description='Extract reads which hit the given references',
+                                        epilog='-g and -b arguments are mandatory')
+    extract_parser.add_argument('-g', '--groups', nargs='+', default=[], help="files containing reference names (1 per line) or contigs file in fasta format")
+    extract_parser.add_argument('-b', '--bamfiles', nargs='+', default=[], help="bam files to parse")
 
     extract_parser.add_argument('-p', '--prefix', default="", help="prefix to apply to output files")
-    extract_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder (None for current dir)")
+    extract_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder")
 
-    extract_parser.add_argument('-s', '--shuffle', action="store_true", default=False, help="shuffle paired reads in ouput files")
-    extract_parser.add_argument('-i', '--ignore_unpaired', action="store_true", default=False, help="ignore unpaired reads")
-    extract_parser.add_argument('-m', '--mix_bams', action="store_true", default=False, help="use the same file for all reads")
-    extract_parser.add_argument('-c', '--combine_reads', action="store_true", default=False, help="write paired and unpaired to the same files")
+    extract_parser.add_argument('--mix_bams', action="store_true", default=False, help="use the same file for multiple bam files")
+    extract_parser.add_argument('--mix_groups', action="store_true", default=False, help="use the same files for multiple group groups")
+    extract_parser.add_argument('--mix_reads', action="store_true", default=False, help="use the same files for paired/unpaired reads")
+    extract_parser.add_argument('--interleave', action="store_true", default=False, help="interleave paired reads in ouput files")
+
+    extract_parser.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    extract_parser.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    extract_parser.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
+    extract_parser.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
 
     extract_parser.add_argument('--no_gzip', action="store_true", default=False, help="do not gzip output files")
     extract_parser.add_argument('--headers_only', action="store_true", default=False, help="extract only (unique) headers")
+
+    extract_parser.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
+    extract_parser.add_argument('-t', '--threads', help="maximum number of threads to use", type=int, default=1)
 
     #-------------------------------------------------
     # get and check options
@@ -245,10 +397,19 @@ if __name__ == '__main__':
     if(len(sys.argv) == 1):
         printHelp()
         sys.exit(0)
-    elif(sys.argv[1] == '-v' or sys.argv[1] == '--version'):
-        print "BamM: version %s %s %s" % (__version__, __copyright__, __author__)
+
+    elif(sys.argv[1] == '-v' or \
+         sys.argv[1] == '--v' or \
+         sys.argv[1] == '-version' or \
+         sys.argv[1] == '--version'):
+        print "BamM: version %s %s %s" % (__version__,
+                                          __copyright__,
+                                          __author__)
         sys.exit(0)
-    elif(sys.argv[1] == '-h' or sys.argv[1] == '--help'):
+    elif(sys.argv[1] == '-h' or \
+         sys.argv[1] == '--h' or \
+         sys.argv[1] == '-help' or \
+         sys.argv[1] == '--help'):
         printHelp()
         sys.exit(0)
     else:

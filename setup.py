@@ -11,11 +11,11 @@ xtra_opts = {"--with-libcfu-inc":"libcfu headers at this location",
              "--with-libhts-lib":"htslib library at this location"}
 
 
-if '--help' not in sys.argv:
+if '-help' not in sys.argv and '-h' not in sys.argv and '--help' not in sys.argv and '--h' not in sys.argv:
     if 'sdist' not in sys.argv:
         # set the location of the compiled c library to the place where the headers will be
         for scheme in INSTALL_SCHEMES.values():
-            scheme['data'] = join(scheme['platlib'], 'bamm', 'c', 'bam')
+            scheme['data'] = join(scheme['platlib'], 'bamm', 'c')
 
         # grab extra configuration arguments
         configure_args = []
@@ -30,7 +30,7 @@ if '--help' not in sys.argv:
 
         # configure and make the c portion of the program
         cur_dir = getcwd()
-        chdir(join(cur_dir, 'c', 'bam'))
+        chdir(join(cur_dir, 'c'))
         call([join(getcwd(), "configure")] + configure_args)
         call(['make','clean'])
         call(['make'])
@@ -45,16 +45,16 @@ else:
 # return to regular viewing
 setup(
     name='BamM',
-    version='0.2.0',
+    version='1.0.0',
     author='Michael Imelfort',
     author_email='mike@mikeimelfort.com',
     packages=['bamm'],
-    scripts=['bin/bamm'],
+    scripts=['bin/bamm', 'bin/bamFlags'],
     url='http://pypi.python.org/pypi/BamM/',
-    license='GPLv3',
+    license='LGPLv3',
     description='BamM',
     long_description=open('README.md').read(),
     install_requires=[],
-    data_files=[('', ['c/bam/libBamM.a'])]
+    data_files=[('', [join('c', 'libBamM.a')])]
 )
 

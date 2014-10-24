@@ -6,18 +6,18 @@
 //
 //   Copyright (C) Michael Imelfort
 //
-//   This program is free software: you can redistribute it and/or modify
-//   it under the terms of the GNU General Public License as published by
-//   the Free Software Foundation, either version 3 of the License, or
-//   (at your option) any later version.
+//   This library is free software; you can redistribute it and/or
+//   modify it under the terms of the GNU Lesser General Public
+//   License as published by the Free Software Foundation; either
+//   version 3.0 of the License, or (at your option) any later version.
 //
-//   This program is distributed in the hope that it will be useful,
+//   This library is distributed in the hope that it will be useful,
 //   but WITHOUT ANY WARRANTY; without even the implied warranty of
-//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-//   GNU General Public License for more details.
+//   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU
+//   Lesser General Public License for more details.
 //
-//   You should have received a copy of the GNU General Public License
-//   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+//   You should have received a copy of the GNU Lesser General Public
+//   License along with this library.
 //
 //#############################################################################
 
@@ -126,7 +126,10 @@ int initLinkWalker(BM_LinkWalker * walker, cfuhash_table_t * linkHash) {
     walker->numKeys = 0;
     size_t *key_sizes = NULL;
     // get the keys from the hash
-    walker->keys = (char **)cfuhash_keys_data(linkHash, &(walker->numKeys), &key_sizes, 0);
+    walker->keys = (char **)cfuhash_keys_data(linkHash,
+                                              &(walker->numKeys),
+                                              &key_sizes,
+                                              0);
     if((walker->keys)[walker->keyCount] != 0) {
         // we don't need this
         free(key_sizes);
@@ -154,7 +157,8 @@ int stepLinkWalker(BM_LinkWalker * walker) {
         // at the end of the links of this contig pair
         walker->keyCount += 1;
         if(walker->keyCount < walker->numKeys) {
-            walker->pair = cfuhash_get(walker->linkHash, walker->keys[walker->keyCount]);
+            walker->pair = cfuhash_get(walker->linkHash,
+                                       walker->keys[walker->keyCount]);
             free(walker->keys[walker->keyCount]);
             walker->LI = (walker->pair)->LI;
             return 2;
@@ -242,13 +246,17 @@ char * LT2Str(LT type) {
     return "UNKNOWN";
 }
 
-void printLinks(cfuhash_table_t * linkHash, char ** bamNames, char ** contigNames) {
+void printLinks(cfuhash_table_t * linkHash,
+                char ** bamNames,
+                char ** contigNames) {
     BM_LinkWalker walker;
     int ret_val = initLinkWalker(&walker, linkHash);
     if(ret_val)
         printf("#cid_1\tcid_2\tpos_1\trev_1\tpos_2\trev_2\tfile\n");
         while(ret_val != 0) {
-            printf("%s\t%s\t", contigNames[walker.pair->cid1], contigNames[walker.pair->cid2]);
+            printf("%s\t%s\t",
+                   contigNames[walker.pair->cid1],
+                   contigNames[walker.pair->cid2]);
             printLinkInfo(walker.LI, bamNames);
             ret_val = stepLinkWalker(&walker);
         }
@@ -256,9 +264,17 @@ void printLinks(cfuhash_table_t * linkHash, char ** bamNames, char ** contigName
 }
 
 void printLinkPair(BM_linkPair* LP, char ** contigNames) {
-    printf("#%s\t%s\t%d\n",  contigNames[LP->cid1], contigNames[LP->cid2], LP->numLinks);
+    printf("#%s\t%s\t%d\n",
+           contigNames[LP->cid1],
+           contigNames[LP->cid2],
+           LP->numLinks);
 }
 
 void printLinkInfo(BM_linkInfo* LI, char ** bamNames) {
-    printf("%d\t%d\t%d\t%d\t%s\n",  LI->pos1, LI->reversed1, LI->pos2, LI->reversed2, bamNames[LI->bid]);
+    printf("%d\t%d\t%d\t%d\t%s\n",
+           LI->pos1,
+           LI->reversed1,
+           LI->pos2,
+           LI->reversed2,
+           bamNames[LI->bid]);
 }
