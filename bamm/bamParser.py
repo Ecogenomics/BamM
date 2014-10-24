@@ -68,7 +68,7 @@ def externalParseWrapper(bAMpARSER,
     '''Single-process BAMfile parsing
 
     cTypes pointers are unpickleable unless they are top level, so this function
-    lives outside the class. In this case wereduce the number of member
+    lives outside the class. In this case we reduce the number of member
     variables passed to it by passing the class instead. Any implicit copy
     operations do not affect the workflow as it stands now. If you modify this
     function you need to be aware of the limitations of python multiprocessing,
