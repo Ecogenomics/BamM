@@ -4,7 +4,7 @@
 //
 //   Methods for estimating coverage values from pileups
 //
-//   Copyright (C) Michael Imelfort
+//   Copyright (C) Michael Imelfort, Ben Woodcroft
 //
 //   This library is free software; you can redistribute it and/or
 //   modify it under the terms of the GNU Lesser General Public
@@ -49,12 +49,13 @@ typedef enum {CT_NONE,           // do not calculate coverage
  * @abstract Structure for storing information about a coverage type
  *
  * @field type                Identifies the method used to calculate coverage
- * @field range               Upper and lower bounds for coverage calculation
-                              (if needed)
+ * @field upperCut            Upper bound cutoff for coverage calculation
+ * @field lowerCut            Lower bound cutoff for coverage calculation
  */
  typedef struct BM_coverageType {
     CT type;
-    float range;
+    float upperCut;
+    float lowerCut;
  } BM_coverageType;
 
 /*!
@@ -62,7 +63,8 @@ typedef enum {CT_NONE,           // do not calculate coverage
  *           information and a coverage type to calculate
  *
  * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  data             matrix of int pileup depths or read start depths
+ *                          size == (numBams x contigLength)
  * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
  * @param  numBams          the number of bams responsible for the pileup
@@ -73,7 +75,7 @@ typedef enum {CT_NONE,           // do not calculate coverage
  * values in coverageValues before exiting.
  */
 void estimateCoverages(float * coverageValues,
-                       uint32_t ** pileupValues,
+                       uint32_t ** data,
                        BM_coverageType * covType,
                        uint32_t contigLength,
                        uint32_t numBams
@@ -82,113 +84,86 @@ void estimateCoverages(float * coverageValues,
 /*!
  * @abstract Estimate the raw read count coverage along a single contig
  *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  readstarts       matrix of int read starts (numBams x contigLength)
+ * @param  readStarts       array of int read starts (len == contigLength)
+ * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
+ * @return float that is the calculated coverage
  *
- * @discussion This function updates the values in coverageValues before exiting
 */
-void estimate_COUNT_Coverage(float * coverageValues,
-                             uint32_t ** readStarts,
-                             uint32_t contigLength,
-                             uint32_t numBams
-                             );
+float estimate_COUNT_Coverage(uint32_t * readStarts,
+                              BM_coverageType * covType,
+                              uint32_t contigLength);
 
 /*!
  * @abstract Estimate the mean read count coverage along a single contig
  *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  readstarts       matrix of int read starts (numBams x contigLength)
+ * @param  readStarts       array of int read starts (len == contigLength)
+ * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
+ * @return float that is the calculated coverage
  *
- * @discussion This function updates the values in coverageValues before exiting
 */
-void estimate_C_MEAN_Coverage(float * coverageValues,
-                              uint32_t ** readStarts,
-                              uint32_t contigLength,
-                              uint32_t numBams
-                              );
+float estimate_C_MEAN_Coverage(uint32_t * readStarts,
+                               BM_coverageType * covType,
+                               uint32_t contigLength);
 
 /*!
  * @abstract Estimate the mean pileup coverage along a single contig given
  *           pileup information
  *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
+ * @return float that is the calculated coverage
  *
- * @discussion This function updates the values in coverageValues before exiting
 */
-void estimate_P_MEAN_Coverage(float * coverageValues,
-                              uint32_t ** pileupValues,
-                              uint32_t contigLength,
-                              uint32_t numBams
-                              );
+float estimate_P_MEAN_Coverage(uint32_t * pileupValues,
+                               BM_coverageType * covType,
+                               uint32_t contigLength);
+
 
 /*!
  * @abstract Estimate the median pileup coverage along a single contig given
  *           pileup information
  *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
+ * @return float that is the calculated coverage
  *
- * @discussion This function updates the values in coverageValues before exiting
- *             This function alters the order of pileupValues
+ * @discussion This function alters the order of pileupValues
 */
-void estimate_P_MEDIAN_Coverage(float * coverageValues,
-                                uint32_t ** pileupValues,
-                                uint32_t contigLength,
-                                uint32_t numBams
-                                );
+float estimate_P_MEDIAN_Coverage(uint32_t * pileupValues,
+                                 BM_coverageType * covType,
+                                 uint32_t contigLength);
 
 /*!
- * @abstract Estimate the mean trimmed pileup coverage along a single contig
- *           given pileup information
+ * @abstract Estimate trimmed mean pileup coverage (not truncated,
+ *           outlier coverage) along a single contig given pileup information
+ *           and percentage of the data to exclude at the upper and lower limits
  *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
+ * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
+ * @return float that is the calculated coverage
  *
- * @discussion This function updates the values in coverageValues before exiting
-*/
-void estimate_P_MEAN_TRIMMED_Coverage(float * coverageValues,
-                                      uint32_t ** pileupValues,
-                                      float percent,
-                                      uint32_t contigLength,
-                                      uint32_t numBams
-                                      );
+ */
+float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
+                                       BM_coverageType * covType,
+                                       uint32_t contigLength);
 
-/*!
- * @abstract Estimate tuncated mean (outlier) pileup coverage along a single
+/*
+ * @abstract Estimate truncated mean (outlier) pileup coverage along a single
  *           contig given pileup information and a symetric stdev cutoff
  *
- * @param  coverageValues   array of floats to set (len == numBams)
- * @param  pileupValues     matrix of int pileup depths (numBams x contigLength)
- * @param  stdevs           number of standard deviations to determine limits
+ * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
- * @param  numBams          the number of bams responsible for the pileup
- * @return void
- *
- * @discussion This function updates the values in coverageValues before exiting
- */
-void estimate_P_MEAN_OUTLIER_Coverage(float * coverageValues,
-                                      uint32_t ** pileupValues,
-                                      float stdevs,
-                                      uint32_t contigLength,
-                                      uint32_t numBams
-                                      );
-
+ * @return float that is the calculated coverage
+*/
+float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
+                                       BM_coverageType * covType,
+                                       uint32_t contigLength);
         /***********************
         ***   MATHY EXTRAS   ***
         ***********************/

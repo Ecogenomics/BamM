@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
-__version__ = "0.2.2"
+__version__ = "1.0.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -133,7 +133,7 @@ def doWork( args ):
         if cr is None:
             cr = 0
 
-        BCT = BM_coverageType(ct, cr)
+        BCT = BM_coverageType(ct, cr, cr)
         BP = BamParser(BCT,
                        minLength=args.length,
                        baseQuality=args.base_quality,
@@ -282,17 +282,17 @@ def makeGroupLists(groups):
 def printHelp():
     print '''\
 
-              ...::: BamM :::...
+                              ...::: BamM :::...
 
-    Working with the BAM, not against it...
+                    Working with the BAM, not against it...
 
-   -----------------------------------------
-                version: %s
-   -----------------------------------------
+   -------------------------------------------------------------------------
+                                  version: %s
+   -------------------------------------------------------------------------
 
     bamm make     ->  Make TAM/BAM files (sorted + indexed)
-    bamm parse    ->  Get coverage profiles / linking reads / orientation types
-    bamm extract  ->  Extract reads from BAM files
+    bamm parse    ->  Get coverage profiles / linking reads / insert types
+    bamm extract  ->  Extract reads / headers from BAM files
 
     USE: bamm OPTION -h to see detailed options
     ''' % __version__
@@ -349,7 +349,7 @@ if __name__ == '__main__':
     parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
 
     parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
-    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean'])
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean', 'tpmean'])
     parse_parser.add_argument('-r', '--cutoff_range', type=float, help="range used to calculate upper and lower bounds", default=None)
 
     parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)
@@ -397,12 +397,19 @@ if __name__ == '__main__':
     if(len(sys.argv) == 1):
         printHelp()
         sys.exit(0)
-    elif(sys.argv[1] == '-v' or sys.argv[1] == '--version'):
+
+    elif(sys.argv[1] == '-v' or \
+         sys.argv[1] == '--v' or \
+         sys.argv[1] == '-version' or \
+         sys.argv[1] == '--version'):
         print "BamM: version %s %s %s" % (__version__,
                                           __copyright__,
                                           __author__)
         sys.exit(0)
-    elif(sys.argv[1] == '-h' or sys.argv[1] == '--help'):
+    elif(sys.argv[1] == '-h' or \
+         sys.argv[1] == '--h' or \
+         sys.argv[1] == '-help' or \
+         sys.argv[1] == '--help'):
         printHelp()
         sys.exit(0)
     else:

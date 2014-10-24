@@ -55,22 +55,25 @@ class BM_coverageType(object):
 
     def __init__(self,
                  cType,
-                 cRange):
+                 cUpper,
+                 cLower):
         '''
         Default constructor.
 
         Inputs:
          cType -  enum, from the CT enum (see cWrapper.py)
-         cRange - float, percent of coverage values or number of stdevs. used
-                  to determine upper and lover cutoffs when calculating
-                  coverage values
+         cUpper - float, percent of coverage values or number of stdevs. used
+                  to determine upper cutoff when calculating coverage values
+         cLower - float, percent of coverage values or number of stdevs. used
+                  to determine lower cutoff when calculating coverage values
 
         Outputs:
          None
 
         '''
         self.cType = cType
-        self.cRange = cRange
+        self.cUpper = cUpper
+        self.cLower = cLower
 
 ###############################################################################
 ###############################################################################

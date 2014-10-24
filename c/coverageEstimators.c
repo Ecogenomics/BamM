@@ -32,154 +32,170 @@
 // local includes
 #include "coverageEstimators.h"
 
+//****************** partial quicksort includes and defines *********/
+#include "pqsort.h"
+static inline int Uint32_tCmp(const uint32_t a, const uint32_t b) {
+        return (a - b);
+}
+define_pqsort(my_uint32_t, uint32_t, Uint32_tCmp);
+//*******************************************************************/
+
+typedef float (*CovFunc)(uint32_t * data,
+                         BM_coverageType * covType,
+                         uint32_t contigLength);
+
 void estimateCoverages(float * coverageValues,
-                       uint32_t ** pileupValues,
+                       uint32_t ** data,
                        BM_coverageType * covType,
                        uint32_t contigLength,
                        uint32_t numBams
 ) {
+    CovFunc cf = 0;
     switch(covType->type) {
         case CT_COUNT:
-            // pilupValues are interpreted as readStarts
-            estimate_COUNT_Coverage(coverageValues,
-                                    pileupValues,
-                                    contigLength,
-                                    numBams);
+            cf = estimate_COUNT_Coverage;
             break;
         case CT_C_MEAN:
-            // pilupValues are interpreted as readStarts
-            estimate_C_MEAN_Coverage(coverageValues,
-                                     pileupValues,
-                                     contigLength,
-                                     numBams);
+            cf = estimate_C_MEAN_Coverage;
             break;
         case CT_P_MEAN:
-            estimate_P_MEAN_Coverage(coverageValues,
-                                     pileupValues,
-                                     contigLength,
-                                     numBams);
+            cf = estimate_P_MEAN_Coverage;
             break;
         case CT_P_MEDIAN:
-            estimate_P_MEDIAN_Coverage(coverageValues,
-                                       pileupValues,
-                                       contigLength,
-                                       numBams);
+            cf = estimate_P_MEDIAN_Coverage;
             break;
         case CT_P_MEAN_TRIMMED:
-            estimate_P_MEAN_TRIMMED_Coverage(coverageValues,
-                                             pileupValues,
-                                             covType->range,
-                                             contigLength,
-                                             numBams);
+            cf = estimate_P_MEAN_TRIMMED_Coverage;
             break;
         case CT_P_MEAN_OUTLIER:
-            estimate_P_MEAN_OUTLIER_Coverage(coverageValues,
-                                             pileupValues,
-                                             covType->range,
-                                             contigLength,
-                                             numBams);
+            cf = estimate_P_MEAN_OUTLIER_Coverage;
             break;
         case CT_NONE:
         default:
-            break;
+            return;
+    }
+    int b = 0;
+    for(; b < numBams; ++b) {
+        coverageValues[b] = (*cf)(data[b], covType, contigLength);
     }
 }
 
 //------------------------------------------------------------------------------
 //
-void estimate_COUNT_Coverage(float * coverageValues,
-                             uint32_t ** readStarts,
-                             uint32_t contigLength,
-                             uint32_t numBams
+float estimate_COUNT_Coverage(uint32_t * readStarts,
+                              BM_coverageType * covType,
+                              uint32_t contigLength
 ) {
-    int pos = 0, b = 0;
-    for(; b < numBams; ++b) {
-        uint32_t rc_sum = 0;
-        for(pos = 0; pos < contigLength; ++pos) {
-            rc_sum += readStarts[b][pos];
+    int pos = 0;
+    uint32_t rc_sum = 0;
+    for(pos = 0; pos < contigLength; ++pos) {
+        rc_sum += readStarts[pos];
+    }
+    return (float)(rc_sum);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_C_MEAN_Coverage(uint32_t * readStarts,
+                               BM_coverageType * covType,
+                               uint32_t contigLength
+) {
+    return BM_mean(readStarts, contigLength);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_P_MEAN_Coverage(uint32_t * pileupValues,
+                               BM_coverageType * covType,
+                               uint32_t contigLength
+) {
+    return BM_mean(pileupValues, contigLength);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_P_MEDIAN_Coverage(uint32_t * pileupValues,
+                                 BM_coverageType * covType,
+                                 uint32_t contigLength
+) {
+    return BM_median(pileupValues, contigLength);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
+                                       BM_coverageType * covType,
+                                       uint32_t contigLength
+) {
+    // Convert the top and bottom percentages to an absolute number
+    // of pileups to remove and keep, respectively.
+    uint32_t numToRemoveOffBottom = (uint32_t) (covType->lowerCut/100*contigLength);
+    uint32_t numToRemoveOffTop = (uint32_t) (covType->upperCut/100*contigLength);
+
+    uint32_t divisor = contigLength-numToRemoveOffBottom-numToRemoveOffTop;
+
+    int pos = 0;
+    uint32_t plp_sum;
+
+    // to avoid dividing by zero
+    if (divisor==0) {
+        return 0.0;
+    } else {
+        //usual sensible length contig
+        // pqsort the coverage array around the upper and lower limits
+        my_uint32_t_pqsort(pileupValues,
+                           contigLength,
+                           0,
+                           numToRemoveOffBottom); //bottom
+        my_uint32_t_pqsort(pileupValues,
+                           contigLength,
+                           contigLength-numToRemoveOffTop,
+                           numToRemoveOffTop); //top
+
+        // calculate the mean of those values between the limits
+        plp_sum = 0;
+        for(pos = numToRemoveOffBottom; \
+            pos < contigLength-numToRemoveOffTop; \
+            ++pos) {
+            plp_sum += pileupValues[pos];
         }
-        coverageValues[b] = (float)(rc_sum);
+        return (float)(plp_sum) / divisor;
     }
 }
 
 //------------------------------------------------------------------------------
 //
-void estimate_C_MEAN_Coverage(float * coverageValues,
-                              uint32_t ** readStarts,
-                              uint32_t contigLength,
-                              uint32_t numBams
+float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
+                                       BM_coverageType * covType,
+                                       uint32_t contigLength
 ) {
-    int b = 0;
-    for(; b < numBams; ++b) {
-        coverageValues[b] = BM_mean(readStarts[b], contigLength);
-    }
-}
-
-//------------------------------------------------------------------------------
-//
-void estimate_P_MEAN_Coverage(float * coverageValues,
-                              uint32_t ** pileupValues,
-                              uint32_t contigLength,
-                              uint32_t numBams
-) {
-    int b = 0;
-    for(; b < numBams; ++b) {
-        coverageValues[b] = BM_mean(pileupValues[b], contigLength);
-    }
-}
-
-//------------------------------------------------------------------------------
-//
-void estimate_P_MEDIAN_Coverage(float * coverageValues,
-                                uint32_t ** pileupValues,
-                                uint32_t contigLength,
-                                uint32_t numBams
-) {
-    int b = 0;
-    for(; b < numBams; ++b) {
-        coverageValues[b] = BM_median(pileupValues[b], contigLength);
-    }
-}
-
-//------------------------------------------------------------------------------
-//
-void estimate_P_MEAN_TRIMMED_Coverage(float * coverageValues,
-                                      uint32_t ** pileupValues,
-                                      float percent,
-                                      uint32_t contigLength,
-                                      uint32_t numBams
-) {}
-
-//------------------------------------------------------------------------------
-//
-void estimate_P_MEAN_OUTLIER_Coverage(float * coverageValues,
-                                      uint32_t ** pileupValues,
-                                      float stdevs,
-                                      uint32_t contigLength,
-                                      uint32_t numBams
-) {
-    int pos = 0, b = 0;
-    for(; b < numBams; ++b) {
-        uint32_t plp_sum = 0;
-        uint32_t drops = 0;
-        // set the cut off at a stdev either side of the mean
-        float m = BM_mean(pileupValues[b], contigLength);
-        float std = BM_stdDev(pileupValues[b],
-                              contigLength,
-                              m);
-        float lower_cut = ((m-(stdevs*std)) < 0) ? 0 : (m-(stdevs*std));
-        float upper_cut = m+(stdevs*std);
-        for(pos = 0; pos < contigLength; ++pos) {
-            if((pileupValues[b][pos] <= upper_cut) &&
-                (pileupValues[b][pos] >= lower_cut)) {
-                // OK
-                plp_sum += pileupValues[b][pos];
-            } else {
-                // DROP
-                ++drops;
-            }
+    int pos = 0;
+    uint32_t plp_sum = 0;
+    uint32_t drops = 0;
+    // set the cut off at a stdev either side of the mean
+    float m = BM_mean(pileupValues, contigLength);
+    float std = BM_stdDev(pileupValues,
+                          contigLength,
+                          m);
+    float lower_cut = ((m-(covType->lowerCut*std)) < 0) ? \
+                        0 : (m-(covType->lowerCut*std));
+    float upper_cut = m+(covType->upperCut*std);
+    for(pos = 0; pos < contigLength; ++pos) {
+        if((pileupValues[pos] <= upper_cut) &&
+            (pileupValues[pos] >= lower_cut)) {
+            // OK
+            plp_sum += pileupValues[pos];
+        } else {
+            // DROP
+            ++drops;
         }
-        coverageValues[b] = (float)(plp_sum) / (float)(contigLength - drops);
+    }
+    float divisor = (float)(contigLength - drops);
+    if (divisor == 0) {
+        return 0.0;
+    }
+    else {
+        return (float)(plp_sum) / divisor;
     }
 }
 

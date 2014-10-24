@@ -349,11 +349,13 @@ class BM_coverageType_C(c.Structure):
     '''
     typedef struct BM_coverageType {
         CT type;
-        float range;
+        float upperCut;
+        float lowerCut;
     } BM_coverageType;
     '''
     _fields_ = [("type", c.c_int),
-                ("range", c.c_float)
+                ("upperCut", c.c_float),
+                ("lowerCut", c.c_float)
                 ]
 
 ###############################################################################

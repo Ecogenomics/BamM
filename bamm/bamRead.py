@@ -44,7 +44,7 @@ import time
 from copy import deepcopy
 
 # local import
-from bamm.bammExceptions import *
+from bammExceptions import *
 from cWrapper import *
 
 ###############################################################################
