@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 ###############################################################################
 #                                                                             #
 #    BamM.py                                                                  #
@@ -24,9 +24,9 @@
 #                                                                             #
 ###############################################################################
 
-__author__ = "Michael Imelfort"
+__author__ = "Michael Imelfort, Ben Woodcroft"
 __copyright__ = "Copyright 2014"
-__credits__ = ["Michael Imelfort"]
+__credits__ = ["Michael Imelfort","Ben Woodcroft"]
 __license__ = "LGPLv3"
 __version__ = "1.0.0"
 __maintainer__ = "Michael Imelfort"
@@ -46,6 +46,11 @@ import mimetypes
 import os
 
 # local imports
+try:
+    import bamm
+except ImportError:
+    sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..'))
+
 from bamm.bamParser import BamParser, BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
@@ -336,20 +341,31 @@ if __name__ == '__main__':
     #-------------------------------------------------
     # determine linking reads
     parse_parser = subparsers.add_parser('parse',
-                                        formatter_class=argparse.ArgumentDefaultsHelpFormatter,
+                                        formatter_class=argparse.RawDescriptionHelpFormatter,
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
                                         description='get bamfile type and/or coverage profiles and/or linking reads',
-                                        epilog='''Making links -> making coverage. The 'cutoff_range' variable is used for trimmed mean and outlier mean. ''' \
-                                               '''For trimmed mean, the value is interpreted as percent upper and lower coverages to ignore. ''' \
-                                               '''For outlier mean, the value is the number of stdevs used to make upper and lower cutoffs. ''' \
-                                               '''Otherwise it is ignored''')
+                                        epilog='''Coverage calculation modes:
+ * opmean:  outlier pileup coverage: average of reads overlapping each base,
+            after bases with coverage outside mean +/- 1 standard deviation
+            have been excluded. The number of standard deviation used for the
+            cutoff can be changed with --coverage_range.
+ * pmean:   pileup coverage: average of number of reads overlapping each base
+ * tpmean:  trimmed pileup coverage: average of reads overlapping each base,
+            after bases with in the top and bottom 10% have been excluded. The
+            10% range can be changed using --coverage_range.
+ * counts:  absolute number of reads mapping
+ * cmean:   like 'counts' except divided by the length of the contig
+ * pmedian: median pileup coverage: median of number of reads overlapping each
+            base'''
+                                        )
     parse_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
     parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
     parse_parser.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
     parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
 
     parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
-    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean', 'tpmean'])
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean',
+        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian'])
     parse_parser.add_argument('-r', '--cutoff_range', type=float, help="range used to calculate upper and lower bounds", default=None)
 
     parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)
