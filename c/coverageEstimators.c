@@ -137,9 +137,9 @@ float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
     int pos = 0;
     uint32_t plp_sum;
 
-    // to avoid dividing by zero
-    if (divisor==0) {
-        return 0.0;
+    // to avoid dividing by zero or a negative number
+    if (numToRemoveOffBottom+numToRemoveOffTop >= contigLength) {
+        return NAN;
     } else {
         //usual sensible length contig
         // pqsort the coverage array around the upper and lower limits
