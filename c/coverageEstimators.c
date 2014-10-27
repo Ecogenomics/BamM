@@ -254,6 +254,7 @@ float BM_mean(uint32_t * values, uint32_t size) {
     for( i = 0; i < size; ++i) {
         sum += *(values + i);
     }
+
     return (float)sum/(float)size;
 }
 
