@@ -52,10 +52,6 @@ class TestCoverageStats:
         self.zero_c_array = (c.c_uint32 * len(self.zero_list))()
         self.zero_c_array[:] = self.zero_list
         
-        self.negative_list = [-2, -1, 0, 1, 2]
-        self.negative_c_array = (c.c_uint32 * len(self.negative_list))()
-        self.negative_c_array[:] = self.negative_list
-        
         self.BCT = BM_coverageType_C()
         self.BCT.type = CT.C_MEAN
         self.BCT.upperCut = 10.0
@@ -98,12 +94,6 @@ class TestCoverageStats:
         rtn = self.CW._BM_median(self.zero_c_array, len(self.zero_list))  
         assert_equals(rtn, median(self.zero_list))
         
-    def testMedianNegative(self):
-        """Verify C implementation of median when given an array with negative numbers."""
-
-        rtn = self.CW._BM_median(self.negative_c_array, len(self.negative_list))  
-        assert_equals(rtn, median(self.negative_list))
-        
     def testMean(self):
         """Verify C implementation of mean."""
 
@@ -130,12 +120,6 @@ class TestCoverageStats:
 
         rtn = self.CW._BM_mean(self.zero_c_array, len(self.zero_list))  
         assert_equals(rtn, mean(self.zero_list))
-        
-    def testMeanNegative(self):
-        """Verify C implementation of mean when given an array with negative numbers."""
-
-        rtn = self.CW._BM_mean(self.negative_c_array, len(self.negative_list))  
-        assert_equals(rtn, mean(self.negative_list))
         
     def testCountCoverage(self):
         """Verify computation of count coverage."""
@@ -164,12 +148,6 @@ class TestCoverageStats:
         coverage = self.CW._estimate_COUNT_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
         assert_equals(coverage, sum(self.zero_list))
         
-    def testCountCoverageNegative(self):
-        """Verify computation of count coverage when given an array with negative numbers."""
-
-        coverage = self.CW._estimate_COUNT_Coverage(self.negative_c_array, self.pBCT, len(self.negative_list))
-        assert_equals(coverage, sum(self.negative_list))
-        
     def testCountMeanCoverage(self):
         """Verify computation of count mean coverage."""
 
@@ -196,13 +174,7 @@ class TestCoverageStats:
 
         coverage = self.CW._estimate_C_MEAN_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
         assert_equals(coverage, mean(self.zero_list))
-        
-    def testCountMeanCoverageNegative(self):
-        """Verify computation of count mean coverage when given an array with negative numbers."""
-
-        coverage = self.CW._estimate_C_MEAN_Coverage(self.negative_c_array, self.pBCT, len(self.negative_list))
-        assert_equals(coverage, sum(self.negative_list))
-        
+                
     def testPileupMeanTrimmedCoverage(self):
         """Verify computation of pileup mean trimmed coverage."""
 
@@ -216,7 +188,7 @@ class TestCoverageStats:
         trim_upper = len(self.odd_list) - int(self.BCT.upperCut/100.0 * len(self.odd_list)) - 1
         assert_equals(coverage, mean(self.odd_list[trim_lower:trim_upper]))
         
-    def testPileupMeanTrimmedCoverage(self):
+    def testPileupMeanTrimmedCoverageUnsorted(self):
         """Verify computation of pileup mean trimmed coverage on an unsorted array."""
 
         coverage = self.CW._estimate_P_MEAN_TRIMMED_Coverage(self.unsorted_c_array, self.pBCT, len(self.unsorted_list))
@@ -243,14 +215,6 @@ class TestCoverageStats:
         coverage = self.CW._estimate_P_MEAN_TRIMMED_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
         assert_equals(coverage, 0)
         
-    def testPileupMeanTrimmedCoverageNegative(self):
-        """Verify computation of pileup mean trimmed coverage when given an array with negative numbers."""
-
-        coverage = self.CW._estimate_P_MEAN_TRIMMED_Coverage(self.negative_c_array, self.pBCT, len(self.negative_list))
-        trim_lower = int(self.BCT.lowerCut/100.0 * len(self.negative_list)) + 1
-        trim_upper = len(self.negative_list) - int(self.BCT.upperCut/100.0 * len(self.negative_list)) - 1
-        assert_equals(coverage, sum(self.negative_list[trim_lower:trim_upper]))
-        
     def testPileupMeanTrimmedCoverageInvalidTrim(self):
         """Verify computation of pileup mean trimmed coverage when given an invalid trimming range."""
         
@@ -263,5 +227,20 @@ class TestCoverageStats:
         pBCT = c.pointer(BCT)
         
         coverage = self.CW._estimate_P_MEAN_TRIMMED_Coverage(self.even_c_array, pBCT, len(self.even_list))
-        print coverage
         assert_true(isnan(coverage))
+        
+    def testPileupMeanTrimmedCoverageUnequalTrim(self):
+        """Verify computation of pileup mean trimmed coverage when given an unequal trim percentages."""
+        
+        BCT = BM_coverageType_C()
+        BCT.type = CT.C_MEAN
+        BCT.upperCut = 10.0
+        BCT.lowerCut = 20.0
+        
+        pBCT = c.POINTER(BM_coverageType_C)
+        pBCT = c.pointer(BCT)
+        
+        coverage = self.CW._estimate_P_MEAN_TRIMMED_Coverage(self.even_c_array, pBCT, len(self.even_list))
+        trim_lower = int(BCT.lowerCut/100.0 * len(self.even_list)) + 1
+        trim_upper = len(self.even_list) - int(BCT.upperCut/100.0 * len(self.even_list)) - 1
+        assert_equals(coverage, mean(self.even_list[trim_lower:trim_upper]))

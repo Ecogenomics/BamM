@@ -202,6 +202,35 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
 //------------------------------------------------------------------------------
 //
 
+int cmpfunc_uint32(const void * a, const void * b)
+{
+    const uint32_t *x = a, *y = b;
+    if(*x > *y)
+        return 1;
+    else
+        return(*x < *y) ? -1: 0;
+}
+
+float BM_median(uint32_t * values,
+                uint32_t size)
+{
+    if (size == 0)
+        return NAN;
+
+    qsort(values, size, sizeof(uint32_t), cmpfunc_uint32);
+
+    if (size % 2) {
+        // number is odd so return middle number
+        return values[size/2];
+    }
+
+    // number is even so return mean of two middle numbers
+    return (float)(values[size/2 - 1] + values[size/2]) / 2.0f;
+}
+
+/*
+#define ELEM_SWAP(a,b) { register int t=(a);(a)=(b);(b)=t; }
+
 uint32_t BM_median(uint32_t * values,
                    uint32_t size)
 {
@@ -210,14 +239,14 @@ uint32_t BM_median(uint32_t * values,
     uint32_t middle, ll, hh;
     low = 0 ; high = size-1 ; median = (low + high) / 2;
     for (;;) {
-        if (high <= low) /* One element only */
+        if (high <= low) // One element only
             return values[median] ;
-        if (high == low + 1) { /* Two elements only */
+        if (high == low + 1) { // Two elements only
             if (values[low] > values[high])
                 ELEM_SWAP(values[low], values[high]) ;
             return values[median] ;
         }
-        /* Find median of low, middle and high items; swap into position low */
+        // Find median of low, middle and high items; swap into position low
         middle = (low + high) / 2;
         if (values[middle] > values[high])
             ELEM_SWAP(values[middle], values[high]) ;
@@ -225,9 +254,9 @@ uint32_t BM_median(uint32_t * values,
             ELEM_SWAP(values[low], values[high]) ;
         if (values[middle] > values[low])
             ELEM_SWAP(values[middle], values[low]) ;
-        /* Swap low item (now in position middle) into position (low+1) */
+        // Swap low item (now in position middle) into position (low+1)
         ELEM_SWAP(values[middle], values[low+1]) ;
-        /* Nibble from each end towards middle, swapping items when stuck */
+        // Nibble from each end towards middle, swapping items when stuck
         ll = low + 1;
         hh = high;
         for (;;) {
@@ -237,9 +266,9 @@ uint32_t BM_median(uint32_t * values,
                 break;
             ELEM_SWAP(values[ll], values[hh]) ;
         }
-        /* Swap middle item (in position low) back into correct position */
+        // Swap middle item (in position low) back into correct position
         ELEM_SWAP(values[low], values[hh]) ;
-        /* Re-set active partition */
+        // Re-set active partition
         if (hh <= median)
             low = ll;
         if (hh >= median)
@@ -247,6 +276,7 @@ uint32_t BM_median(uint32_t * values,
     }
     return values[median] ;
 }
+*/
 
 float BM_mean(uint32_t * values, uint32_t size) {
     uint32_t sum = 0;
