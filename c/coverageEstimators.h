@@ -172,16 +172,11 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
  *
  * @param  values       array of (integer) values
  * @param  size         size of values array
- * @return uint32_t     the caluclated median
- *
- * @discussion Algorithm from Numerical recipes in C of 1992
- *             picked up from:
- * http://stackoverflow.com/questions/1961173/median-function-in-c-math-library
+ * @return float        the caluclated median
  *
  * MODIFIES THE ORDER OF VALUES IN values ARRAY!
  */
-#define ELEM_SWAP(a,b) { register int t=(a);(a)=(b);(b)=t; }
-uint32_t BM_median(uint32_t * values, uint32_t size);
+float BM_median(uint32_t * values, uint32_t size);
 
 /*!
  * @abstract Calculate the mean of an array values
