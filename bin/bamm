@@ -182,7 +182,7 @@ def doWork( args ):
             cr = [0.]
 
         if len(cr) == 1:
-            BCT = BM_coverageType(ct, cr, cr)
+            BCT = BM_coverageType(ct, cr[0], cr[0])
         elif len(cr) == 2:
             BCT = BM_coverageType(ct, cr[0], cr[1])
         else:

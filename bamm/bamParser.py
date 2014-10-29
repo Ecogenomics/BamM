@@ -416,8 +416,8 @@ class BamParser:
 
         BCT = BM_coverageType_C()
         BCT.type = self.coverageType.cType
-        BCT.upperCut = self.coverageType.cUpper
-        BCT.lowerCut = self.coverageType.cLower
+        BCT.upperCut = float(self.coverageType.cUpper)
+        BCT.lowerCut = float(self.coverageType.cLower)
         pBCT = c.POINTER(BM_coverageType_C)
         pBCT = c.pointer(BCT)
 
