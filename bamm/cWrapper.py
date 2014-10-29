@@ -422,6 +422,7 @@ class CWrapper:
             c_lib = os.path.join(package_dir, '..', 'c', 'libBamM.a')
         else:
             c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
+        
         self.libPMBam = c.cdll.LoadLibrary(c_lib)
 
         #---------------------------------

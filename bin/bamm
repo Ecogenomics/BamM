@@ -179,7 +179,7 @@ def doWork( args ):
 
         # set this to 0 here so we don't confuse matters downstream
         if cr is None:
-            cr = [0]
+            cr = [0.]
 
         if len(cr) == 1:
             BCT = BM_coverageType(ct, cr, cr)
