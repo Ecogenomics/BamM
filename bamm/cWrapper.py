@@ -401,7 +401,7 @@ class CWrapper:
     ''' Multiprocessing can't pickle cTypes pointers and functions.
     This class is a hack which quarantines the cTypes functions.
     '''
-    def __init__(self):
+    def __init__(self, unitTests=False):
         '''Default constructor.
 
         Loads libBamM.a and instantiates wrappers to the functions we wish
@@ -418,7 +418,10 @@ class CWrapper:
         #---------------------------------
         package_dir, filename = os.path.split(__file__)
         package_dir = os.path.abspath(package_dir)
-        c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
+        if unitTests:
+            c_lib = os.path.join(package_dir, '..', 'c', 'libBamM.a')
+        else:
+            c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
         self.libPMBam = c.cdll.LoadLibrary(c_lib)
 
         #---------------------------------
@@ -497,6 +500,45 @@ class CWrapper:
 
         #-----------------
         self._printBFI = self.libPMBam.printBFI
+        
+        #----------------- [Note: importing for unit tests]
+        self._estimate_COUNT_Coverage = self.libPMBam.estimate_COUNT_Coverage
+        self._estimate_COUNT_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_COUNT_Coverage.restype = c.c_float
+        
+        self._estimate_C_MEAN_Coverage = self.libPMBam.estimate_C_MEAN_Coverage
+        self._estimate_C_MEAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_C_MEAN_Coverage.restype = c.c_float
+        
+        self._estimate_P_MEAN_Coverage = self.libPMBam.estimate_P_MEAN_Coverage
+        self._estimate_P_MEAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_P_MEAN_Coverage.restype = c.c_float
+        
+        self._estimate_P_MEDIAN_Coverage = self.libPMBam.estimate_P_MEDIAN_Coverage
+        self._estimate_P_MEDIAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_P_MEDIAN_Coverage.restype = c.c_float
+        
+        self._estimate_P_MEAN_TRIMMED_Coverage = self.libPMBam.estimate_P_MEAN_TRIMMED_Coverage
+        self._estimate_P_MEAN_TRIMMED_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_P_MEAN_TRIMMED_Coverage.restype = c.c_float
+        
+        self._estimate_P_MEAN_OUTLIER_Coverage = self.libPMBam.estimate_P_MEAN_OUTLIER_Coverage
+        self._estimate_P_MEAN_OUTLIER_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_P_MEAN_OUTLIER_Coverage.restype = c.c_float
+        
+        self._BM_median = self.libPMBam.BM_median
+        self._BM_median.argtypes = [c.POINTER(c.c_uint32), c.c_uint32]
+        self._BM_median.restype = c.c_float
+        
+        self._BM_mean = self.libPMBam.BM_mean
+        self._BM_mean.argtypes = [c.POINTER(c.c_uint32), c.c_uint32]
+        self._BM_mean.restype = c.c_float
+        
+        self._BM_stdDev = self.libPMBam.BM_stdDev
+        self._BM_stdDev.argtypes = [c.POINTER(c.c_uint32), c.c_uint32, c.c_float]
+        self._BM_stdDev.restype = c.c_float
+        
+        
 
 ###############################################################################
 ###############################################################################
