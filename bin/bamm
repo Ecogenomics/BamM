@@ -372,7 +372,7 @@ if __name__ == '__main__':
     make_parser.add_argument("-c", "--coupled", nargs='+', default=[], help="map paired sequence files (as many sets as you like) EX: -c reads1_1.fq.gz reads1_2.fq.gz reads2_1.fq.gz reads2_2.fq.gz")
     make_parser.add_argument("-s", "--single", nargs='+', default=[], help="map Single ended sequence files (as many as you like) EX: -s reads1_singles.fq.gz reads2_singles.fq.gz")
 
-    make_parser.add_argument('-p', '--prefix', default=None, help="prefix to apply to BAM files (None for reference name)")
+    make_parser.add_argument('-p', '--prefix', default='', help="prefix to apply to BAM files (None for reference name)")
     make_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder")
 
     make_parser.add_argument("--index_algorithm", default=None, help="algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
