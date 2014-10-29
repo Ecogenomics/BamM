@@ -12,11 +12,16 @@ Then BamM is for you!
 
 Dependencies:
 
-The BAM parsing is done using c and a few external libraries. This slightly complicates the makes BamM installation process but fortunately not too much.
+The BAM parsing is done using c and a few external libraries. This slightly complicates the BamM installation process but fortunately not too much.
+
+If you're running 'bamm make' you'll need to have bwa and samtools installed. Installation of these tools is really straightforward. You can find the code and instructions at:
+
+Samtools:   https://github.com/samtools/samtools
+BWA:        https://github.com/lh3/bwa
 
 If you're installing system-wide then you can use your favourite package manager to install htslib and libcfu. For local installs, or installs that will work with the linux "modules" system, you need to be a bit trickier. This is the type of install I'll be documenting here. Read on.
 
-The notes here are for installing on Ubuntu, but should be transferrable to any other Linux system. I'm not sure if these notes are transferabble to fashionable overpriced systems with rounded rectangles and retina displays and I'm almost cetain you'll need some sysadmin-fu to get things going on a Windows system. If you do ge it all set up then please let me know how and I'll buy you a 5 shot venti, 2/5th decaf, ristretto shot, 1pump Vanilla, 1pump Hazelnut, breve,1 sugar in the raw, with whip, carmel drizzle on top, free poured, 4 pump mocha.
+The notes here are for installing on Ubuntu, but should be transferrable to any other Linux system. I'm not sure if these notes are transferabble to fashionable overpriced systems with rounded rectangles and retina displays and I'm almost cetain you'll need some sysadmin-fu to get things going on a Windows system. If you do ge it all set up then please let me know how and I'll buy you a 5 shot venti, 2/5th decaf, ristretto shot, 1 pump Vanilla, 1 pump Hazelnut, breve, 1 sugar in the raw, with whip, carmel drizzle on top, free poured, 4 pump mocha.
 
 First, you need git, zlib and a C-compiler. On Ubuntu this looks like:
 
@@ -67,23 +72,141 @@ If you installed one or more of these libraries locally then you need to tell se
 
     python setup.py install --with-libhts-lib /path/to/htslib --with-libhts-inc /path/to/htslib --with-libcfu-inc /path/to/libcfu/include/ --with-libcfu-lib path/to/libcfu/lib/
 
-Relative paths are OK. You can add the --prefix flag to setup.py to install BamM locally. Once done, don't forget to add BamM to your PYTHONPATH. Also, if htslib and libcfu are in non-standard places you'll need to mess with your LD_LIBRARY_PATH.
+Relative paths are OK. You can add the --prefix flag to setup.py to install BamM locally. Once done, don't forget to add BamM to your PYTHONPATH.
+Also, if htslib and libcfu are in non-standard places and you plan to access the C code, you'll need to mess with your LD_LIBRARY_PATH.
 
 ## Example usage
 
-I've wrapped the python in a script called bamm. It has 2 modes, 'parse' and 'type'. Use bamm -h for details
+I've wrapped the python in a script / library called bamm.
+
+## Using BamM on the command line
+
+BamM has 3 modes; 'make', 'parse' and 'extract'. The first option allows you to make BAM files. The second option lets you derive coverage profiles or linking information. The final option lets you extract reads that map to a set(s) of contigs.
+
+#-----------------------
+# EX: Map several reads files to a common reference
+
+    $ bamm make -d my_assembly.fa -i interleaved_1.fastq.gz interleaved_2.fastq.gz -c paired_R1.fastq.gz paired_R2.fastq.gz -s unpaired.fastq.gz [-t 20] [-v]
+
+This command will make 4 BAM files by mapping the two interleaved readsets, the one paired readset and the singleton read set onto the reference m_assembly.fa
+The code calls BWA and samtools to produce a set of sorted and indexed BAM files. If you specify -t <threads> then bamm will pass this onto BWA and samtools.
+Use -v to get more verbose output.
+
+NOTE: To save space, the final BAM files contain only mapped reads.
+NOTE: Output files are automatically named based on the names of the read files, however you can specify a prefix to append to the beginning of all output files.
+
+#-----------------------
+# EX: Find the insert size and read orientation associated with a BAM file
+
+    $ bamm parse file.bam
+
+This produces output like this:
+
+    #file   insert  stdev   orientation supporting
+    file.bam    899.7514    14.7167 IN  10000
+
+The 'IN' orientation indicates that this is a paired-end (PE) library with an insert of ~900 bp and a standard deviation of ~15 bp.
+Mate pair (MP) libraries will typically have orientation 'OUT'.
+
+Many MP libraries also have a shadow library which looks like someone added some PE reads to the mix. You can tell BamM to look for more than one insert type
+by specifying the -n option
+
+    $ bamm parse -n 2 mate_pair_file.bam
+
+    #file   insert  stdev   orientation supporting
+    mate_pair_file.bam    2524.4540    729.1291 OUT  10000
+    mate_pair_file.bam    251.6253    44.7241 IN  10000
+
+Multiple BAM files are separated using spaces. The -n argument is space separated too.
+
+    $ bamm parse pe_file.bam mp_file.bam -n 1 2
+
+#-----------------------
+# EX: Create a coverage profile or read-linking information from several BAM files
+
+    $ bamm parse -c coverage.tsv -m <COV_MODE> f1.bam f2.bam f3.bam [-t 3]
+
+Produces this output in the file 'coverage.tsv'
+
+    #contig         Length  f1.bam          f2.bam          f3.bam
+    contig_1        946     103.0000        327.0000        369.0000
+    contig_3        1147    130.0000        492.0000        778.0000
+    contig_5        1465    228.0000        643.0000        970.0000
+    contig_7        168     34.0000         82.0000         102.0000
+    contig_9        4045    899.0000        1756.0000       2649.0000
+
+The -t option indicates the maximum number of threads bamm will use. This option speeds up the process but you should only use as may threads as you have bam files. If you have 6 bam files then you'll see no improvement when using -t 6, -t 7 or -t 700.
+BamM implements several coverage calculation methods:
+
+    Mode        Description
+
+    counts      Total number of reads that START mapping on each contig (see above output).
+    cmean       Number of reads that START mapping on each contig divided by contig length.
+    pmean       Average pileup depth along the length of the contig.
+    pmedian     Median pileup depth along the length of the contig.
+    tpmean      Average pileup depth along the length of the contig after trimming upper and lower (-r) percent of pileup depths.
+    opmean      Average pileup depth along the length of the contig after trimming upper and lower (-r) stdevs of pileup depths.
+
+BamM will calculate links between contigs if passed the '-l <filename>' argument.
+
+    $ bamm parse -l linke.tsv f1.bam f2.bam f3.bam
+
+Produces this output in the file links.tsv:
+
+    #cid_1          cid_2           len_1   pos_1   rev_1   len_2   pos_2   rev_2   file
+    contig_2203     contig_3479     1664    334     0       3873    2866    0       f2.bam
+    contig_2203     contig_3479     1664    384     0       3873    2818    0       f2.bam
+    contig_2203     contig_3479     1664    383     0       3873    2831    0       f2.bam
+    contig_2203     contig_3479     1664    349     0       3873    2864    0       f2.bam
+    contig_2203     contig_3479     1664    338     0       3873    2862    0       f2.bam
+
+The first (non-header) line is interpreted like this:
+
+    contig_2203 is linked to contig_3479.
+    The first read is towards the start of contig_2203 (len_1 == 1664, pos_1 == 334) and is in the same orientation as the contig (rev_1 == 0)
+    The second (paired) read is towards the end of contig_3479 (len_2 == 3873, pos_2 == 2866) and is also in the same orientation as the contig (rev_2 == 0)
+    The linking information was extracted from file: f2.bam.
+
+The lines following this one describe other links between the two contigs.
+Finally, note that the -c and -l options are not mutually exclusive and can be run at the same time.
+
+#-----------------------
+# EX: Extract all reads mapping to a particular set of contigs
+
+    $ bamm extract -g group1.file group2.file -b f1.bam f2.bam f3.bam
+
+Will extract all reads from each of the three BAM files that map to the contigs in group1 or group2.
+The 'group' files can be multiple (gzipped) FASTA (like the fna files you can extract from GroopM) or lists of contig headers (one sequence per line).
+
+Unless specified otherwise, BamM differentiates between paired and unpaired reads (from a mapping and group perspective), reads from different BAM files and reads mapping to contigs in different groups.
+
+
+static const char MITEXT[6][2][12] = {{"p_PR_PM_UG;\0",   // FIR, U
+                                       "p_PR_PM_PG;\0"},  // FIR, P
+                                      {"p_PR_PM_UG;\0",  // SEC, U
+                                       "p_PR_PM_PG;\0"},  // SEC, P
+                                      {"p_PR_UM_NG;\0",  // SNGL_FIR, U
+                                       "p_PR_EM_NG;\0"},  // SNGL_FIR, P
+                                      {"p_PR_UM_NG;\0",  // SNGL_SEC, U
+                                       "p_PR_EM_NG;\0"},  // SNGL_SEC, P
+                                      {"p_UR_NM_NG;\0",  // SNGL, U
+                                       "p_UR_EM_NG;\0"},  // SNGL, P
+                                      {"p_ER_NM_NG;\0",  // ERR, U
+                                       "p_ER_NM_NG;\0"}}; // ERR, P
+
+
+NOTE: this command can produce A LOT of output files.
 
 ## Using the modules in your own Python code
 
     #-----------------------
-    # first import it
+    # First import it
     from bamm.BamParser import BamParser
 
 
     def parseBams(self,
                   bamFiles,
                   doLinks=False,
-                  doTypes=False,
                   doCovs=False,
                   types=None,
                   threads=1,
@@ -95,7 +218,6 @@ I've wrapped the python in a script called bamm. It has 2 modes, 'parse' and 'ty
     BP = BamParser(coverageMode="none")             # note you must set coverage to None
 
     BP.parseBams(['file1.bam', 'file2.bam'],        # list of file names
-                 doTypes=True,                      # using only this flag indicates you want types only (much faster)
                  types=[2,1],                       # number of insert types per BAM
                  threads=2,                         # number of threads
                  verbose=True)                      # be more verbose

@@ -74,12 +74,14 @@ class BamScheduler:
                  database,
                  alignmentAlgorithm,
                  indexAlgorithm,
+                 outFolder,
                  paired=[],
                  interleaved=[],
                  singleEnded=[],
                  keptFiles=False,
                  keepFiles=False,
                  outputTam=False,
+                 prefix='',
                  numThreads=1,
                  maxMemory=None,
                  forceOverwriting=False,
@@ -108,8 +110,11 @@ class BamScheduler:
         Outputs:
          None
         '''
-        # the main thing is to make sure that the input paramters make sense
+        # the main thing is to make sure that the input parameters make sense
+        self.outFolder = outFolder
         self.database = database
+        self.dbBaseName = self.stripFaCrud(os.path.basename(database))
+        self.prefix = prefix
         self.paired = paired
         self.interleaved = interleaved
         self.singleEnded = singleEnded
@@ -273,6 +278,21 @@ class BamScheduler:
         for BM in self.BMs:
             BM.makeBam()
 
+    def stripFaCrud(self, fileName):
+        # strip off the ".fa, .fa.gz etc from the end of the reads file
+        out_file_name = fileName.replace(".fasta.gz","") \
+                                .replace(".fa.gz","") \
+                                .replace(".fq.gz","") \
+                                .replace(".fastq.gz","") \
+                                .replace(".fna.gz","")
+
+        out_file_name = out_file_name.replace(".fasta","") \
+                                     .replace(".fa","") \
+                                     .replace(".fq","") \
+                                     .replace(".fastq","") \
+                                     .replace(".fna","")
+        return out_file_name
+
     def makeOutFileName(self, readsFile):
         '''Consistent way to make output file name prefixes
 
@@ -282,19 +302,9 @@ class BamScheduler:
         Outputs:
          pretty prefix
         '''
-        # strip off the ".fa, .fa.gz etc from the end of the reads file
-        out_file_name = readsFile.replace(".fasta.gz","") \
-                                 .replace(".fa.gz","") \
-                                 .replace(".fq.gz","") \
-                                 .replace(".fastq.gz","") \
-                                 .replace(".fna.gz","")
-
-        out_file_name = out_file_name.replace(".fasta","") \
-                                     .replace(".fa","") \
-                                     .replace(".fq","") \
-                                     .replace(".fastq","") \
-                                     .replace(".fna","")
-        return out_file_name
+        return os.path.join(self.outFolder,
+                            self.prefix + self.dbBaseName + '.' + \
+                            os.path.basename(self.stripFaCrud(readsFile)))
 
 ###############################################################################
 ###############################################################################

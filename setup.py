@@ -54,7 +54,7 @@ setup(
     license='LGPLv3',
     description='BamM',
     long_description=open('README.md').read(),
-    install_requires=[],
+    install_requires=["numpy >= 1.6.1"],
     data_files=[('', [join('c', 'libBamM.a')])]
 )
 

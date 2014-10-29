@@ -574,7 +574,7 @@ void typeBamFiles(BM_fileInfo * BFI) {
             }
             int upper_bound = contig_length - BM_IGNORE_FROM_END;
             // fetch alignments
-            while ((num_found[i] <= BM_PAIRS_FOR_TYPE) &&
+            while ((num_found[i] < BM_PAIRS_FOR_TYPE) &&
                    ((result = sam_itr_next(in, iter, b)) >= 0)) {
                 bam1_core_t core = b->core;
                 // check to see if this is a proper linking paired read
@@ -635,7 +635,7 @@ void typeBamFiles(BM_fileInfo * BFI) {
             }
 
             // have we found enough?
-            if(num_found[i] >= BM_PAIRS_FOR_TYPE)
+            if(num_found[i] > BM_PAIRS_FOR_TYPE)
                 break;
             // else next contig!
         }

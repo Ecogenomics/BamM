@@ -200,7 +200,12 @@ class BM_fileInfo(object):
         if len(self.coverages) > 0:
             tmp = np.zeros((self.numContigs, (self.numBams+1)))
             tmp[:,:-1] = self.coverages
-            tmp[:,-1] = np.reshape(BFIb.coverages, (1, self.numContigs))
+            try:
+                tmp[:,-1] = np.reshape(BFIb.coverages, (1, self.numContigs))
+            except ValueError:
+                print "Error combining results from different BAMs. Are you " \
+                      "sure they're from the same mapping?"
+                raise
             self.coverages = tmp
 
         self.numBams += BFIb.numBams
@@ -230,7 +235,7 @@ class BM_fileInfo(object):
         fileHandle.write("%s\n" % "\t".join(["#file",
                                              "insert",
                                              "stdev",
-                                             "orientation"
+                                             "orientation",
                                              "supporting"])
                          )
         # values

@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
-__version__ = "1.0.0"
+__version__ = "1.1.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -81,9 +81,11 @@ def doWork( args ):
             BS = BamScheduler(args.database,
                               args.alignment_algorithm,
                               args.index_algorithm,
+                              os.path.realpath(args.out_folder),
                               paired=args.coupled,
                               interleaved=args.interleaved,
                               singleEnded=args.single,
+                              prefix=args.prefix,
                               keptFiles=args.kept,
                               keepFiles=args.keep,
                               outputTam=args.output_tam,
@@ -94,6 +96,9 @@ def doWork( args ):
                               )
         except InvalidParameterSetException as e:
             printError(e)
+            subparsers.choices['make'].print_help()
+            sys.exit(1)
+        except AttributeError as e:
             subparsers.choices['make'].print_help()
             sys.exit(1)
 
@@ -123,17 +128,24 @@ def doWork( args ):
         elif args.coverage_mode == "tpmean":
             ct = CT.P_MEAN_TRIMMED
             if cr is None:
-                cr = BM_def_trimmed_range
+                cr = [BM_def_trimmed_range]
         elif args.coverage_mode == "opmean":
             ct = CT.P_MEAN_OUTLIER
             if cr is None:
-                cr = BM_def_outlier_range
+                cr = [BM_def_outlier_range]
 
         # set this to 0 here so we don't confuse matters downstream
         if cr is None:
-            cr = 0
+            cr = [0]
 
-        BCT = BM_coverageType(ct, cr, cr)
+        if len(cr) == 1:
+            BCT = BM_coverageType(ct, cr, cr)
+        elif len(cr) == 2:
+            BCT = BM_coverageType(ct, cr[0], cr[1])
+        else:
+            printError("cutoff_range takes at most two arguments")
+            subparsers.choices['parse'].print_help()
+            sys.exit(1)
         BP = BamParser(BCT,
                        minLength=args.length,
                        baseQuality=args.base_quality,
@@ -317,6 +329,9 @@ if __name__ == '__main__':
     make_parser.add_argument("-c", "--coupled", nargs='+', default=[], help="map paired sequence files (as many sets as you like) EX: -c reads1_1.fq.gz reads1_2.fq.gz reads2_1.fq.gz reads2_2.fq.gz")
     make_parser.add_argument("-s", "--single", nargs='+', default=[], help="map Single ended sequence files (as many as you like) EX: -s reads1_singles.fq.gz reads2_singles.fq.gz")
 
+    make_parser.add_argument('-p', '--prefix', default=None, help="prefix to apply to BAM files (None for reference name)")
+    make_parser.add_argument('-o', '--out_folder', default=".", help="write to this folder")
+
     make_parser.add_argument("--index_algorithm", default=None, help="algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
     make_parser.add_argument("--alignment_algorithm", default="mem", help="algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
 
@@ -343,14 +358,14 @@ if __name__ == '__main__':
                                                '''For trimmed mean, the value is interpreted as percent upper and lower coverages to ignore. ''' \
                                                '''For outlier mean, the value is the number of stdevs used to make upper and lower cutoffs. ''' \
                                                '''Otherwise it is ignored''')
-    parse_parser.add_argument('bamfiles', nargs='+', help="bam files to parse")
+    parse_parser.add_argument('-b', '--bamfiles', nargs='+', help="bam files to parse")
     parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
     parse_parser.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
     parse_parser.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
 
     parse_parser.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
-    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=['pmean', 'opmean', 'tpmean'])
-    parse_parser.add_argument('-r', '--cutoff_range', type=float, help="range used to calculate upper and lower bounds", default=None)
+    parse_parser.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean', choices=["counts", "cmean", "pmean", "pmedian", "tpmean", "opmean"])
+    parse_parser.add_argument('-r', '--cutoff_range', nargs='+', type=float, help="range used to calculate upper and lower bounds when calculating coverage", default=None)
 
     parse_parser.add_argument('--length', help="minimum Q length", type=int, default=50)
     parse_parser.add_argument('--base_quality', help="base quality threshold (Qscore)", type=int, default=20)
