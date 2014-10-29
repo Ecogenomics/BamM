@@ -27,7 +27,7 @@ If you're installing system-wide then you can use your favourite package manager
 
 ## Example usage
 
-Please see the manual for more information about example usage
+Please refer to the manual or http://minillinim.github.io/BamM for more information about example usage.
 
 ## Help
 
