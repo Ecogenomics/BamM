@@ -38,29 +38,23 @@
         <hr>
         <h1>Get BamM</h1>
         <p>I use and love Linux and BamM has been developed to work on a Linux system. I'm not saying it won't work elsewhere, but I haven't tried. YMMV. People have successfully used BamM on many different flavours of Linux as well as on Mavericks 10.9. If you try it somewhere else then let me know. I'd like to keep this list up to date.</p>
-        <p>Clone the repo from github:</p>
-        <p>$ git clone https://github.com/minillinim/BamM.git</p>
-        <p>Then change into the BamM directory and type:</p>
-        <p>$ sudo python setup.py install</p>
+        <p>The installation for BamM is a little more complicated than just using pip. Please see the <a href="manual/BamM_manual.pdf">manual</a> for detailed installation instructions, including dependencies.
+        <hr>
+        <h1>Licensing</h1>
+        <p>BamM is licensed using the Lesser GNU General Public License version 3 as published by the Free Software Foundation.</p>
+        <p>This site and the BamM logo are copyright Mike Imelfort</p>
+        <p>This site was created using a template created by the wonderful people at <a href="http://bootswatch.com">bootswatch</a>.
     </div>
     <div class="span4">
         <hr>
         <h1>Use BamM</h1>
-        <p>You can checkout our very new, ever more detailed <a href="manual/BamM_manual.pdf">manual</a>, or check out the <a href="dev_docs/index.html">development api</a>. If you're feeling rushed then read on:</p>
-        <p>BamM was developed to be used in conjunction with a specific experimental design pattern. Before you try BamM please ensure:</p>
+        <p>The primary motivation for building BamM was to replaace PySam in GroopM. Not saying PySam is bad, it's just that GroopM doesn't need all the PySam features and what it does need can be done way way faster in C-land.</p>
+        <p>From there, BamM was developed to be used as a command line tool and as a python library. Detailed information on the former can be found in our new, ever more detailed <a href="manual/BamM_manual.pdf">manual</a>. To use BamM as a library check out the <a href="dev_docs/index.html">development api</a>. If you're feeling rushed then read on:</p>
+        <p>BamM on the command line is run in three modes:</p>
         <ul>
-            <li>You are using a sequencing platform developed after 1987</li>
-            <li>You have sampled your metagenomic community at at least 3 time points / spatial positions</li>
-        </ul>
-        <p>Still with me? Great!</p>
-        <p>Before you can use BamM you'll need to assemble and map your reads. The general recipe is to make a co-assembly of ALL of your data using <a href="https://www.ebi.ac.uk/~zerbino/velvet/">Velvet</a> or similar. Take these contigs and map each of your read sets to them using <a href="http://bio-bwa.sourceforge.net/">BWA</a> or similar. If you have N sampling points then your aim is to produce N sorted-indexed BAM files. <a href="http://samtools.sourceforge.net/">samtools</a> can help with this.</p>
-        <p>The typical workflow for BamM is as follows:</p>
-        <ul>
-          <li><strong>parse</strong> - Load then contigs and coverage info into pytables</li>
-          <li><strong>core</strong> - Produce a set of bins</li>
-          <li><strong>refine</strong> - Make sure these bins are ok. Fix any errors you see</li>
-          <li><strong>recruit</strong> - Recruit smaller contigs into your existing bins</li>
-          <li><strong>extract</strong> - Extract binned contigs</li>
+          <li><strong>make</strong> - Make a bunch of BAM files by mapping several read sets against a common reference sequence</li>
+          <li><strong>parse</strong> - Examine the BAMs to produce coverage profiles or linking information</li>
+          <li><strong>extract</strong> - Extract reads that map to some given collections of contigs</li>
         </ul>
         <p>BamM was designed to be as parameter-free as possible. For more information on these steps type:</p>
         <p>$ bamm OPTION -h</p>
@@ -68,15 +62,10 @@
     <div class="span4">
         <hr>
         <h1>Cite BamM</h1>
-        <p>If you use this software then we'd love you to cite us but we don't have a paper ready jsut yet. Please contact Mike Imelfort. m_dot_imelfort_at_uq_dot_edu_dot_au for more information</p>
+        <p>If you use this software then we'd love you to cite us. Unfortunately that's impossible right now, but there is a paper just around the corner. Please contact Mike Imelfort. m_dot_imelfort_at_uq_dot_edu_dot_au for more information</p>
         <hr>
         <h1>Talk to us</h1>
         <p>All BamM related suggestions, criticisms or abuse should be directed to Mike Imelfort. m_dot_imelfort_at_uq_dot_edu_dot_au</p>
-        <hr>
-        <h1>Licensing</h1>
-        <p>BamM is licensed using the Lesser GNU General Public License version 3 as published by the Free Software Foundation.</p>
-        <p>This site and the BamM logo are copyright Mike Imelfort</p>
-        <p>This site was created using a template created by the wonderful people at <a href="http://bootswatch.com">bootswatch</a>.
     </div>
   </div>
 </section>
