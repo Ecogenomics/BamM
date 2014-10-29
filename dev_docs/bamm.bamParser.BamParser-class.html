@@ -1,0 +1,526 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>bamm.bamParser.BamParser</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bamm-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="bamm-module.html">Package&nbsp;bamm</a> ::
+        <a href="bamm.bamParser-module.html">Module&nbsp;bamParser</a> ::
+        Class&nbsp;BamParser
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="bamm.bamParser.BamParser-class.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== CLASS DESCRIPTION ==================== -->
+<h1 class="epydoc">Class BamParser</h1><p class="nomargin-top"><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser">source&nbsp;code</a></span></p>
+<p>class for generating coverage profiles and linking read information 
+  from several BAM files</p>
+  <p>Uses python multiprocessing to parallelize processing</p>
+
+<!-- ==================== INSTANCE METHODS ==================== -->
+<a name="section-InstanceMethods"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Instance Methods</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-InstanceMethods"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#__init__" class="summary-sig-name">__init__</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">coverageType</span>,
+        <span class="summary-sig-arg">minLength</span>=<span class="summary-sig-default">0</span>,
+        <span class="summary-sig-arg">baseQuality</span>=<span class="summary-sig-default">0</span>,
+        <span class="summary-sig-arg">mappingQuality</span>=<span class="summary-sig-default">0</span>,
+        <span class="summary-sig-arg">useSuppAlignments</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">useSecondaryAlignments</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">maxMisMatches</span>=<span class="summary-sig-default">1000</span>)</span><br />
+      Default constructor.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.__init__">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#parseBams" class="summary-sig-name">parseBams</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">bamFiles</span>,
+        <span class="summary-sig-arg">doLinks</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">doCovs</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">types</span>=<span class="summary-sig-default">None</span>,
+        <span class="summary-sig-arg">threads</span>=<span class="summary-sig-default">1</span>,
+        <span class="summary-sig-arg">verbose</span>=<span class="summary-sig-default">False</span>)</span><br />
+      Parse bam files to get coverage and linking reads.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.parseBams">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr class="private">
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#_parseOneBam" class="summary-sig-name" onclick="show_private();">_parseOneBam</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">bid</span>)</span><br />
+      Parse a single BAM file and append the result
+to the internal mapping results list</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser._parseOneBam">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#collapseBFIs" class="summary-sig-name">collapseBFIs</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">BFI_list</span>)</span><br />
+      Collapse multiple BFI objects into one and
+set it as member variable BFI</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.collapseBFIs">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#printBamTypes" class="summary-sig-name">printBamTypes</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">fileName</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>)</span><br />
+      Print template size and orientation information
+to a file or to stdout.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.printBamTypes">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#printCoverages" class="summary-sig-name">printCoverages</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">fileName</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>)</span><br />
+      Print coverage profile information to a file or to stdout</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.printCoverages">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamParser.BamParser-class.html#printLinks" class="summary-sig-name">printLinks</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">fileName</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>)</span><br />
+      Print paired links information to a file or to stdout</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.printLinks">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+<!-- ==================== METHOD DETAILS ==================== -->
+<a name="section-MethodDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Method Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-MethodDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="__init__"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">__init__</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">coverageType</span>,
+        <span class="sig-arg">minLength</span>=<span class="sig-default">0</span>,
+        <span class="sig-arg">baseQuality</span>=<span class="sig-default">0</span>,
+        <span class="sig-arg">mappingQuality</span>=<span class="sig-default">0</span>,
+        <span class="sig-arg">useSuppAlignments</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">useSecondaryAlignments</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">maxMisMatches</span>=<span class="sig-default">1000</span>)</span>
+    <br /><em class="fname">(Constructor)</em>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.__init__">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+
+Default constructor.
+
+Set quality thresholds used in later parsing
+
+Inputs:
+ coverageType - BM_coverageType, stores type of coverage to calculate
+ minLength - int, ignore contigs shorter than this length
+ mappingQuality - int, ignore positions with a lower base quality score
+ mappingQuality - int, skip all reads with a lower mapping quality score
+ useSuppAlignments - == True -&gt; DON'T skip supplementary alignments
+ useSecondaryAlignments - == True -&gt; DON'T skip secondary alignments
+ maxMisMatches - int, skip all reads with more mismatches (NM aux files)
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="parseBams"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">parseBams</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">bamFiles</span>,
+        <span class="sig-arg">doLinks</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">doCovs</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">types</span>=<span class="sig-default">None</span>,
+        <span class="sig-arg">threads</span>=<span class="sig-default">1</span>,
+        <span class="sig-arg">verbose</span>=<span class="sig-default">False</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.parseBams">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Parse bam files to get coverage and linking reads.
+
+Manages threading
+Stores results in internal mapping results list
+
+Inputs:
+ bamFiles - [string], full paths to BAMs
+ doLinks - == True -&gt; find linking pairs
+ doCovs - == True -&gt; calculate coverage profiles
+ types - [int] or None, number of insert types per bamfile
+ threads - int, max number of threads to use
+ verbose - == True -&gt; be verbose
+
+Outputs:
+ 0 if the parsing worked, 1 otherwise
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="_parseOneBam"></a>
+<div class="private">
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">_parseOneBam</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">bid</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser._parseOneBam">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Parse a single BAM file and append the result
+to the internal mapping results list
+
+Called from the ExternalParseWrapper
+
+Inputs:
+ bid - unique identifier of the BAM to parse
+
+Outputs:
+ A populated BM_FileInfo_C  struct containing the parsing results
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="collapseBFIs"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">collapseBFIs</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">BFI_list</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.collapseBFIs">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Collapse multiple BFI objects into one and
+set it as member variable BFI
+
+Only one of the threads will bother to parse contig names. Find it's
+BFI and then merge all the other BFIs (from other threads) into it
+
+Inputs:
+ BFI_list - Manager.List, list of all BFIs created during parsing
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="printBamTypes"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">printBamTypes</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">fileName</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.printBamTypes">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Print template size and orientation information
+to a file or to stdout.
+
+Inputs:
+ fileName - string, full path to output file or &quot;&quot;
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="printCoverages"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">printCoverages</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">fileName</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.printCoverages">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Print coverage profile information to a file or to stdout
+
+Inputs:
+ fileName - string, full path to output file or &quot;&quot;
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<a name="printLinks"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">printLinks</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">fileName</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamParser-pysrc.html#BamParser.printLinks">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Print paired links information to a file or to stdout
+
+Inputs:
+ fileName - string, full path to output file or &quot;&quot;
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bamm-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Wed Oct 29 23:02:47 2014
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>

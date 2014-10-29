@@ -1,0 +1,339 @@
+<?xml version="1.0" encoding="ascii"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+          "DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <title>bamm.bamExtractor</title>
+  <link rel="stylesheet" href="epydoc.css" type="text/css" />
+  <script type="text/javascript" src="epydoc.js"></script>
+</head>
+
+<body bgcolor="white" text="black" link="blue" vlink="#204080"
+      alink="#204080">
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bamm-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table width="100%" cellpadding="0" cellspacing="0">
+  <tr valign="top">
+    <td width="100%">
+      <span class="breadcrumbs">
+        <a href="bamm-module.html">Package&nbsp;bamm</a> ::
+        Module&nbsp;bamExtractor
+      </span>
+    </td>
+    <td>
+      <table cellpadding="0" cellspacing="0">
+        <!-- hide/show private -->
+        <tr><td align="right"><span class="options">[<a href="javascript:void(0);" class="privatelink"
+    onclick="toggle_private();">hide&nbsp;private</a>]</span></td></tr>
+        <tr><td align="right"><span class="options"
+            >[<a href="frames.html" target="_top">frames</a
+            >]&nbsp;|&nbsp;<a href="bamm.bamExtractor-module.html"
+            target="_top">no&nbsp;frames</a>]</span></td></tr>
+      </table>
+    </td>
+  </tr>
+</table>
+<!-- ==================== MODULE DESCRIPTION ==================== -->
+<h1 class="epydoc">Module bamExtractor</h1><p class="nomargin-top"><span class="codelink"><a href="bamm.bamExtractor-pysrc.html">source&nbsp;code</a></span></p>
+<hr />
+<div class="fields">      <p><strong>Version:</strong>
+        1.0.0-b.1
+      </p>
+      <p><strong>Author:</strong>
+        Michael Imelfort
+      </p>
+      <p><strong>Copyright:</strong>
+        Copyright 2014
+      </p>
+      <p><strong>License:</strong>
+        LGPLv3
+      </p>
+</div><!-- ==================== CLASSES ==================== -->
+<a name="section-Classes"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Classes</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Classes"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a href="bamm.bamExtractor.BamExtractor-class.html" class="summary-name">BamExtractor</a><br />
+      Class used to manage extracting reads from multiple BAM files
+    </td>
+  </tr>
+</table>
+<!-- ==================== FUNCTIONS ==================== -->
+<a name="section-Functions"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Functions</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Functions"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamExtractor-module.html#externalExtractWrapper" class="summary-sig-name">externalExtractWrapper</a>(<span class="summary-sig-arg">threadId</span>,
+        <span class="summary-sig-arg">outFilePrefixes</span>,
+        <span class="summary-sig-arg">bamPaths</span>,
+        <span class="summary-sig-arg">prettyBamFileNames</span>,
+        <span class="summary-sig-arg">numGroups</span>,
+        <span class="summary-sig-arg">perContigGroups</span>,
+        <span class="summary-sig-arg">contigs</span>,
+        <span class="summary-sig-arg">printQueue</span>,
+        <span class="summary-sig-arg">extractQueue</span>,
+        <span class="summary-sig-arg">requestQueue</span>,
+        <span class="summary-sig-arg">freeQueue</span>,
+        <span class="summary-sig-arg">responseQueue</span>,
+        <span class="summary-sig-arg">headersOnly</span>,
+        <span class="summary-sig-arg">mixGroups</span>,
+        <span class="summary-sig-arg">minMapQual</span>,
+        <span class="summary-sig-arg">maxMisMatches</span>,
+        <span class="summary-sig-arg">ignoreSuppAlignments</span>,
+        <span class="summary-sig-arg">ignoreSecondaryAlignments</span>,
+        <span class="summary-sig-arg">verbose</span>=<span class="summary-sig-default">False</span>)</span><br />
+      Single-process BAMfile read extraction.</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamExtractor-pysrc.html#externalExtractWrapper">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
+</table>
+<!-- ==================== VARIABLES ==================== -->
+<a name="section-Variables"></a>
+<table class="summary" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Variables</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-Variables"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__credits__"></a><span class="summary-name">__credits__</span> = <code title="['Michael Imelfort']"><code class="variable-group">[</code><code class="variable-quote">'</code><code class="variable-string">Michael Imelfort</code><code class="variable-quote">'</code><code class="variable-group">]</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__maintainer__"></a><span class="summary-name">__maintainer__</span> = <code title="'Michael Imelfort'"><code class="variable-quote">'</code><code class="variable-string">Michael Imelfort</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__email__"></a><span class="summary-name">__email__</span> = <code title="'mike@mikeimelfort.com'"><code class="variable-quote">'</code><code class="variable-string">mike@mikeimelfort.com</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__status__"></a><span class="summary-name">__status__</span> = <code title="'Beta'"><code class="variable-quote">'</code><code class="variable-string">Beta</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+        <a name="__package__"></a><span class="summary-name">__package__</span> = <code title="'bamm'"><code class="variable-quote">'</code><code class="variable-string">bamm</code><code class="variable-quote">'</code></code>
+    </td>
+  </tr>
+</table>
+<!-- ==================== FUNCTION DETAILS ==================== -->
+<a name="section-FunctionDetails"></a>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr bgcolor="#70b0f0" class="table-header">
+  <td colspan="2" class="table-header">
+    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+      <tr valign="top">
+        <td align="left"><span class="table-header">Function Details</span></td>
+        <td align="right" valign="top"
+         ><span class="options">[<a href="#section-FunctionDetails"
+         class="privatelink" onclick="toggle_private();"
+         >hide private</a>]</span></td>
+      </tr>
+    </table>
+  </td>
+</tr>
+</table>
+<a name="externalExtractWrapper"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">externalExtractWrapper</span>(<span class="sig-arg">threadId</span>,
+        <span class="sig-arg">outFilePrefixes</span>,
+        <span class="sig-arg">bamPaths</span>,
+        <span class="sig-arg">prettyBamFileNames</span>,
+        <span class="sig-arg">numGroups</span>,
+        <span class="sig-arg">perContigGroups</span>,
+        <span class="sig-arg">contigs</span>,
+        <span class="sig-arg">printQueue</span>,
+        <span class="sig-arg">extractQueue</span>,
+        <span class="sig-arg">requestQueue</span>,
+        <span class="sig-arg">freeQueue</span>,
+        <span class="sig-arg">responseQueue</span>,
+        <span class="sig-arg">headersOnly</span>,
+        <span class="sig-arg">mixGroups</span>,
+        <span class="sig-arg">minMapQual</span>,
+        <span class="sig-arg">maxMisMatches</span>,
+        <span class="sig-arg">ignoreSuppAlignments</span>,
+        <span class="sig-arg">ignoreSecondaryAlignments</span>,
+        <span class="sig-arg">verbose</span>=<span class="sig-default">False</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamExtractor-pysrc.html#externalExtractWrapper">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Single-process BAMfile read extraction.
+
+cTypes pointers are unpickleable unless they are top level, so this function
+lives outside the class and has 1,000,000 member variables passed to it.
+Life would be easier if we could pass the class but any implicit copy
+operations that follow are somewhat difficult to detect and can cause WOE.
+Lot's of WOE, believe me...
+
+Inputs:
+ threadId - string, a unique Id for this process / thread
+ outFilePrefixes - 3D dict for finding outFilePrefixes based on bamFile,
+                   group and pairing information
+ bamPaths - { bid : string }, full paths to the BAM files
+ prettyBamFileNames - { bid : string }, short, print-friendly BAM names
+ numGroups - int, the number of groups reads are split into
+ perContigGroups - [int], contains groups Ids, insync with contigs array
+ contigs - [string], contig ids as written in the BAM
+ printQueue - Manager.Queue, thread-safe communication with users
+ extractQueue - Manager.Queue, bids (BAMs) yet to be extracted from
+ requestQueue - Manager.Queue, make requests for ReadSets for printing
+ freeQueue - Manager.Queue, tell the RSM when finished with a ReadSet
+ responseQueue - Manager.Queue, recieve copies of ReadSets from the RSM
+ headersOnly - == True -&gt; write read headers only
+ mixGroups - == True -&gt; use one file for all groups
+ minMapQual - int, skip all reads with a lower mapping quality score
+ maxMisMatches - int, skip all reads with more mismatches (NM aux files)
+ useSuppAlignments - == True -&gt; skip supplementary alignments
+ useSecondaryAlignments - == True -&gt; skip secondary alignments
+ verbose - == True -&gt; be verbose
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
+<br />
+<!-- ==================== NAVIGATION BAR ==================== -->
+<table class="navbar" border="0" width="100%" cellpadding="0"
+       bgcolor="#a0c0ff" cellspacing="0">
+  <tr valign="middle">
+  <!-- Home link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="bamm-module.html">Home</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Tree link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="module-tree.html">Trees</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Index link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="identifier-index.html">Indices</a>&nbsp;&nbsp;&nbsp;</th>
+
+  <!-- Help link -->
+      <th>&nbsp;&nbsp;&nbsp;<a
+        href="help.html">Help</a>&nbsp;&nbsp;&nbsp;</th>
+
+      <th class="navbar" width="100%"></th>
+  </tr>
+</table>
+<table border="0" cellpadding="0" cellspacing="0" width="100%%">
+  <tr>
+    <td align="left" class="footer">
+    Generated by Epydoc 3.0.1 on Wed Oct 29 23:02:47 2014
+    </td>
+    <td align="right" class="footer">
+      <a target="mainFrame" href="http://epydoc.sourceforge.net"
+        >http://epydoc.sourceforge.net</a>
+    </td>
+  </tr>
+</table>
+
+<script type="text/javascript">
+  <!--
+  // Private objects are initially displayed (because if
+  // javascript is turned off then we want them to be
+  // visible); but by default, we want to hide them.  So hide
+  // them unless we have a cookie that says to show them.
+  checkCookie();
+  // -->
+</script>
+</body>
+</html>
