@@ -60,6 +60,23 @@ from bamm.cWrapper import *
 BM_def_trimmed_range = 10.
 BM_def_outlier_range = 1.
 
+def which(program):
+    '''from: http://stackoverflow.com/questions/377017/test-if-executable-exists-in-python'''
+    def is_exe(fpath):
+        return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
+
+    fpath, fname = os.path.split(program)
+    if fpath:
+        if is_exe(program):
+            return program
+    else:
+        for path in os.environ["PATH"].split(os.pathsep):
+            path = path.strip('"')
+            exe_file = os.path.join(path, program)
+            if is_exe(exe_file):
+                return exe_file
+    return None
+
 def doWork( args ):
     ''' Wrapper for global workflows
 
@@ -72,6 +89,21 @@ def doWork( args ):
      None
     '''
     if(args.subparser_name == 'make'):
+
+        # let's see if samtools and bwa are on the path
+        error = False
+        if not which('bwa'):
+            printError("'bwa' not found on the path.\nPATH is: %s" %
+                       os.environ["PATH"])
+            error = True
+        if not which('samtools'):
+            printError("'samtools' not found on the path.\nPATH is: %s" %
+                       os.environ["PATH"])
+            error = True
+        if error:
+            subparsers.choices['make'].print_help()
+            sys.exit(1)
+
         # The BamMaker class is able to take care of making fileNames etc
         # this outer wrapper is here to allow us to make multiple BAM files
         # in one go
@@ -355,8 +387,10 @@ if __name__ == '__main__':
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
                                         description='get bamfile type and/or coverage profiles and/or linking reads',
                                         epilog='''Making links -> making coverage. The 'cutoff_range' variable is used for trimmed mean and outlier mean. ''' \
-                                               '''For trimmed mean, the value is interpreted as percent upper and lower coverages to ignore. ''' \
-                                               '''For outlier mean, the value is the number of stdevs used to make upper and lower cutoffs. ''' \
+                                               '''This parameter takes at most two values. The first is the lower cutoff and the second is the upper. ''' \
+                                               '''If only value is supplied then lower == upper'''
+                                               '''For trimmed mean, the values are interpreted as percent upper and lower coverages to ignore. ''' \
+                                               '''For outlier mean, the values are the number of stdevs used to make upper and lower cutoffs. ''' \
                                                '''Otherwise it is ignored''')
     parse_parser.add_argument('-b', '--bamfiles', nargs='+', help="bam files to parse")
     parse_parser.add_argument('-l', '--links', help="filename to write pairing links to", default="")
