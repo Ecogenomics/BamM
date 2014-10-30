@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/srv/sw/python/2.7.4/bin/python
 ###############################################################################
 #                                                                             #
 #    BamM.py                                                                  #
@@ -401,11 +401,11 @@ if __name__ == '__main__':
  * opmean:  outlier pileup coverage: average of reads overlapping each base,
             after bases with coverage outside mean +/- 1 standard deviation
             have been excluded. The number of standard deviation used for the
-            cutoff can be changed with --coverage_range.
+            cutoff can be changed with --cutoff_range.
  * pmean:   pileup coverage: average of number of reads overlapping each base
  * tpmean:  trimmed pileup coverage: average of reads overlapping each base,
             after bases with in the top and bottom 10% have been excluded. The
-            10% range can be changed using --coverage_range.
+            10% range can be changed using --cutoff_range.
  * counts:  absolute number of reads mapping
  * cmean:   like 'counts' except divided by the length of the contig
  * pmedian: median pileup coverage: median of number of reads overlapping each

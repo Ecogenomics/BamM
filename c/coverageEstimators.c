@@ -169,6 +169,9 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
                                        BM_coverageType * covType,
                                        uint32_t contigLength
 ) {
+    if (contigLength == 0)
+        return NAN;
+
     int pos = 0;
     uint32_t plp_sum = 0;
     uint32_t drops = 0;
@@ -180,6 +183,7 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
     float lower_cut = ((m-(covType->lowerCut*std)) < 0) ? \
                         0 : (m-(covType->lowerCut*std));
     float upper_cut = m+(covType->upperCut*std);
+
     for(pos = 0; pos < contigLength; ++pos) {
         if((pileupValues[pos] <= upper_cut) &&
             (pileupValues[pos] >= lower_cut)) {
@@ -190,6 +194,7 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
             ++drops;
         }
     }
+
     float divisor = (float)(contigLength - drops);
     if (divisor == 0) {
         return 0.0;

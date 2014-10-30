@@ -17,7 +17,7 @@
 
 import random
 from math import isnan
-from numpy import mean, median
+from numpy import mean, median, std, array
 from nose.tools import assert_equals, assert_true
 
 from bamm.cWrapper import *
@@ -62,7 +62,9 @@ class TestCoverageStats:
         
         self.CW = CWrapper(unitTests=True)
 
-        
+    #########################################################################
+    # Median
+    ######################################################################### 
     def testMedianEven(self):
         """Verify C implementation of median with even number of values."""
 
@@ -94,6 +96,9 @@ class TestCoverageStats:
         rtn = self.CW._BM_median(self.zero_c_array, len(self.zero_list))  
         assert_equals(rtn, median(self.zero_list))
         
+    #########################################################################
+    # Mean
+    #########################################################################
     def testMean(self):
         """Verify C implementation of mean."""
 
@@ -121,6 +126,9 @@ class TestCoverageStats:
         rtn = self.CW._BM_mean(self.zero_c_array, len(self.zero_list))  
         assert_equals(rtn, mean(self.zero_list))
         
+    #########################################################################
+    # Count Coverage
+    #########################################################################
     def testCountCoverage(self):
         """Verify computation of count coverage."""
 
@@ -148,6 +156,9 @@ class TestCoverageStats:
         coverage = self.CW._estimate_COUNT_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
         assert_equals(coverage, sum(self.zero_list))
         
+    #########################################################################
+    # Count Mean Coverage
+    #########################################################################
     def testCountMeanCoverage(self):
         """Verify computation of count mean coverage."""
 
@@ -174,7 +185,162 @@ class TestCoverageStats:
 
         coverage = self.CW._estimate_C_MEAN_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
         assert_equals(coverage, mean(self.zero_list))
-                
+        
+    #########################################################################
+    # Pileup Mean Coverage
+    #########################################################################
+    def testPileupMeanCoverage(self):
+        """Verify computation of pileup mean coverage."""
+
+        coverage = self.CW._estimate_P_MEAN_Coverage(self.even_c_array, self.pBCT, len(self.even_list))
+        assert_equals(coverage, mean(self.even_list))
+        
+        coverage = self.CW._estimate_P_MEAN_Coverage(self.odd_c_array, self.pBCT, len(self.odd_list))
+        assert_equals(coverage, mean(self.odd_list))
+        
+    def testPileupMeanCoverageEmpty(self):
+        """Verify computation of pileup mean coverage when given an empty array."""
+
+        coverage = self.CW._estimate_P_MEAN_Coverage(self.empty_c_array, self.pBCT, len(self.empty_list))
+        assert_true(isnan(coverage))
+        
+    def testPileupMeanCoverageSingle(self):
+        """Verify computation of pileup mean coverage when given an array with a single element."""
+
+        coverage = self.CW._estimate_P_MEAN_Coverage(self.single_num_c_array, self.pBCT, len(self.single_num_list))
+        assert_equals(coverage, mean(self.single_num_list))
+        
+    def testPileupMeanCoverageZero(self):
+        """Verify computation of pileup mean coverage when given array of zeros."""
+
+        coverage = self.CW._estimate_P_MEAN_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
+        assert_equals(coverage, mean(self.zero_list))
+
+    #########################################################################
+    # Pileup Median Coverage
+    #########################################################################
+    def testPileupMedianCoverage(self):
+        """Verify computation of pileup median coverage."""
+
+        coverage = self.CW._estimate_P_MEDIAN_Coverage(self.even_c_array, self.pBCT, len(self.even_list))
+        assert_equals(coverage, median(self.even_list))
+        
+        coverage = self.CW._estimate_P_MEDIAN_Coverage(self.odd_c_array, self.pBCT, len(self.odd_list))
+        assert_equals(coverage, median(self.odd_list))
+        
+    def testPileupMedianCoverageEmpty(self):
+        """Verify computation of pileup median coverage when given an empty array."""
+
+        coverage = self.CW._estimate_P_MEDIAN_Coverage(self.empty_c_array, self.pBCT, len(self.empty_list))
+        assert_true(isnan(coverage))
+        
+    def testPileupMedianCoverageSingle(self):
+        """Verify computation of pileup median coverage when given an array with a single element."""
+
+        coverage = self.CW._estimate_P_MEDIAN_Coverage(self.single_num_c_array, self.pBCT, len(self.single_num_list))
+        assert_equals(coverage, median(self.single_num_list))
+        
+    def testPileupMedianCoverageZero(self):
+        """Verify computation of pileup median coverage when given array of zeros."""
+
+        coverage = self.CW._estimate_P_MEDIAN_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
+        assert_equals(coverage, median(self.zero_list))
+
+    #########################################################################
+    # Pileup Outlier Coverage
+    #########################################################################         
+    def testPileupMeanOutlierCoverage(self):
+        """Verify computation of pileup outlier coverage."""
+
+        BCT = BM_coverageType_C()
+        BCT.type = CT.P_MEAN_OUTLIER
+        BCT.upperCut = 1.0
+        BCT.lowerCut = 1.0
+        
+        pBCT = c.POINTER(BM_coverageType_C)
+        pBCT = c.pointer(BCT)
+
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.even_c_array, pBCT, len(self.even_list))
+        lower_bound = mean(self.even_list) - BCT.lowerCut * std(self.even_list)
+        if lower_bound < 0:
+            lower_bound = 0
+        upper_bound = mean(self.even_list) + BCT.upperCut * std(self.even_list)
+        valid_indices = [i for i, x in enumerate(self.even_list) if (x >= lower_bound and x <= upper_bound)]
+        np_even_list = array(self.even_list)
+        assert_equals(coverage, mean(np_even_list[valid_indices]))
+        
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.odd_c_array, pBCT, len(self.odd_list))
+        lower_bound = mean(self.odd_list) - BCT.lowerCut * std(self.odd_list)
+        if lower_bound < 0:
+            lower_bound = 0
+        upper_bound = mean(self.odd_list) + BCT.upperCut * std(self.odd_list)
+        valid_indices = [i for i, x in enumerate(self.odd_list) if (x >= lower_bound and x <= upper_bound)]
+        np_odd_list = array(self.odd_list)
+        assert_equals(coverage, mean(np_odd_list[valid_indices]))
+        
+    def testPileupMeanOutlierCoverageEmpty(self):
+        """Verify computation of pileup outlier coverage when given an empty array."""
+
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.empty_c_array, self.pBCT, len(self.empty_list))
+        assert_true(isnan(coverage))
+        
+    def testPileupMeanOutlierCoverageSingle(self):
+        """Verify computation of pileup outlier coverage when given an array with a single element."""
+
+        BCT = BM_coverageType_C()
+        BCT.type = CT.P_MEAN_OUTLIER
+        BCT.upperCut = 1.0
+        BCT.lowerCut = 1.0
+        
+        pBCT = c.POINTER(BM_coverageType_C)
+        pBCT = c.pointer(BCT)
+
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.single_num_c_array, self.pBCT, len(self.single_num_list))
+        assert_equals(coverage, self.single_num_list[0])
+        
+    def testPileupMeanOutlierCoverageZero(self):
+        """Verify computation of pileup outlier coverage when given array of zeros."""
+
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
+        assert_equals(coverage, 0)
+        
+    def testPileupMeanOutlierCoverageZeroStd(self):
+        """Verify computation of pileup outlier coverage when given a std of zero."""
+        
+        BCT = BM_coverageType_C()
+        BCT.type = CT.P_MEAN_OUTLIER
+        BCT.upperCut = 0.0
+        BCT.lowerCut = 0.0
+        
+        pBCT = c.POINTER(BM_coverageType_C)
+        pBCT = c.pointer(BCT)
+        
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.even_c_array, pBCT, len(self.even_list))
+        assert_equals(coverage, 0)
+        
+    def testPileupMeanOutlierCoverageUnequalStd(self):
+        """Verify computation of pileup outlier coverage when given unequal standard deviations."""
+        
+        BCT = BM_coverageType_C()
+        BCT.type = CT.P_MEAN_OUTLIER
+        BCT.upperCut = 1.0
+        BCT.lowerCut = 2.5
+        
+        pBCT = c.POINTER(BM_coverageType_C)
+        pBCT = c.pointer(BCT)
+        
+        coverage = self.CW._estimate_P_MEAN_OUTLIER_Coverage(self.even_c_array, pBCT, len(self.even_list))
+        lower_bound = mean(self.even_list) - BCT.lowerCut * std(self.even_list)
+        if lower_bound < 0:
+            lower_bound = 0
+        upper_bound = mean(self.even_list) + BCT.upperCut * std(self.even_list)
+        valid_indices = [i for i, x in enumerate(self.even_list) if (x >= lower_bound and x <= upper_bound)]
+        np_even_list = array(self.even_list)
+        assert_equals(coverage, mean(np_even_list[valid_indices]))
+       
+    #########################################################################
+    # Pileup Mean Trimmed Coverage
+    #########################################################################         
     def testPileupMeanTrimmedCoverage(self):
         """Verify computation of pileup mean trimmed coverage."""
 
@@ -219,7 +385,7 @@ class TestCoverageStats:
         """Verify computation of pileup mean trimmed coverage when given an invalid trimming range."""
         
         BCT = BM_coverageType_C()
-        BCT.type = CT.C_MEAN
+        BCT.type = CT.P_MEAN_TRIMMED
         BCT.upperCut = 60.0
         BCT.lowerCut = 60.0
         
@@ -233,7 +399,7 @@ class TestCoverageStats:
         """Verify computation of pileup mean trimmed coverage when given an unequal trim percentages."""
         
         BCT = BM_coverageType_C()
-        BCT.type = CT.C_MEAN
+        BCT.type = CT.P_MEAN_TRIMMED
         BCT.upperCut = 10.0
         BCT.lowerCut = 20.0
         
