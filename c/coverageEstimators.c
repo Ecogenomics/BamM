@@ -141,16 +141,12 @@ float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
     if (numToRemoveOffBottom+numToRemoveOffTop >= contigLength) {
         return NAN;
     } else {
-        //usual sensible length contig
+        // usual sensible length contig
         // pqsort the coverage array around the upper and lower limits
         my_uint32_t_pqsort(pileupValues,
                            contigLength,
-                           0,
-                           numToRemoveOffBottom); //bottom
-        my_uint32_t_pqsort(pileupValues,
-                           contigLength,
-                           contigLength-numToRemoveOffTop,
-                           numToRemoveOffTop); //top
+                           numToRemoveOffBottom,
+                           contigLength-numToRemoveOffTop);
 
         // calculate the mean of those values between the limits
         plp_sum = 0;
