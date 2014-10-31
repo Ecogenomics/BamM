@@ -121,6 +121,10 @@ class BamScheduler:
         if self.database is None:
             raise InvalidParameterSetException('Nothing to map reads onto, ' \
                                                'you need to supply a database')
+            
+        if not os.path.isfile(self.database):
+            raise InvalidParameterSetException('Specified database is not a valid file')
+            
         if self.singleEnded == [] and \
            self.paired == [] and \
            self.interleaved == []:
@@ -168,7 +172,7 @@ class BamScheduler:
         l_paired = len(self.paired)
         if l_paired % 2 != 0:
             raise InvalidParameterSetException( \
-                "Use of the -p option requires an even number of reads " \
+                "Use of the -c option requires an even number of reads " \
                 "(ordered as pairs)")
 
         for p_index in range(l_paired/2):
