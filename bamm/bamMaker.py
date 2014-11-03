@@ -93,7 +93,7 @@ class BamScheduler:
         Initializes a BamScheduler instance with the provided set of properties.
 
         Inputs:
-         database - full path tofasta file of contigs (may be gzipped),
+         database - full path to fasta file of contigs (may be gzipped),
          alignmentAlgorithm - one of BWA's alignment algorithms,
          indexAlgorithm - one of BWA's index algorithms,
          paired - [fileName pairs], always even numbered in length, in order
@@ -111,7 +111,7 @@ class BamScheduler:
         Outputs:
          None
         '''
-        
+
         # the main thing is to make sure that the input parameters make sense
         self.outFolder = outFolder
         self.database = database
