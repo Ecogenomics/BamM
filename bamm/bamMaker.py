@@ -24,14 +24,12 @@
 #                                                                             #
 ###############################################################################
 
-__author__ = "Michael Imelfort"
+__author__ = "Michael Imelfort, Ben Woodcroft"
 __copyright__ = "Copyright 2014"
-__credits__ = ["Michael Imelfort", "Ben Woodcroft", "Connor Skennerton"]
+__credits__ = ["Michael Imelfort", "Ben Woodcroft"]
 __license__ = "LGPLv3"
-__version__ = "1.0.0-b.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
-__status__ = "Beta"
 
 ###############################################################################
 
@@ -66,7 +64,7 @@ class BamScheduler:
     The class implements a somewhat parallel interface for running multiple
     BWA jobs. It is a little slack in that it sequentially calls BWA with BWA's
     threading flag. On larger systems this will probably be slower than running
-    gnu parallel through a bash script. but if you can do that then you probablu
+    gnu parallel through a bash script. but if you can do that then you probably
     don't need this.
     '''
 
