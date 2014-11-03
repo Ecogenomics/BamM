@@ -21,6 +21,7 @@ import random
 from nose.tools import assert_equals, assert_true
 
 from bamm.bamMaker import BamScheduler
+from bamm.bamParser import BamParser
 from bamm.bammExceptions import *
 
 class TestCommandLineInterface:
@@ -30,8 +31,8 @@ class TestCommandLineInterface:
         self.scriptDir = os.path.dirname(os.path.realpath(__file__))
         self.testDataDir = os.path.join(self.scriptDir, '..', '..', 'test', 'data')
         self.database = os.path.join(self.testDataDir, 'test_database.fna')
-        self.reads_1 = self.database = os.path.join(self.testDataDir, 'test_reads.1.fna')
-        self.reads_2 = self.database = os.path.join(self.testDataDir, 'test_reads.2.fna')
+        self.reads_1 = os.path.join(self.testDataDir, 'test_reads.1.fna')
+        self.reads_2 = os.path.join(self.testDataDir, 'test_reads.2.fna')
 
     #########################################################################
     # make interface
@@ -81,10 +82,58 @@ class TestCommandLineInterface:
             return True
             
         assert_true(False, "Make interface failed to report invalid database file.")
+        
+    def testNoReads(self):
+        """Test input with no read files."""
+        try:
+            BamScheduler(self.database,
+                            'mem',
+                            None,
+                            self.testDataDir,
+                            paired=[],
+                            interleaved=[],
+                            singleEnded=[],
+                            keptFiles=False,
+                            keepFiles=False,
+                            outputTam=False,
+                            prefix='',
+                            numThreads=1,
+                            maxMemory=None,
+                            forceOverwriting=False,
+                            verbose=False)
+        except InvalidParameterSetException:
+            return True
+            
+        assert_true(False, "Make interface failed to report invalid database file.")
+        
+    def testOutputTam(self):
+        """Test creation of TAM file with output prefix."""
+        bs = BamScheduler(self.database,
+                        'bwasw',
+                        None,
+                        self.testDataDir,
+                        paired=[self.reads_1, self.reads_2],
+                        interleaved=[],
+                        singleEnded=[],
+                        keptFiles=True,
+                        keepFiles=False,
+                        outputTam=True,
+                        prefix='test_results.',
+                        numThreads=1,
+                        maxMemory=None,
+                        forceOverwriting=False,
+                        verbose=False,
+                        quiet=True)
+
+        bs.makeBams()
+        outputFile = os.path.join(self.testDataDir, 'test_results.test_database.test_reads.1.tam')
+        assert_true(os.path.exists(outputFile), "Make interface failed to produce expected TAM file.")   
+        os.remove(outputFile)
             
     #########################################################################
     # parse interface
     #########################################################################
+   
    
     #########################################################################
     # extract interface
