@@ -85,7 +85,8 @@ class BamScheduler:
                  numThreads=1,
                  maxMemory=None,
                  forceOverwriting=False,
-                 verbose=False
+                 verbose=False,
+                 quiet = False
                  ):
         '''Default constructor.
 
@@ -110,6 +111,7 @@ class BamScheduler:
         Outputs:
          None
         '''
+        
         # the main thing is to make sure that the input parameters make sense
         self.outFolder = outFolder
         self.database = database
@@ -140,6 +142,7 @@ class BamScheduler:
         self.maxMemory = maxMemory
         self.outputTam = outputTam
         self.forceOverwriting = forceOverwriting
+        self.quiet = quiet
 
         if self.maxMemory is None:
             #Default to 2GBs per number of threads
@@ -203,7 +206,8 @@ class BamScheduler:
                           outputTam=self.outputTam,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
-                          forceOverwriting=self.forceOverwriting
+                          forceOverwriting=self.forceOverwriting,
+                          quiet=self.quiet
                           )
             self.BMs.append(BM)
 
@@ -232,7 +236,8 @@ class BamScheduler:
                           outputTam=self.outputTam,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
-                          forceOverwriting=self.forceOverwriting
+                          forceOverwriting=self.forceOverwriting,
+                          quiet=self.quiet
                           )
             self.BMs.append(BM)
 
@@ -260,7 +265,8 @@ class BamScheduler:
                           outputTam=self.outputTam,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
-                          forceOverwriting=self.forceOverwriting
+                          forceOverwriting=self.forceOverwriting,
+                          quiet=self.quiet
                           )
             self.BMs.append(BM)
 
@@ -335,7 +341,8 @@ class BamMaker:
                  outputTam=False,
                  numThreads=1,
                  maxMemory=None,
-                 forceOverwriting=False
+                 forceOverwriting=False,
+                 quiet = False
                  ):
         '''Default constructor.
 
@@ -360,12 +367,17 @@ class BamMaker:
         Outputs:
          None
         '''
+        
         self.database = database
         self.readFile1 = readFile1
         self.readFile2 = readFile2
         self.outFileName = outFileName
         self.outputTam = outputTam
         self.forceOverwriting = forceOverwriting
+        
+        self.errorOutput = ''
+        if quiet:
+            self.errorOutput = '2> /dev/null'
 
         if self.database is None or \
            self.readFile1 is None or \
@@ -691,9 +703,9 @@ class BamMaker:
                             self.database,
                             ''])
         if self.isInterleaved:
-          bwa_cmd += ' '.join(['-p',self.readFile1])
+            bwa_cmd += ' '.join(['-p',self.readFile1])
         else:
-          bwa_cmd += ' '.join([self.readFile1,self.readFile2])
+            bwa_cmd += ' '.join([self.readFile1,self.readFile2])
 
         cmd = bwa_cmd + ' '.join([' | samtools view -SubhF 4 -',
                                   '| samtools sort -m',
@@ -722,7 +734,7 @@ class BamMaker:
                                             self.database,
                                             self.readFile1,
                                             '>',
-                                            self.outFileName]),
+                                            self.outFileName, self.errorOutput]),
                                   shell=True)
         else:
             subprocess.check_call(' '.join(['bwa bwasw -t',
@@ -731,7 +743,7 @@ class BamMaker:
                                             self.readFile1,
                                             self.readFile2,
                                             '>',
-                                            self.outFileName]),
+                                            self.outFileName, self.errorOutput]),
                                   shell=True)
 
     def bwasw_to_sorted_indexed_bam(self):
