@@ -577,7 +577,8 @@ class BamMaker:
                                         self.database,
                                         readFile,
                                         '>',
-                                        saiFile]),
+                                        saiFile, 
+                                        self.errorOutput]),
                               shell=True)
 
     def sampe(self):
@@ -596,7 +597,8 @@ class BamMaker:
                                         self.readFile1,
                                         self.readFile2,
                                         '>',
-                                        self.outFileName]),
+                                        self.outFileName, 
+                                        self.errorOutput]),
                               shell=True)
 
     def samse(self):
@@ -613,7 +615,8 @@ class BamMaker:
                                         self.sai1,
                                         self.readFile1,
                                         '>',
-                                        self.outFileName]),
+                                        self.outFileName, 
+                                        self.errorOutput]),
                               shell=True)
 
     def sampe_to_sorted_indexed_bam(self):
@@ -635,7 +638,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -657,7 +661,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -682,7 +687,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -711,7 +717,8 @@ class BamMaker:
                                   '| samtools sort -m',
                                   self.maxMemory,
                                   '-',
-                                  self.outFileName])
+                                  self.outFileName, 
+                                  self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -734,7 +741,8 @@ class BamMaker:
                                             self.database,
                                             self.readFile1,
                                             '>',
-                                            self.outFileName, self.errorOutput]),
+                                            self.outFileName, 
+                                            self.errorOutput]),
                                   shell=True)
         else:
             subprocess.check_call(' '.join(['bwa bwasw -t',
@@ -743,7 +751,8 @@ class BamMaker:
                                             self.readFile1,
                                             self.readFile2,
                                             '>',
-                                            self.outFileName, self.errorOutput]),
+                                            self.outFileName, 
+                                            self.errorOutput]),
                                   shell=True)
 
     def bwasw_to_sorted_indexed_bam(self):
@@ -766,7 +775,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -785,7 +795,8 @@ class BamMaker:
         '''
         # samtools index cannot be piped, so a tmpfile is required
         subprocess.check_call(' '.join(['samtools index',
-                                        sortedBamFile+'.bam']),
+                                        sortedBamFile+'.bam', 
+                                        self.errorOutput]),
                               shell=True)
 
     #---------------------------------------------------------------
