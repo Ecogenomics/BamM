@@ -100,12 +100,12 @@ class TestBamParser:
         os.system("rm %s" % os.path.join(self.model_dir, file))
 
     def test_make(self):
-        cmd = 'bamm make -d %s -i %s -c %s %s -s %s -o %s' % (os.path.join(self.model_dir, self.contigsFile),
-                                                              os.path.join(self.model_dir, self.mpFile),
-                                                              os.path.join(self.model_dir, self.peFile[0]),
-                                                              os.path.join(self.model_dir, self.peFile[1]),
-                                                              os.path.join(self.model_dir, self.upFile),
-                                                              self.model_dir)
+        cmd = 'bamm make -q -d %s -i %s -c %s %s -s %s -o %s' % (os.path.join(self.model_dir, self.contigsFile),
+                                                                 os.path.join(self.model_dir, self.mpFile),
+                                                                 os.path.join(self.model_dir, self.peFile[0]),
+                                                                 os.path.join(self.model_dir, self.peFile[1]),
+                                                                 os.path.join(self.model_dir, self.upFile),
+                                                                 self.model_dir)
         os.system(cmd)
         EX = os.path.exists(os.path.join(self.model_dir,
                                          self.peBamFile[0]))

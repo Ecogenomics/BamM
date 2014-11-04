@@ -129,7 +129,8 @@ def doWork( args ):
                               numThreads=args.threads,
                               maxMemory=args.memory,
                               forceOverwriting=args.force,
-                              verbose=args.verbose
+                              verbose=args.verbose,
+                              quiet=args.quiet
                               )
         except InvalidParameterSetException as e:
             printError(e)
@@ -337,16 +338,20 @@ def makeGroupLists(groups):
 class CustomHelpFormatter(argparse.HelpFormatter):
     def _split_lines(self, text, width):
         return text.splitlines()
-    
+
     def _get_help_string(self, action):
         h = action.help
         if '%(default)' not in action.help:
-            if action.default != '' and action.default != [] and action.default != None and action.default != False:
+            if action.default != '' and \
+               action.default != [] and \
+               action.default != None \
+               and action.default != False:
                 if action.default is not argparse.SUPPRESS:
-                    defaulting_nargs = [argparse.OPTIONAL, argparse.ZERO_OR_MORE]
-            
+                    defaulting_nargs = [argparse.OPTIONAL,
+                                        argparse.ZERO_OR_MORE]
+
                     if action.option_strings or action.nargs in defaulting_nargs:
-                        
+
                         if '\n' in h:
                             lines = h.splitlines()
                             lines[0] += ' (default: %(default)s)'
@@ -354,7 +359,7 @@ class CustomHelpFormatter(argparse.HelpFormatter):
                         else:
                             h += ' (default: %(default)s)'
         return h
-    
+
     def _fill_text(self, text, width, indent):
         return ''.join([indent + line for line in text.splitlines(True)])
 
@@ -391,16 +396,16 @@ if __name__ == '__main__':
                                         description='make a BAM/TAM file (sorted + indexed)',
                                         epilog='''EXAMPLE: bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -s reads4_singles.fq.gz -t 40
                                                will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads''')
-    
+
     make_req_args = make_parser.add_argument_group('required argument')
     make_req_args.add_argument("-d", "--database", help="contigs to map onto (in fasta format)", required=True)
-    
+
     make_reads_args = make_parser.add_argument_group('reads to map (specify one or more arguments)')
     make_reads_args.add_argument("-i", "--interleaved", nargs='+', default=[], help="map interleaved sequence files (as many as you like) EX: -i reads1_interleaved.fq.gz reads2_interleaved.fna")
     make_reads_args.add_argument("-c", "--coupled", nargs='+', default=[], help="map paired sequence files (as many sets as you like) EX: -c reads1_1.fq.gz reads1_2.fq.gz reads2_1.fna reads2_2.fna")
     make_reads_args.add_argument("-s", "--single", nargs='+', default=[], help="map Single ended sequence files (as many as you like) EX: -s reads1_singles.fq.gz reads2_singles.fna")
 
-    make_opt_args = make_parser.add_argument_group('optional arguments') 
+    make_opt_args = make_parser.add_argument_group('optional arguments')
     make_opt_args.add_argument('-p', '--prefix', default='', help="prefix to apply to BAM/TAM files (None for reference name)")
     make_opt_args.add_argument('-o', '--out_folder', default=".", help="write to this folder")
 
@@ -420,6 +425,9 @@ if __name__ == '__main__':
     make_opt_args.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
     make_opt_args.add_argument("-m", "--memory", type=int, default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads)")
     make_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
+
+    make_supp_args = make_parser.add_argument_group('suppressed arguments')
+    make_supp_args.add_argument('-q', '--quiet', default=False, action="store_true", help=argparse.SUPPRESS)
 
     #-------------------------------------------------
     # determine linking reads
@@ -447,11 +455,11 @@ The 'cutoff_range' variable is used for trimmed mean and outlier mean. This
 parameter takes at most two values. The first is the lower cutoff and the
 second is the upper. If only one value is supplied then lower == upper.'''
                                         )
-    
+
     parser_req_args = parse_parser.add_argument_group('required argument')
     parser_req_args.add_argument('-b', '--bamfiles', nargs='+', help="bam files to parse", required=True)
-    
-    parser_opt_args = parse_parser.add_argument_group('optional arguments') 
+
+    parser_opt_args = parse_parser.add_argument_group('optional arguments')
     parser_opt_args.add_argument('-l', '--links', help="filename to write pairing links to", default="")
     parser_opt_args.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
     parser_opt_args.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
@@ -478,7 +486,7 @@ second is the upper. If only one value is supplied then lower == upper.'''
                                         formatter_class=CustomHelpFormatter,
                                         help='extract reads from bamfile(s)',
                                         add_help=False,
-                                        description='Extract reads which hit the given references')  
+                                        description='Extract reads which hit the given references')
     extract_req_args = extract_parser.add_argument_group('required arguments')
     extract_req_args.add_argument('-b', '--bamfiles', nargs='+', default=[], help="bam files to parse", required=True)
     extract_req_args.add_argument('-g', '--groups', nargs='+', default=[], help="files containing reference names (1 per line) or contigs file in fasta format", required=True)
