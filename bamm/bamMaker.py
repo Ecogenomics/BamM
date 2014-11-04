@@ -24,14 +24,12 @@
 #                                                                             #
 ###############################################################################
 
-__author__ = "Michael Imelfort"
+__author__ = "Michael Imelfort, Ben Woodcroft"
 __copyright__ = "Copyright 2014"
-__credits__ = ["Michael Imelfort", "Ben Woodcroft", "Connor Skennerton"]
+__credits__ = ["Michael Imelfort", "Ben Woodcroft"]
 __license__ = "LGPLv3"
-__version__ = "1.0.0-b.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
-__status__ = "Beta"
 
 ###############################################################################
 
@@ -66,7 +64,7 @@ class BamScheduler:
     The class implements a somewhat parallel interface for running multiple
     BWA jobs. It is a little slack in that it sequentially calls BWA with BWA's
     threading flag. On larger systems this will probably be slower than running
-    gnu parallel through a bash script. but if you can do that then you probablu
+    gnu parallel through a bash script. but if you can do that then you probably
     don't need this.
     '''
 
@@ -85,14 +83,15 @@ class BamScheduler:
                  numThreads=1,
                  maxMemory=None,
                  forceOverwriting=False,
-                 verbose=False
+                 verbose=False,
+                 quiet = False
                  ):
         '''Default constructor.
 
         Initializes a BamScheduler instance with the provided set of properties.
 
         Inputs:
-         database - full path tofasta file of contigs (may be gzipped),
+         database - full path to fasta file of contigs (may be gzipped),
          alignmentAlgorithm - one of BWA's alignment algorithms,
          indexAlgorithm - one of BWA's index algorithms,
          paired - [fileName pairs], always even numbered in length, in order
@@ -110,6 +109,7 @@ class BamScheduler:
         Outputs:
          None
         '''
+
         # the main thing is to make sure that the input parameters make sense
         self.outFolder = outFolder
         self.database = database
@@ -121,6 +121,10 @@ class BamScheduler:
         if self.database is None:
             raise InvalidParameterSetException('Nothing to map reads onto, ' \
                                                'you need to supply a database')
+            
+        if not os.path.isfile(self.database):
+            raise InvalidParameterSetException('Specified database is not a valid file')
+            
         if self.singleEnded == [] and \
            self.paired == [] and \
            self.interleaved == []:
@@ -136,6 +140,7 @@ class BamScheduler:
         self.maxMemory = maxMemory
         self.outputTam = outputTam
         self.forceOverwriting = forceOverwriting
+        self.quiet = quiet
 
         if self.maxMemory is None:
             #Default to 2GBs per number of threads
@@ -168,7 +173,7 @@ class BamScheduler:
         l_paired = len(self.paired)
         if l_paired % 2 != 0:
             raise InvalidParameterSetException( \
-                "Use of the -p option requires an even number of reads " \
+                "Use of the -c option requires an even number of reads " \
                 "(ordered as pairs)")
 
         for p_index in range(l_paired/2):
@@ -199,7 +204,8 @@ class BamScheduler:
                           outputTam=self.outputTam,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
-                          forceOverwriting=self.forceOverwriting
+                          forceOverwriting=self.forceOverwriting,
+                          quiet=self.quiet
                           )
             self.BMs.append(BM)
 
@@ -228,7 +234,8 @@ class BamScheduler:
                           outputTam=self.outputTam,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
-                          forceOverwriting=self.forceOverwriting
+                          forceOverwriting=self.forceOverwriting,
+                          quiet=self.quiet
                           )
             self.BMs.append(BM)
 
@@ -256,7 +263,8 @@ class BamScheduler:
                           outputTam=self.outputTam,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
-                          forceOverwriting=self.forceOverwriting
+                          forceOverwriting=self.forceOverwriting,
+                          quiet=self.quiet
                           )
             self.BMs.append(BM)
 
@@ -331,7 +339,8 @@ class BamMaker:
                  outputTam=False,
                  numThreads=1,
                  maxMemory=None,
-                 forceOverwriting=False
+                 forceOverwriting=False,
+                 quiet = False
                  ):
         '''Default constructor.
 
@@ -356,12 +365,17 @@ class BamMaker:
         Outputs:
          None
         '''
+        
         self.database = database
         self.readFile1 = readFile1
         self.readFile2 = readFile2
         self.outFileName = outFileName
         self.outputTam = outputTam
         self.forceOverwriting = forceOverwriting
+        
+        self.errorOutput = ''
+        if quiet:
+            self.errorOutput = '2> /dev/null'
 
         if self.database is None or \
            self.readFile1 is None or \
@@ -561,7 +575,8 @@ class BamMaker:
                                         self.database,
                                         readFile,
                                         '>',
-                                        saiFile]),
+                                        saiFile, 
+                                        self.errorOutput]),
                               shell=True)
 
     def sampe(self):
@@ -580,7 +595,8 @@ class BamMaker:
                                         self.readFile1,
                                         self.readFile2,
                                         '>',
-                                        self.outFileName]),
+                                        self.outFileName, 
+                                        self.errorOutput]),
                               shell=True)
 
     def samse(self):
@@ -597,7 +613,8 @@ class BamMaker:
                                         self.sai1,
                                         self.readFile1,
                                         '>',
-                                        self.outFileName]),
+                                        self.outFileName, 
+                                        self.errorOutput]),
                               shell=True)
 
     def sampe_to_sorted_indexed_bam(self):
@@ -619,7 +636,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -641,7 +659,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -666,7 +685,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -687,15 +707,16 @@ class BamMaker:
                             self.database,
                             ''])
         if self.isInterleaved:
-          bwa_cmd += ' '.join(['-p',self.readFile1])
+            bwa_cmd += ' '.join(['-p',self.readFile1])
         else:
-          bwa_cmd += ' '.join([self.readFile1,self.readFile2])
+            bwa_cmd += ' '.join([self.readFile1,self.readFile2])
 
         cmd = bwa_cmd + ' '.join([' | samtools view -SubhF 4 -',
                                   '| samtools sort -m',
                                   self.maxMemory,
                                   '-',
-                                  self.outFileName])
+                                  self.outFileName, 
+                                  self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -718,7 +739,8 @@ class BamMaker:
                                             self.database,
                                             self.readFile1,
                                             '>',
-                                            self.outFileName]),
+                                            self.outFileName, 
+                                            self.errorOutput]),
                                   shell=True)
         else:
             subprocess.check_call(' '.join(['bwa bwasw -t',
@@ -727,7 +749,8 @@ class BamMaker:
                                             self.readFile1,
                                             self.readFile2,
                                             '>',
-                                            self.outFileName]),
+                                            self.outFileName, 
+                                            self.errorOutput]),
                                   shell=True)
 
     def bwasw_to_sorted_indexed_bam(self):
@@ -750,7 +773,8 @@ class BamMaker:
         cmd += ' '.join([' | samtools view -SubhF 4 - | samtools sort -m',
                          self.maxMemory,
                          '-',
-                         self.outFileName])
+                         self.outFileName, 
+                        self.errorOutput])
 
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -769,7 +793,8 @@ class BamMaker:
         '''
         # samtools index cannot be piped, so a tmpfile is required
         subprocess.check_call(' '.join(['samtools index',
-                                        sortedBamFile+'.bam']),
+                                        sortedBamFile+'.bam', 
+                                        self.errorOutput]),
                               shell=True)
 
     #---------------------------------------------------------------
