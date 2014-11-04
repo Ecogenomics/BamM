@@ -9,3 +9,4 @@ lib/
 MANIFEST
 bamm/*.pyc
 c/Makefile
+bamm/tests/*pyc
