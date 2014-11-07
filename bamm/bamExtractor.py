@@ -192,9 +192,37 @@ def externalExtractWrapper(threadId,
                     chain_info[gid][rpi] = {'storage' : storage}
 
             while pBMM:
-                # get hold of the next item in the linked list
+                '''
+                USE THIS CODE TO GET THE READ ID WHEN DEBUGGING
+                buffer_c = c.create_string_buffer(20000)
+                pbuffer_c = c.POINTER(c.c_char_p)
+                pbuffer_c = c.pointer(buffer_c)
 
-                #print "---"
+                # this variable records how much of the buffer is used for each read
+                str_len_c = c.c_int(0)
+                pstr_len_c = c.cast(c.addressof(str_len_c), c.POINTER(c.c_int))
+
+                paired_c = c.c_int(1)
+                headers = c.c_int(1)
+
+                group_name_c = c.c_char_p()
+                group_name_c = "THIS__"
+
+                CW._sprintMappedRead(pBMM,
+                                     pbuffer_c,
+                                     pstr_len_c,
+                                     group_name_c,
+                                     headers,
+                                     paired_c)
+                # unwrap the buffer and transport into python land
+                read_ID_debug = \
+                    (c.cast(pbuffer_c,
+                            c.POINTER(c.c_char*str_len_c.value)).contents).value
+
+                read_ID_debug = read_ID_debug.split(";")[-1].rstrip()
+                '''
+
+                # get hold of the next item in the linked list
                 rpi = pBMM.contents.rpi
                 c_rpi = RPIConv[rpi]
 
@@ -229,14 +257,33 @@ def externalExtractWrapper(threadId,
                             # we'll treat both paired reads as singles
                             r2_rpi = RPI.SNGL
                             addable[0][1] = RPI.SNGL # update this guy
-                    addable.append([CW._getPartner(pBMM), r2_rpi])
+                            # the storage for this rpi may remain == problems
+
+                    addable.append([c.addressof((CW._getPartner(pBMM)).contents), r2_rpi])
 
                 # update the printing chain
                 for mappedRead in addable:
-                    working_rpi = mappedRead[1]
                     tmp_pBMM = c.cast(mappedRead[0], c.POINTER(BM_mappedRead_C))
                     has_qual = (tmp_pBMM.contents.qualLen != 0)
                     group = tmp_pBMM.contents.group
+
+                    # set the MI code here
+                    working_rpi = mappedRead[1]
+                    stored_rpi = tmp_pBMM.contents.rpi
+                    mi = MI.ER_EM_EG
+                    if working_rpi == RPI.FIR:
+                        mi = MI.PR_PM_PG
+                    elif working_rpi == RPI.SNGL:
+                        if stored_rpi == RPI.FIR or stored_rpi == RPI.SEC:
+                            mi = MI.PR_PM_UG
+                        if stored_rpi == RPI.SNGL_FIR or stored_rpi == RPI.SNGL_SEC:
+                            mi = MI.PR_UM_NG
+                        elif stored_rpi == RPI.SNGL:
+                            mi = MI.UR_NM_NG
+
+                    CW._setMICode(tmp_pBMM, mi)
+
+                    #sys.stderr.write("%s -- %s\n" % (RPI2Str(working_rpi), RPI2Str(stored_rpi)))
 
                     # set and check the quality info
                     try:
@@ -251,6 +298,11 @@ def externalExtractWrapper(threadId,
                     except KeyError:
                         # Now we can set the type of the file.
                         # Only get here on the first read for each group, rpi
+                        # Because of the way that the same storage object can be
+                        # linked to multiple rpis, there's a chance that
+                        # we won't set 'isFastq' for some rpis. Further down we
+                        # need to be aware of this and just pass on the KeyError
+                        # CODE==RPI_SKIP
                         chain_info[group][working_rpi]['isFastq'] = has_qual
 
                     # build or maintain the chain
@@ -285,43 +337,55 @@ def externalExtractWrapper(threadId,
             for gid in range(numGroups):
                 for rpi in [RPI.FIR, RPI.SNGL]:
                     if chain_info[gid][rpi]['storage'][1] is not None:
-                        # if we got here then there should eb a chain to print
+                        # if we got here then there should be a chain to print
                         pBMM_chain = \
                             c.cast(chain_info[gid][rpi]['storage'][0],
                                    c.POINTER(BM_mappedRead_C)
                                    )
-
                         # we need to print here, so what we will do is make a
                         # request to the RSM for a fileName etc. that we can
                         # write to. We block on this call so we may have to
                         # wait for a bit BUT... it's either this, or go single
                         # threaded. So this is what we'll do.
-                        requestQueue.put((threadId,
-                                          p_bid,
-                                          gid,
-                                          rpi,
-                                          chain_info[gid][rpi]['isFastq']))
-                        # wait for the RSM to return us a copy of a ReadSet
-                        RS = responseQueue.get(block=True, timeout=None)
-                        if RS is None:
-                            # free the memory, it is useless to me!
-                            CW._destroyPrintChain(pBMM_chain)
-                        else:
-                            # we can print stuff
-                            pBMM_destroy = c.POINTER(BM_mappedRead_C)
-                            pBMM_destroy = pBMM_chain
-                            RS.writeChain(pBMM_chain,
-                                          chain_info[gid][rpi]['isFastq'])
-                            CW._destroyPrintChain(pBMM_destroy)
+                        try:
+                            requestQueue.put((threadId,
+                                              p_bid,
+                                              gid,
+                                              rpi,
+                                              chain_info[gid][rpi]['isFastq']))
 
-                            # free the RS now
-                            freeQueue.put((threadId,
-                                           p_bid,
-                                           gid,
-                                           rpi))
+                            # wait for the RSM to return us a copy of a ReadSet
+                            RS = responseQueue.get(block=True, timeout=None)
+                            if RS is None:
+                                # free the memory, it is useless to me!
+                                CW._destroyPrintChain(pBMM_chain)
+                            else:
+                                # we can print stuff
+                                pBMM_destroy = c.POINTER(BM_mappedRead_C)
+                                pBMM_destroy = pBMM_chain
+                                RS.writeChain(pBMM_chain,
+                                              chain_info[gid][rpi]['isFastq'])
+                                CW._destroyPrintChain(pBMM_destroy)
 
-                        # set this to None so it's not added twice
-                        chain_info[gid][rpi]['storage'][1] = None
+                                # free the RS now
+                                freeQueue.put((threadId,
+                                               p_bid,
+                                               gid,
+                                               rpi))
+
+                            # set this to None so it's not added twice
+                            chain_info[gid][rpi]['storage'][1] = None
+
+                        except KeyError:
+                            # this will happen when we have chosen to mix reads.
+                            # it's no problem and I can't see that it hides any
+                            # other bug. The "best" way to handle this is to set
+                            # up a new variable that works out if we've set the
+                            # 'isFastq' for a particular group and rpi. But this
+                            # is really the same as checking chain_info[gid][rpi]
+                            # for a KeyError here. So this is what we'll do...
+                            # see: CODE==RPI_SKIP
+                            pass
 
             if verbose:
                 printQueue.put("%s Read extraction complete for file: %s" % \
@@ -454,6 +518,14 @@ class BamExtractor:
                                                         self.headersOnly,
                                                         self.outFolder,
                                                         self.prefix)
+
+
+        '''
+        for bid in range(len(self.bamFiles)):
+            for gid in range(len(self.groupNames)):
+                for rpi in [RPI.FIR, RPI.SEC, RPI.SNGL, RPI.SNGL_FIR, RPI.SNGL_SEC]:
+                    sys.stderr.write("%s %s %s %s\n" % (self.prettyBamFileNames[bid], self.groupNames[gid], RPI2Str(rpi), str(self.outFilePrefixes[bid][gid][rpi])))
+        '''
 
     def extract(self, threads=1, verbose=False):
         '''Start extracting reads from the BAM files

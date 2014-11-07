@@ -40,35 +40,31 @@
  * SEE: bamRead.h for deets
  */
 
-static const char MITEXT[6][2][12] = {{"p_PR_PM_UG;\0",   // FIR, U
-                                       "p_PR_PM_PG;\0"},  // FIR, P
-                                      {"p_PR_PM_UG;\0",  // SEC, U
-                                       "p_PR_PM_PG;\0"},  // SEC, P
-                                      {"p_PR_UM_NG;\0",  // SNGL_FIR, U
-                                       "p_PR_EM_NG;\0"},  // SNGL_FIR, P
-                                      {"p_PR_UM_NG;\0",  // SNGL_SEC, U
-                                       "p_PR_EM_NG;\0"},  // SNGL_SEC, P
-                                      {"p_UR_NM_NG;\0",  // SNGL, U
-                                       "p_UR_EM_NG;\0"},  // SNGL, P
-                                      {"p_ER_NM_NG;\0",  // ERR, U
-                                       "p_ER_NM_NG;\0"}}; // ERR, P
+static const char MITEXT[5][12] = {"p_ER_EM_EG;\0",
+                                   "p_PR_PM_PG;\0",
+                                   "p_PR_PM_UG;\0",
+                                   "p_PR_UM_NG;\0",
+                                   "p_UR_NM_NG;\0"};
 
-void getMITEXT(int rpi, int paired, char * buffer) {
+void getMITEXT(MI code, char * buffer) {
+    if ((code > 4) || (code < 0)) {
+        code = 0;
+    }
     int i = 0;
     for(;i<12;++i) {
-        buffer[i] = MITEXT[rpi][paired][i];
+        buffer[i] = MITEXT[code][i];
     }
 }
 
 BM_mappedRead * makeMappedRead(char * seqId,
-                                char * seq,
-                                char * qual,
-                                uint16_t idLen,
-                                uint16_t seqLen,
-                                uint16_t qualLen,
-                                uint8_t rpi,
-                                uint16_t group,
-                                BM_mappedRead * prev_MR) {
+                               char * seq,
+                               char * qual,
+                               uint16_t idLen,
+                               uint16_t seqLen,
+                               uint16_t qualLen,
+                               uint8_t rpi,
+                               uint16_t group,
+                               BM_mappedRead * prev_MR) {
 
     BM_mappedRead * MR = calloc(1, sizeof(BM_mappedRead));
     MR->seqId = strdup(seqId);
@@ -96,6 +92,10 @@ BM_mappedRead * makeMappedRead(char * seqId,
     MR->nextPrintingRead = 0;
 
     return MR;
+}
+
+void setMICode(BM_mappedRead * BMM, MI code) {
+    BMM->mi = code;
 }
 
 BM_mappedRead * getNextMappedRead(BM_mappedRead * MR) {
@@ -156,7 +156,7 @@ void printMappedRead(BM_mappedRead * MR,
     if(0 == f) { f = stdout; }
 
     char MI_buffer[12] = "";
-    getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+    getMITEXT(MR->mi, MI_buffer);
 
     if(headerOnly) {
         fprintf(f,
@@ -193,7 +193,7 @@ void sprintMappedRead(BM_mappedRead * MR,
                       int headerOnly,
                       int pairedOutput) {
     char MI_buffer[12] = "";
-    getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+    getMITEXT(MR->mi, MI_buffer);
 
     if(headerOnly) {
         *count = sprintf(buffer,
@@ -236,7 +236,7 @@ void printMappedReads(BM_mappedRead * root_MR,
     BM_mappedRead * MR = root_MR;
     if(headersOnly) {
         while(MR) {
-            getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+            getMITEXT(MR->mi, MI_buffer);
             fprintf(f,
                     HEADER_FORMAT,
                     groupNames[MR->group],
@@ -248,7 +248,7 @@ void printMappedReads(BM_mappedRead * root_MR,
     else {
         if(MR->qual) {
             while(MR) {
-                getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+                getMITEXT(MR->rpi, MI_buffer);
                 fprintf(f,
                         FASTQ_FORMAT,
                         groupNames[MR->group],
@@ -261,7 +261,7 @@ void printMappedReads(BM_mappedRead * root_MR,
         }
         else {
             while(MR) {
-                getMITEXT(MR->rpi, pairedOutput, MI_buffer);
+                getMITEXT(MR->rpi, MI_buffer);
                 fprintf(f,
                         FASTA_FORMAT,
                         groupNames[MR->group],

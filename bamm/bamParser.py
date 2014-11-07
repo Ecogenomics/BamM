@@ -542,7 +542,7 @@ class BamParser:
                 self.BFI.printLinks(sys.stdout)
             else:
                 with open(fileName, "w") as fh:
-                    self.BFI.printLinks(fh)
+                    self.BFI.printLinks(dict(zip(range(len(self.bamFiles)),self.bamFiles)), fh)
 
 ###############################################################################
 ###############################################################################

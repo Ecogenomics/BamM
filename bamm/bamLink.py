@@ -88,7 +88,7 @@ class BM_linkInfo(object):
          len1 - int, length of contig 2
 
         Outputs:
-         String descrtibing the link
+         String describing the link
         '''
         return "%d\t%d\t%d\t%d\t%d\t%d\t%s" % (len1,
                                                self.pos1,

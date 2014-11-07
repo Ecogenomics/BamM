@@ -106,6 +106,33 @@ RPIConv = {RPI.ERROR:RPI.ERROR,
 ###############################################################################
 ###############################################################################
 
+global MI
+MI = enum('ER_EM_EG', 'PR_PM_PG', 'PR_PM_UG', 'PR_UM_NG', 'UR_NM_NG')
+
+def MI2Str(mi):
+    '''Convert an MI into a human readable string
+
+    Inputs:
+     mi - MI to convert
+
+    Outputs:
+     Human readable string
+    '''
+    if mi == MI.PR_PG_PM:
+        return 'PR_PG_PM'
+    elif mi == MI.PR_PM_UG:
+        return 'PR_PM_UG'
+    elif mi == MI.PR_UM_NG:
+        return 'PR_UM_NG'
+    elif mi == MI.UR_NM_NG:
+        return 'UR_NM_NG'
+    return 'ER_EM_EG'
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
+
 class BM_mappedRead_C(c.Structure):
     pass
 
@@ -119,6 +146,7 @@ class BM_mappedRead_C(c.Structure):
         uint16_t seqLen,
         uint16_t qualLen,
         uint8_t rpi,
+        uint8_t mi,
         uint16_t group,
         BM_mappedRead * nextRead,
         BM_mappedRead * partnerRead,
@@ -132,6 +160,7 @@ class BM_mappedRead_C(c.Structure):
                 ("seqLen", c.c_uint16),
                 ("qualLen", c.c_uint16),
                 ("rpi", c.c_uint8),
+                ("mi", c.c_uint8),
                 ("group", c.c_uint16),
                 ("nextRead",c.POINTER(BM_mappedRead_C)),
                 ("partnerRead",c.POINTER(BM_mappedRead_C)),
@@ -420,7 +449,7 @@ class CWrapper:
             c_lib = os.path.join(package_dir, '..', 'c', 'libBamM.a')
         else:
             c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
-        
+
         self.libPMBam = c.cdll.LoadLibrary(c_lib)
 
         #---------------------------------
@@ -445,6 +474,11 @@ class CWrapper:
                                        c.c_int,
                                        c.c_int]
         self._extractReads.restype = c.POINTER(BM_mappedRead_C)
+
+        #-----------------
+        self._setMICode = self.libPMBam.setMICode
+        self._setMICode.argTypes = [c.POINTER(BM_mappedRead_C), c.c_int]
+        self._setMICode.restype = None
 
         #-----------------
         self._getNextMappedRead = self.libPMBam.getNextMappedRead
@@ -499,45 +533,45 @@ class CWrapper:
 
         #-----------------
         self._printBFI = self.libPMBam.printBFI
-        
+
         #----------------- [Note: importing for unit tests]
         self._estimate_COUNT_Coverage = self.libPMBam.estimate_COUNT_Coverage
         self._estimate_COUNT_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_COUNT_Coverage.restype = c.c_float
-        
+
         self._estimate_C_MEAN_Coverage = self.libPMBam.estimate_C_MEAN_Coverage
         self._estimate_C_MEAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_C_MEAN_Coverage.restype = c.c_float
-        
+
         self._estimate_P_MEAN_Coverage = self.libPMBam.estimate_P_MEAN_Coverage
         self._estimate_P_MEAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_P_MEAN_Coverage.restype = c.c_float
-        
+
         self._estimate_P_MEDIAN_Coverage = self.libPMBam.estimate_P_MEDIAN_Coverage
         self._estimate_P_MEDIAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_P_MEDIAN_Coverage.restype = c.c_float
-        
+
         self._estimate_P_MEAN_TRIMMED_Coverage = self.libPMBam.estimate_P_MEAN_TRIMMED_Coverage
         self._estimate_P_MEAN_TRIMMED_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_P_MEAN_TRIMMED_Coverage.restype = c.c_float
-        
+
         self._estimate_P_MEAN_OUTLIER_Coverage = self.libPMBam.estimate_P_MEAN_OUTLIER_Coverage
         self._estimate_P_MEAN_OUTLIER_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_P_MEAN_OUTLIER_Coverage.restype = c.c_float
-        
+
         self._BM_median = self.libPMBam.BM_median
         self._BM_median.argtypes = [c.POINTER(c.c_uint32), c.c_uint32]
         self._BM_median.restype = c.c_float
-        
+
         self._BM_mean = self.libPMBam.BM_mean
         self._BM_mean.argtypes = [c.POINTER(c.c_uint32), c.c_uint32]
         self._BM_mean.restype = c.c_float
-        
+
         self._BM_stdDev = self.libPMBam.BM_stdDev
         self._BM_stdDev.argtypes = [c.POINTER(c.c_uint32), c.c_uint32, c.c_float]
         self._BM_stdDev.restype = c.c_float
-        
-        
+
+
 
 ###############################################################################
 ###############################################################################

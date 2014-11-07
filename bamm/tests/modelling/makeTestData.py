@@ -139,6 +139,9 @@ def getAndCheckSeq(seq, s_len, c_len, mers):
                 done = True
     return tmp_seq
 
+def squishLink(link):
+    return ",".join([str(i) for i in link])
+
 def doWork( args ):
     """ Main wrapper"""
     # load groups
@@ -147,7 +150,8 @@ def doWork( args ):
             with open(group_name, "r") as fh:
                 for line in fh:
                     cid = line.rstrip()
-                    cid_2_grp[cid] = group_name
+                    # make sure to remove the path first
+                    cid_2_grp[cid] = os.path.split(group_name)[1]
                     cid_2_grp_comb[cid] = "allGroups"
         except:
             print "Error opening file:", group_name, sys.exc_info()[0]
@@ -194,14 +198,14 @@ def doWork( args ):
                     rev = [0, 1]
                     header_f_string1 = "%s_PE_1"
                     header_f_string2 = "%s_PE_2"
-                    fname = "contigs.pe.bam"
+                    fname = bam_fnames['PE']
                 elif type == 'MP':
                     c1_seq = revcom(c1_seq)
                     mp.append((rid, c1_seq, c2_seq))
                     rev = [1, 0]
                     header_f_string1 = "%s_MP_1"
                     header_f_string2 = "%s_MP_2"
-                    fname = "contigs.mp.bam"
+                    fname = bam_fnames['MP']
                 else:
                     up.append((rid, c1_seq))
                     header_f_string1 = "%s_UP"
@@ -219,25 +223,26 @@ def doWork( args ):
                     # now links
                     if con_1 != con_2 and con_1 != 'Z' and con_2 != 'Z':
                         if con_1 < con_2:
-                            links.append([con_1,
-                                          con_2,
-                                          contigs[con_1][0]*mult,
-                                          pos1,
-                                          rev[0],
-                                          contigs[con_2][0]*mult,
-                                          pos2,
-                                          rev[1],
-                                          fname])
+                            link = [con_1,
+                                    con_2,
+                                    contigs[con_1][0]*mult,
+                                    pos1,
+                                    rev[0],
+                                    contigs[con_2][0]*mult,
+                                    pos2,
+                                    rev[1],
+                                    fname]
                         else:
-                            links.append([con_2,
-                                          con_1,
-                                          contigs[con_2][0]*mult,
-                                          pos2,
-                                          rev[1],
-                                          contigs[con_1][0]*mult,
-                                          pos1,
-                                          rev[0],
-                                          fname])
+                            link = [con_2,
+                                    con_1,
+                                    contigs[con_2][0]*mult,
+                                    pos2,
+                                    rev[1],
+                                    contigs[con_1][0]*mult,
+                                    pos1,
+                                    rev[0],
+                                    fname]
+                        links.append(link)
     except:
         print "Error opening file:", args.readkey, sys.exc_info()[0]
         raise
@@ -327,111 +332,117 @@ def doWork( args ):
     # the desired output is:
     # filename    read_id    pair info
     # so we need to determine filenames and extensions
-    for b_opt in ext_flags['mix_bams']:
-        read_tracker[b_opt] = {}
-        for r_opt in ext_flags['mix_reads']:
-            read_tracker[b_opt][r_opt] = {}
-            for g_opt in ext_flags['mix_groups']:
-                read_tracker[b_opt][r_opt][g_opt] = {}
-                if b_opt:
-                    b_suffix = {'PE':"allMapped",
-                                'MP':"allMapped",
-                                'UP':"allMapped"}
-                else:
-                    b_suffix = {'PE':"contigs.pe",
-                                'MP':"contigs.mp",
-                                'UP':"contigs.up"}
-
-                if r_opt:
-                    r_suffix = {1:".allReads",
-                                2:".allReads",
-                                0:".allReads"}
-                else:
-                    r_suffix = {1:".1",
-                                2:".2",
-                                0:".unpairedReads"}
-
-                tmp_cid_2_grp = cid_2_grp
-                if g_opt:
-                    tmp_cid_2_grp = cid_2_grp_comb
-
-                for read in reads:
-                    fn_2 = ''
-                    fn_1 = ''
-                    pair_str_1 = ''
-                    pair_str_2 = ''
-                    hdr_1 = ''
-                    hdr_2 = ''
-                    con_1 = reads[read][0]
-                    con_2 = reads[read][2]
-                    type = reads[read][4]
-                    if type == 'UP':
-                        # unpaired reads are always so
-                        if con_1 != 'Z':
-                            fn_1 = "%s.%s%s.fna.gz" % (b_suffix[type],
-                                                      tmp_cid_2_grp[con_1],
-                                                      r_suffix[0])
-                            pair_str_1 = "UR_NM_NG"
-                            hdr_1 = "g_%s;p_%s;b_%s;c_%s;r_%s_UP" %(cid_2_grp[con_1],
-                                                                    pair_str_1,
-                                                                    bam_fnames[type],
-                                                                    con_1,
-                                                                    read)
-                            try:
-                                read_tracker[b_opt][r_opt][g_opt][fn_1].append(hdr_1)
-                            except KeyError:
-                                read_tracker[b_opt][r_opt][g_opt][fn_1] = [hdr_1]
+    for i_opt in ['', '--interleave']:
+        read_tracker[i_opt] = {}
+        for b_opt in ext_flags['mix_bams']:
+            read_tracker[i_opt][b_opt] = {}
+            for r_opt in ext_flags['mix_reads']:
+                read_tracker[i_opt][b_opt][r_opt] = {}
+                for g_opt in ext_flags['mix_groups']:
+                    read_tracker[i_opt][b_opt][r_opt][g_opt] = {}
+                    if b_opt:
+                        b_suffix = {'PE':"allMapped",
+                                    'MP':"allMapped",
+                                    'UP':"allMapped"}
                     else:
-                        # paired reads may be unpaired in a group sense
-                        grp_1 = tmp_cid_2_grp[con_1]
-                        grp_2 = tmp_cid_2_grp[con_2]
+                        b_suffix = bam_fnames
 
-                        if grp_1 != grp_2:
-                            rs1 = 0
-                            rs2 = 0
-                            pg = "_UG"
+                    if r_opt:
+                        r_suffix = {1:".allReads",
+                                    2:".allReads",
+                                    0:".allReads"}
+                    else:
+                        if i_opt == '':
+                            r_suffix = {1:".1",
+                                        2:".2",
+                                        0:".unpairedReads"}
                         else:
-                            rs1 = 1
-                            rs2 = 2
-                            pg = "_PG"
+                            r_suffix = {1:".pairedReads",
+                                        2:".pairedReads",
+                                        0:".unpairedReads"}
 
-                        if con_1 == 'Z' or con_2 == 'Z':
-                            pair_str_1 = "PR_UM_NG"
-                            pair_str_2 = "PR_UM_NG"
+
+                    tmp_cid_2_grp = cid_2_grp
+                    if g_opt:
+                        tmp_cid_2_grp = cid_2_grp_comb
+
+                    for read in reads:
+                        fn_2 = ''
+                        fn_1 = ''
+                        pair_str_1 = ''
+                        pair_str_2 = ''
+                        hdr_1 = ''
+                        hdr_2 = ''
+                        con_1 = reads[read][0]
+                        con_2 = reads[read][2]
+                        type = reads[read][4]
+                        if type == 'UP':
+                            # unpaired reads are always so
+                            if con_1 != 'Z':
+                                fn_1 = "%s.%s%s.list.gz" % (b_suffix[type],
+                                                          tmp_cid_2_grp[con_1],
+                                                          r_suffix[0])
+                                pair_str_1 = "UR_NM_NG"
+                                hdr_1 = "g_%s;p_%s;b_%s;c_%s;r_%s_UP" %(cid_2_grp[con_1],
+                                                                        pair_str_1,
+                                                                        bam_fnames[type],
+                                                                        con_1,
+                                                                        read)
+                                try:
+                                    read_tracker[i_opt][b_opt][r_opt][g_opt][fn_1].append(hdr_1)
+                                except KeyError:
+                                    read_tracker[i_opt][b_opt][r_opt][g_opt][fn_1] = [hdr_1]
                         else:
-                            pair_str_1 = "PR_PM"+pg
-                            pair_str_2 = "PR_PM"+pg
+                            # paired reads may be unpaired in a group sense
+                            grp_1 = tmp_cid_2_grp[con_1]
+                            grp_2 = tmp_cid_2_grp[con_2]
 
-                        if con_1 != 'Z':
-                            hdr_1 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s_1" %(cid_2_grp[con_1],
-                                                                      pair_str_1,
-                                                                      bam_fnames[type],
-                                                                      con_1,
-                                                                      read,
-                                                                      type)
-                            fn_1 = "%s.%s%s.fna.gz" % (b_suffix[type],
-                                                       grp_1,
-                                                       r_suffix[rs1])
-                            try:
-                                read_tracker[b_opt][r_opt][g_opt][fn_1].append(hdr_1)
-                            except KeyError:
-                                read_tracker[b_opt][r_opt][g_opt][fn_1] = [hdr_1]
+                            if grp_1 != grp_2:
+                                rs1 = 0
+                                rs2 = 0
+                                pg = "_UG"
+                            else:
+                                rs1 = 1
+                                rs2 = 2
+                                pg = "_PG"
 
-                        if con_2 != 'Z':
-                            hdr_2 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s_2" %(cid_2_grp[con_2],
-                                                                      pair_str_2,
-                                                                      bam_fnames[type],
-                                                                      con_2,
-                                                                      read,
-                                                                      type)
-                            fn_2 = "%s.%s%s.fna.gz" % (b_suffix[type],
-                                                       grp_2,
-                                                       r_suffix[rs2])
+                            if con_1 == 'Z' or con_2 == 'Z':
+                                pair_str_1 = "PR_UM_NG"
+                                pair_str_2 = "PR_UM_NG"
+                            else:
+                                pair_str_1 = "PR_PM"+pg
+                                pair_str_2 = "PR_PM"+pg
 
-                            try:
-                                read_tracker[b_opt][r_opt][g_opt][fn_2].append(hdr_2)
-                            except KeyError:
-                                read_tracker[b_opt][r_opt][g_opt][fn_2] = [hdr_2]
+                            if con_1 != 'Z':
+                                hdr_1 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s_1" %(cid_2_grp[con_1],
+                                                                          pair_str_1,
+                                                                          bam_fnames[type],
+                                                                          con_1,
+                                                                          read,
+                                                                          type)
+                                fn_1 = "%s.%s%s.list.gz" % (b_suffix[type],
+                                                           grp_1,
+                                                           r_suffix[rs1])
+                                try:
+                                    read_tracker[i_opt][b_opt][r_opt][g_opt][fn_1].append(hdr_1)
+                                except KeyError:
+                                    read_tracker[i_opt][b_opt][r_opt][g_opt][fn_1] = [hdr_1]
+
+                            if con_2 != 'Z':
+                                hdr_2 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s_2" %(cid_2_grp[con_2],
+                                                                          pair_str_2,
+                                                                          bam_fnames[type],
+                                                                          con_2,
+                                                                          read,
+                                                                          type)
+                                fn_2 = "%s.%s%s.list.gz" % (b_suffix[type],
+                                                           grp_2,
+                                                           r_suffix[rs2])
+
+                                try:
+                                    read_tracker[i_opt][b_opt][r_opt][g_opt][fn_2].append(hdr_2)
+                                except KeyError:
+                                    read_tracker[i_opt][b_opt][r_opt][g_opt][fn_2] = [hdr_2]
 #----------------------------
 # Write the files
 

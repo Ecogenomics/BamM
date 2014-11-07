@@ -61,30 +61,24 @@ typedef enum {RPI_ERROR,
               RPI_SNGL_FIR,
               RPI_SNGL_SEC,
               RPI_SNGL} RPI;
-
+/*
+ *   Extraction info
+ *
+ *   MI_ER_EM_EG    Unset
+ *   MI_PR_PM_PG    Paired read, paired mapping, paired grouping
+ *   MI_PR_PM_UG    Paired read, paired mapping, unpaired grouping
+ *   MI_PR_UM_NG    Paired read, unpaired mapping
+ *   MI_UR_NM_NG    Unpaired read
+ */
+typedef enum {MI_ER_EM_EG,
+              MI_PR_PM_PG,
+              MI_PR_PM_UG,
+              MI_PR_UM_NG,
+              MI_UR_NM_NG} MI;
 /*
  * Convert mapping information to a readable string
- * We can tell if a read was mapped as a pair but is unpaired from a group
- * perspective. SNGL_FIR, SNGL_SEC indicate pairs mapped singly. FIR when
- * written to an unpaired file indicates that it was mapped as a pair but
- * is unmapped in a group sense. The string stored in MITEXT encodes this
- * information in a print-ready form.
- *
- * MITEXT[RPI type][printing mode] = printing string.
- *
- * MITEXT strings have the format:
- *
- * p_[UPE]R_[UPEN]M_[UPEN]G;
- *
- * Where P = paired, U = unpaired, E = error and N = not applicable
- *
- * Examples:
- * p_PR_PM_UG; indicates that it is a paired read where both ends mapped
- * however the ends are in separate groups.
- * p_UR_NM_NG; indicates an unpaired read. NM and NG indicate that this
- * information is not applicable
- */
-static const char MITEXT[6][2][12];
+*/
+static const char MITEXT[5][12];
 
 /*! @typedef
  * @abstract Structure for storing a mapped read (linked list style)
@@ -96,6 +90,7 @@ static const char MITEXT[6][2][12];
  * @field seqLen            length of the sequence
  * @field qualLen           length of the quality sequence
  * @field rpi               identifies which read in a pair or unpaired
+ * @field rpi               encodes the pairing infor for the read header
  * @field group             target group this read belongs to
  * @field nextRead          linked list structure (next in chain)
  * @field partnerRead       the pair of this read (if paired and if read 1)
@@ -109,6 +104,7 @@ typedef struct BM_mappedRead {
     uint16_t seqLen;
     uint16_t qualLen;
     uint8_t rpi;
+    uint8_t mi;
     uint16_t group;
     struct BM_mappedRead * nextRead;
     struct BM_mappedRead * partnerRead;
@@ -138,6 +134,15 @@ typedef struct BM_mappedRead {
                                 uint8_t rpi,
                                 uint16_t group,
                                 BM_mappedRead * prev_MR);
+
+/*!
+ * @abstract Set the MI code for a BM_mappedRead struct
+ *
+ * @param  BM_mappedRead *  the read to update
+ * @param  code             the code to set
+ * @return void
+ */
+ void setMICode(BM_mappedRead * BMM, MI code);
 
 /*!
  * @abstract Get the next BM_mappedRead struct in the base chain

@@ -263,12 +263,13 @@ class BM_fileInfo(object):
                                                         for j in range(self.numBams)])
                                              for i in range(self.numContigs)]))
 
-    def printLinks(self, fileHandle=None):
+    def printLinks(self, bamFileNames, fileHandle=None):
         '''Write contig linking information to the given filehandle or stdout
 
         used for printing output to types file
 
         Inputs:
+         bamFileNames - { bamId : string }, storage for long bam file names
          fileHandle - open FILE, == None implies writing to stdout
 
         Outputs:
@@ -291,8 +292,7 @@ class BM_fileInfo(object):
             fileHandle.write("%s\n" % \
                 "\n".join([self.links[key].printMore(self.contigNames,
                                                      self.contigLengths,
-                                                     [self.bamFiles[i].fileName
-                                                      for i in range(self.numBams)])
+                                                     bamFileNames)
                            for key in self.links.keys()]))
 
     def __str__(self):
