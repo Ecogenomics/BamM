@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
 __copyright__ = "Copyright 2014"
 __credits__ = ["Michael Imelfort","Ben Woodcroft", "Donovan Parks"]
 __license__ = "LGPLv3"
-__version__ = "1.2.0"
+__version__ = "1.3.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -94,7 +94,6 @@ def doWork( args ):
      None
     '''
     if(args.subparser_name == 'make'):
-
         # let's see if samtools and bwa are on the path
         error = False
         if not which('bwa'):
@@ -129,8 +128,10 @@ def doWork( args ):
                               numThreads=args.threads,
                               maxMemory=args.memory,
                               forceOverwriting=args.force,
-                              verbose=args.verbose,
-                              quiet=args.quiet
+                              extraArguments=args.extras,
+                              showCommands=args.show_commands,
+                              quiet=args.quiet,
+                              silent=args.silent
                               )
         except InvalidParameterSetException as e:
             printError(e)
@@ -395,7 +396,34 @@ if __name__ == '__main__':
                                         add_help=False,
                                         description='make a BAM/TAM file (sorted + indexed)',
                                         epilog='''EXAMPLE: bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -s reads4_singles.fq.gz -t 40
-                                               will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads''')
+will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads
+
+Extra arguments are passed on a "per-mode" basis using the format:
+
+    <BWA_MODE>:'<ARGS>'
+
+For example, the argument:
+
+    --extras "mem:-k 25"
+
+tells bwa mem to use a minimum seed length of 25bp.
+Multiple modes are separated by commas. For example:
+
+    --extras "aln:-O 12 -E 3,sampe:-n 15"
+
+Passes the arguments "-O 12 -E 3" to bwa aln and the arguments "-n 15" to bwa sampe.
+
+********************************************************************************
+*** WARNING ***
+********************************************************************************
+
+Values passed using --extras are not checked by BamM. This represents a
+significant security risk if BamM is being run with elevated privileges.
+Thus you should NEVER run 'bamm make' as root or some other powerful user,
+ESPECIALLY if you are providing access to multiple / unknown users.
+
+********************************************************************************
+''')
 
     make_req_args = make_parser.add_argument_group('required argument')
     make_req_args.add_argument("-d", "--database", help="contigs to map onto (in fasta format)", required=True)
@@ -411,6 +439,7 @@ if __name__ == '__main__':
 
     make_opt_args.add_argument("--index_algorithm", default=None, help="algorithm bwa uses for indexing 'bwtsw' or 'is' [None for auto]")
     make_opt_args.add_argument("--alignment_algorithm", default="mem", help="algorithm bwa uses for alignment 'mem', 'bwasw' or 'aln'")
+    make_opt_args.add_argument("--extras", default="", help='extra arguments to use during mapping. Format is "<BWA_MODE1>:\'<ARGS>\',<BWA_MODE2>:\'<ARGS>\'"')
 
     make_opt_args.add_argument("-k", "--keep", action="store_true", default=False,
                            help="keep all generated database index files (see also --kept)")
@@ -421,13 +450,13 @@ if __name__ == '__main__':
 
     make_opt_args.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
 
-    make_opt_args.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
     make_opt_args.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
-    make_opt_args.add_argument("-m", "--memory", type=int, default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads)")
+    make_opt_args.add_argument("-m", "--memory", default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads). Suffix K/M/G recognized")
     make_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
-    make_supp_args = make_parser.add_argument_group('suppressed arguments')
-    make_supp_args.add_argument('-q', '--quiet', default=False, action="store_true", help=argparse.SUPPRESS)
+    make_opt_args.add_argument('--show_commands', action="store_true", default=False, help="show all commands being run")
+    make_opt_args.add_argument('--quiet', action="store_true", default=False, help="suppress output from the mapper")
+    make_opt_args.add_argument('--silent', action="store_true", default=False, help="suppress all output")
 
     #-------------------------------------------------
     # determine linking reads

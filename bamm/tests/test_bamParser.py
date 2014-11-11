@@ -108,7 +108,7 @@ class TestBamParser:
             sys.stderr.write("No file: %s\n" % full_path)
 
     def test_A_make(self):
-        cmd = 'bamm make -q -d %s -i %s -c %s %s -s %s -o %s' % \
+        cmd = 'bamm make --silent -d %s -i %s -c %s %s -s %s -o %s' % \
             (os.path.join(self.model_dir, self.contigsFile),
              os.path.join(self.model_dir, self.mpFile),
              os.path.join(self.model_dir, self.peFile[0]),

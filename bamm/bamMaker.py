@@ -83,8 +83,10 @@ class BamScheduler:
                  numThreads=1,
                  maxMemory=None,
                  forceOverwriting=False,
-                 verbose=False,
-                 quiet = False
+                 extraArguments='',
+                 showCommands=False,
+                 quiet = False,
+                 silent=False
                  ):
         '''Default constructor.
 
@@ -102,9 +104,12 @@ class BamScheduler:
          keepFiles - == True -> don't delete indexes at the end,
          outputTam - == True -> you love text files to bits,
          numThreads - int, the maximum number of threads to use
-         maxMemory - int, maximum memory program will use
+         maxMemory - string, maximum memory program will use (samtools style)
          forceOverwriting - == True -> force overwriting index files,
-         verbose - == True -> be verbose
+         extraArguments - string, extra args to pass to BWA
+         showCommands - == True -> show all commands being run
+         quiet - == True -> suppress output from the mapper
+         silent - == True -> suppress all output
 
         Outputs:
          None
@@ -136,14 +141,18 @@ class BamScheduler:
         self.indexAlgorithm = indexAlgorithm
         self.keptFiles = keptFiles
         self.keepFiles = keepFiles
-        self.numThreads = str(numThreads)
+        self.numThreads = int(numThreads)
         self.maxMemory = maxMemory
         self.outputTam = outputTam
         self.forceOverwriting = forceOverwriting
+        self.extraArguments = extraArguments
         self.quiet = quiet
+        self.silent = silent
+        self.showCommands = showCommands
+
 
         if self.maxMemory is None:
-            #Default to 2GBs per number of threads
+            # default to 2GBs per number of threads
             self.maxMemory = str(self.numThreads*2)+'G'
 
         # --kept sanity check
@@ -205,7 +214,10 @@ class BamScheduler:
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
                           forceOverwriting=self.forceOverwriting,
-                          quiet=self.quiet
+                          extraArguments=self.extraArguments,
+                          quiet=self.quiet,
+                          silent=self.silent,
+                          showCommands=self.showCommands
                           )
             self.BMs.append(BM)
 
@@ -235,7 +247,10 @@ class BamScheduler:
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
                           forceOverwriting=self.forceOverwriting,
-                          quiet=self.quiet
+                          extraArguments=self.extraArguments,
+                          quiet=self.quiet,
+                          silent=self.silent,
+                          showCommands=self.showCommands
                           )
             self.BMs.append(BM)
 
@@ -264,15 +279,20 @@ class BamScheduler:
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
                           forceOverwriting=self.forceOverwriting,
-                          quiet=self.quiet
+                          extraArguments=self.extraArguments,
+                          quiet=self.quiet,
+                          silent=self.silent,
+                          showCommands=self.showCommands
                           )
             self.BMs.append(BM)
 
         # we've made it this far. Lets tell the user what we intend to do
-        if verbose:
+        if self.showCommands and not self.silent:
             for BM in self.BMs:
                 print BM
+                sys.stdout.flush()
             print "-------------------------------------------"
+            sys.stdout.flush()
 
     def makeBams(self):
         '''sequentially make the bam files
@@ -310,9 +330,26 @@ class BamScheduler:
         Outputs:
          pretty prefix
         '''
+        self.makeSurePathExists(self.outFolder)
         return os.path.join(self.outFolder,
                             self.prefix + self.dbBaseName + '.' + \
                             os.path.basename(self.stripFaCrud(readsFile)))
+
+    def makeSurePathExists(self, path):
+        '''Make sure that a path exists, make it if necessary
+
+        Inputs:
+         path - string, full or relative path to create
+
+        Outputs:
+         None
+        '''
+        try:
+            os.makedirs(path)
+        except OSError as exception:
+            import errno
+            if exception.errno != errno.EEXIST:
+                raise
 
 ###############################################################################
 ###############################################################################
@@ -340,7 +377,10 @@ class BamMaker:
                  numThreads=1,
                  maxMemory=None,
                  forceOverwriting=False,
-                 quiet=False
+                 extraArguments='',
+                 showCommands=False,
+                 quiet=False,
+                 silent=False
                  ):
         '''Default constructor.
 
@@ -359,13 +399,16 @@ class BamMaker:
          keepFiles - == True -> don't delete indexes at the end,
          outputTam - == True -> you love text files to bits,
          numThreads - int, the maximum number of threads to use
-         maxMemory - int, maximum memory program will use
+         maxMemory - string, maximum memory program will use (samtools style)
          forceOverwriting - == True -> force overwriting index files,
+         extraArguments - string, extra args to pass to BWA
+         showCommands - == True -> show all commands being run
+         quiet - == True -> suppress output from the mapper
+         silent - == True -> suppress all output
 
         Outputs:
          None
         '''
-
         self.database = database
         self.readFile1 = readFile1
         self.readFile2 = readFile2
@@ -373,9 +416,11 @@ class BamMaker:
         self.outputTam = outputTam
         self.forceOverwriting = forceOverwriting
         self.quiet = quiet
+        self.showCommands = showCommands
+        self.silent = silent
 
         self.errorOutput = ''
-        if self.quiet:
+        if self.quiet or self.silent:
             self.errorOutput = '2> /dev/null'
 
         if self.database is None or \
@@ -394,12 +439,24 @@ class BamMaker:
         self.keptFiles = keptFiles
         self.keepFiles = keepFiles
 
-        self.numThreads = str(numThreads)
+        self.numThreads = int(numThreads)
         self.maxMemory = maxMemory
         if self.maxMemory is None:
-            #Default to 2GBs per number of threads
+            # default to 2GBs per number of threads
             self.maxMemory = str(self.numThreads*2)+'G'
 
+        # handle extra arguments
+        self.extraArguments = {}
+        if extraArguments != '':
+            # we have some!
+            for e_arg in extraArguments.split(','):
+                fields = e_arg.split(":")
+                self.extraArguments[fields[0]] = fields[1]
+
+        # now extra arguments looks like:
+        # {}
+        # or
+        # {mode : args, mode : args ... }
 
         # intermediate files used during BAM production
         self.sai1 = None
@@ -463,7 +520,7 @@ class BamMaker:
                 "refusing to run so as not to risk overwriting.\n" \
                 "Force overwriting to create new indices")
 
-        # OK we, know what we're doing
+        # OK, we know what we're doing
 
     #---------------------------------------------------------------
     # database management
@@ -477,20 +534,30 @@ class BamMaker:
         Outputs:
          None
         '''
-        if not self.quiet:
+        try:
+            e_args = self.extraArguments['index']
+        except KeyError:
+            e_args = ''
+
+        if not self.silent:
             sys.stderr.write('making database'+"\n")
             sys.stderr.flush
         if self.indexAlgorithm is None:
-            subprocess.check_call(' '.join(['bwa index',
-                                            self.database,
-                                            self.errorOutput]),
-                                  shell=True)
+            cmd = ' '.join(['bwa index',
+                            e_args,
+                            self.database,
+                            self.errorOutput])
         else:
-            subprocess.check_call(' '.join(['bwa index -a',
-                                            self.indexAlgorithm,
-                                            self.database,
-                                            self.errorOutput]),
-                                  shell=True)
+            cmd = ' '.join(['bwa index -a',
+                            self.indexAlgorithm,
+                            e_args,
+                            self.database,
+                            self.errorOutput])
+
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
 
     def removeDatabase(self):
         ''''Remove any index files that are no longer needed
@@ -501,7 +568,7 @@ class BamMaker:
         Outputs:
          None
         '''
-        if not self.quiet:
+        if not self.silent:
             sys.stderr.write('deleting indices'+"\n")
             sys.stderr.flush
         self.safeRemove(self.database+'.amb')
@@ -575,14 +642,23 @@ class BamMaker:
         Outputs:
          None
         '''
-        subprocess.check_call(' '.join(['bwa aln -t',
-                                        self.numThreads,
-                                        self.database,
-                                        readFile,
-                                        '>',
-                                        saiFile,
-                                        self.errorOutput]),
-                              shell=True)
+        try:
+            e_args = self.extraArguments['aln']
+        except KeyError:
+            e_args = ''
+        cmd = ' '.join(['bwa aln -t',
+                        str(self.numThreads),
+                        e_args,
+                        self.database,
+                        readFile,
+                        '>',
+                        saiFile,
+                        self.errorOutput])
+
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
 
     def sampe(self):
         '''call bwa sampe
@@ -593,16 +669,25 @@ class BamMaker:
         Outputs:
          None
         '''
-        subprocess.check_call(' '.join(['bwa sampe',
-                                        self.database,
-                                        self.sai1,
-                                        self.sai2,
-                                        self.readFile1,
-                                        self.readFile2,
-                                        '>',
-                                        self.outFileName,
-                                        self.errorOutput]),
-                              shell=True)
+        try:
+            e_args = self.extraArguments['sampe']
+        except KeyError:
+            e_args = ''
+        cmd  = ' '.join(['bwa sampe',
+                          e_args,
+                          self.database,
+                          self.sai1,
+                          self.sai2,
+                          self.readFile1,
+                          self.readFile2,
+                          '>',
+                          self.outFileName,
+                          self.errorOutput])
+
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
 
     def samse(self):
         '''call bwa samse
@@ -613,14 +698,23 @@ class BamMaker:
         Outputs:
          None
         '''
-        subprocess.check_call(' '.join(['bwa samse',
-                                        self.database,
-                                        self.sai1,
-                                        self.readFile1,
-                                        '>',
-                                        self.outFileName,
-                                        self.errorOutput]),
-                              shell=True)
+        try:
+            e_args = self.extraArguments['samse']
+        except KeyError:
+            e_args = ''
+        cmd  = ' '.join(['bwa samse',
+                         e_args,
+                         self.database,
+                         self.sai1,
+                         self.readFile1,
+                         '>',
+                         self.outFileName,
+                         self.errorOutput])
+
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
 
     def sampe_to_sorted_indexed_bam(self):
         '''call bwa sampe and sort + index the result
@@ -631,7 +725,12 @@ class BamMaker:
         Outputs:
          None
         '''
+        try:
+            e_args = self.extraArguments['sampe']
+        except KeyError:
+            e_args = ''
         cmd = ' '.join(['bwa sampe',
+                        e_args,
                         self.database,
                         self.sai1,
                         self.sai2,
@@ -646,6 +745,9 @@ class BamMaker:
                          self.outFileName,
                         self.errorOutput])
 
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
 
@@ -658,7 +760,12 @@ class BamMaker:
         Outputs:
          None
         '''
+        try:
+            e_args = self.extraArguments['samse']
+        except KeyError:
+            e_args = ''
         cmd = ' '.join(['bwa samse',
+                        e_args,
                         self.database,
                         self.sai1,
                         self.readFile1])
@@ -671,7 +778,11 @@ class BamMaker:
                          self.outFileName,
                         self.errorOutput])
 
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
+
         self.samtoolsIndex(self.outFileName)
 
     #---------------------------------------------------------------
@@ -686,8 +797,13 @@ class BamMaker:
         Outputs:
          None
         '''
+        try:
+            e_args = self.extraArguments['mem']
+        except KeyError:
+            e_args = ''
         cmd = ' '.join(['bwa mem -t',
-                        self.numThreads,
+                        str(self.numThreads),
+                        e_args,
                         self.database,
                         self.readFile1,
                         self.errorOutput])
@@ -700,7 +816,11 @@ class BamMaker:
                          self.outFileName,
                         self.errorOutput])
 
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
+
         self.samtoolsIndex(self.outFileName)
 
     def mem_to_sorted_indexed_bam(self):
@@ -714,8 +834,13 @@ class BamMaker:
         Outputs:
          None
         '''
+        try:
+            e_args = self.extraArguments['mem']
+        except KeyError:
+            e_args = ''
         bwa_cmd = ' '.join(['bwa mem -t',
-                            self.numThreads,
+                            str(self.numThreads),
+                            e_args,
                             self.database,
                             self.errorOutput,
                             ''])
@@ -732,6 +857,9 @@ class BamMaker:
                                   self.outFileName,
                                   self.errorOutput])
 
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
 
@@ -747,25 +875,34 @@ class BamMaker:
         Outputs:
          None
         '''
+        try:
+            e_args = self.extraArguments['bwasw']
+        except KeyError:
+            e_args = ''
         if self.isSingleEnded:
-            subprocess.check_call(' '.join(['bwa bwasw -t',
-                                            self.numThreads,
-                                            self.database,
-                                            self.readFile1,
-                                            '>',
-                                            self.outFileName,
-                                            self.errorOutput]),
-                                  shell=True)
+            cmd = ' '.join(['bwa bwasw -t',
+                            str(self.numThreads),
+                            e_args,
+                            self.database,
+                            self.readFile1,
+                            '>',
+                            self.outFileName,
+                            self.errorOutput])
         else:
-            subprocess.check_call(' '.join(['bwa bwasw -t',
-                                            self.numThreads,
-                                            self.database,
-                                            self.readFile1,
-                                            self.readFile2,
-                                            '>',
-                                            self.outFileName,
-                                            self.errorOutput]),
-                                  shell=True)
+            cmd = ' '.join(['bwa bwasw -t',
+                            str(self.numThreads),
+                            e_args,
+                            self.database,
+                            self.readFile1,
+                            self.readFile2,
+                            '>',
+                            self.outFileName,
+                            self.errorOutput])
+
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
 
     def bwasw_to_sorted_indexed_bam(self):
         '''call bwasw and sort and index the result
@@ -776,8 +913,13 @@ class BamMaker:
         Outputs:
          None
         '''
+        try:
+            e_args = self.extraArguments['bwasw']
+        except KeyError:
+            e_args = ''
         cmd = ' '.join(['bwa bwasw -t',
-                        self.numThreads,
+                        str(self.numThreads),
+                        e_args,
                         self.database,
                         self.readFile1])
 
@@ -790,9 +932,13 @@ class BamMaker:
                          self.maxMemory,
                          '-',
                          self.outFileName,
-                        self.errorOutput])
+                         self.errorOutput])
 
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
+
         self.samtoolsIndex(self.outFileName)
 
     #---------------------------------------------------------------
@@ -808,10 +954,13 @@ class BamMaker:
          None
         '''
         # samtools index cannot be piped, so a tmpfile is required
-        subprocess.check_call(' '.join(['samtools index',
-                                        sortedBamFile+'.bam',
-                                        self.errorOutput]),
-                              shell=True)
+        cmd = ' '.join(['samtools index',
+                        sortedBamFile+'.bam',
+                        self.errorOutput])
+        if self.showCommands and not self.silent:
+            print cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
 
     #---------------------------------------------------------------
     # utilities
@@ -826,12 +975,15 @@ class BamMaker:
          None
         '''
         if os.path.isfile(fileName):
+            if self.showCommands and not self.silent:
+                print 'rm ' + fileName
+                sys.stdout.flush()
             os.system('rm ' + fileName)
 
     def __str__(self):
         '''Print out the operations and outputs that will be made
 
-        Used when the scheduler is in verbose mode
+        Used when the scheduler is in showCommands mode
 
         Inputs:
          None

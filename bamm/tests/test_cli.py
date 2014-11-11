@@ -43,7 +43,7 @@ class TestCommandLineInterface:
 
     #########################################################################
     # make interface
-    ######################################################################### 
+    #########################################################################
     def testIncompletePairess(self):
         """Test odd number of paired files."""
         try:
@@ -61,12 +61,12 @@ class TestCommandLineInterface:
                             numThreads=1,
                             maxMemory=None,
                             forceOverwriting=False,
-                            verbose=False)
+                            showCommands=False)
         except InvalidParameterSetException:
             return True
-            
+
         assert_true(False, "Make interface failed to report an uneven number of paired read files.")
-        
+
     def testInvalidDatabase(self):
         """Test invalid database."""
         try:
@@ -84,12 +84,12 @@ class TestCommandLineInterface:
                             numThreads=1,
                             maxMemory=None,
                             forceOverwriting=False,
-                            verbose=False)
+                            showCommands=False)
         except InvalidParameterSetException:
             return True
-            
+
         assert_true(False, "Make interface failed to report invalid database file.")
-        
+
     def testNoReads(self):
         """Test input with no read files."""
         try:
@@ -107,12 +107,12 @@ class TestCommandLineInterface:
                             numThreads=1,
                             maxMemory=None,
                             forceOverwriting=False,
-                            verbose=False)
+                            showCommands=False)
         except InvalidParameterSetException:
             return True
-            
+
         assert_true(False, "Make interface failed to report invalid database file.")
-        
+
     def testOutputTam(self):
         """Test creation of TAM file with output prefix."""
         bs = BamScheduler(self.database,
@@ -129,19 +129,19 @@ class TestCommandLineInterface:
                         numThreads=1,
                         maxMemory=None,
                         forceOverwriting=False,
-                        verbose=False,
+                        showCommands=False,
                         quiet=True)
 
         bs.makeBams()
         outputFile = os.path.join(self.testDataDir, 'test_results.test_database.test_reads.1.tam')
-        assert_true(os.path.exists(outputFile), "Make interface failed to produce expected TAM file.")   
+        assert_true(os.path.exists(outputFile), "Make interface failed to produce expected TAM file.")
         os.remove(outputFile)
-            
+
     #########################################################################
     # parse interface
     #########################################################################
-   
-   
+
+
     #########################################################################
     # extract interface
     #########################################################################
