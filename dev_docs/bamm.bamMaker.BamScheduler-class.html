@@ -62,7 +62,7 @@
   multiple BWA jobs. It is a little slack in that it sequentially calls BWA
   with BWA's threading flag. On larger systems this will probably be slower
   than running gnu parallel through a bash script. but if you can do that 
-  then you probablu don't need this.</p>
+  then you probably don't need this.</p>
 
 <!-- ==================== INSTANCE METHODS ==================== -->
 <a name="section-InstanceMethods"></a>
@@ -102,7 +102,10 @@
         <span class="summary-sig-arg">numThreads</span>=<span class="summary-sig-default">1</span>,
         <span class="summary-sig-arg">maxMemory</span>=<span class="summary-sig-default">None</span>,
         <span class="summary-sig-arg">forceOverwriting</span>=<span class="summary-sig-default">False</span>,
-        <span class="summary-sig-arg">verbose</span>=<span class="summary-sig-default">False</span>)</span><br />
+        <span class="summary-sig-arg">extraArguments</span>=<span class="summary-sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>,
+        <span class="summary-sig-arg">showCommands</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">quiet</span>=<span class="summary-sig-default">False</span>,
+        <span class="summary-sig-arg">silent</span>=<span class="summary-sig-default">False</span>)</span><br />
       Default constructor.</td>
           <td align="right" valign="top">
             <span class="codelink"><a href="bamm.bamMaker-pysrc.html#BamScheduler.__init__">source&nbsp;code</a></span>
@@ -165,6 +168,24 @@
       
     </td>
   </tr>
+<tr>
+    <td width="15%" align="right" valign="top" class="summary">
+      <span class="summary-type">&nbsp;</span>
+    </td><td class="summary">
+      <table width="100%" cellpadding="0" cellspacing="0" border="0">
+        <tr>
+          <td><span class="summary-sig"><a href="bamm.bamMaker.BamScheduler-class.html#makeSurePathExists" class="summary-sig-name">makeSurePathExists</a>(<span class="summary-sig-arg">self</span>,
+        <span class="summary-sig-arg">path</span>)</span><br />
+      Make sure that a path exists, make it if necessary</td>
+          <td align="right" valign="top">
+            <span class="codelink"><a href="bamm.bamMaker-pysrc.html#BamScheduler.makeSurePathExists">source&nbsp;code</a></span>
+            
+          </td>
+        </tr>
+      </table>
+      
+    </td>
+  </tr>
 </table>
 <!-- ==================== METHOD DETAILS ==================== -->
 <a name="section-MethodDetails"></a>
@@ -206,7 +227,10 @@
         <span class="sig-arg">numThreads</span>=<span class="sig-default">1</span>,
         <span class="sig-arg">maxMemory</span>=<span class="sig-default">None</span>,
         <span class="sig-arg">forceOverwriting</span>=<span class="sig-default">False</span>,
-        <span class="sig-arg">verbose</span>=<span class="sig-default">False</span>)</span>
+        <span class="sig-arg">extraArguments</span>=<span class="sig-default"><code class="variable-quote">'</code><code class="variable-string"></code><code class="variable-quote">'</code></span>,
+        <span class="sig-arg">showCommands</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">quiet</span>=<span class="sig-default">False</span>,
+        <span class="sig-arg">silent</span>=<span class="sig-default">False</span>)</span>
     <br /><em class="fname">(Constructor)</em>
   </h3>
   </td><td align="right" valign="top"
@@ -220,7 +244,7 @@ Default constructor.
 Initializes a BamScheduler instance with the provided set of properties.
 
 Inputs:
- database - full path tofasta file of contigs (may be gzipped),
+ database - full path to fasta file of contigs (may be gzipped),
  alignmentAlgorithm - one of BWA's alignment algorithms,
  indexAlgorithm - one of BWA's index algorithms,
  paired - [fileName pairs], always even numbered in length, in order
@@ -231,9 +255,12 @@ Inputs:
  keepFiles - == True -&gt; don't delete indexes at the end,
  outputTam - == True -&gt; you love text files to bits,
  numThreads - int, the maximum number of threads to use
- maxMemory - int, maximum memory program will use
+ maxMemory - string, maximum memory program will use (samtools style)
  forceOverwriting - == True -&gt; force overwriting index files,
- verbose - == True -&gt; be verbose
+ extraArguments - string, extra args to pass to BWA
+ showCommands - == True -&gt; show all commands being run
+ quiet - == True -&gt; suppress output from the mapper
+ silent - == True -&gt; suppress all output
 
 Outputs:
  None
@@ -300,6 +327,35 @@ Outputs:
   </dl>
 </td></tr></table>
 </div>
+<a name="makeSurePathExists"></a>
+<div>
+<table class="details" border="1" cellpadding="3"
+       cellspacing="0" width="100%" bgcolor="white">
+<tr><td>
+  <table width="100%" cellpadding="0" cellspacing="0" border="0">
+  <tr valign="top"><td>
+  <h3 class="epydoc"><span class="sig"><span class="sig-name">makeSurePathExists</span>(<span class="sig-arg">self</span>,
+        <span class="sig-arg">path</span>)</span>
+  </h3>
+  </td><td align="right" valign="top"
+    ><span class="codelink"><a href="bamm.bamMaker-pysrc.html#BamScheduler.makeSurePathExists">source&nbsp;code</a></span>&nbsp;
+    </td>
+  </tr></table>
+  
+  <pre class="literalblock">
+Make sure that a path exists, make it if necessary
+
+Inputs:
+ path - string, full or relative path to create
+
+Outputs:
+ None
+
+</pre>
+  <dl class="fields">
+  </dl>
+</td></tr></table>
+</div>
 <br />
 <!-- ==================== NAVIGATION BAR ==================== -->
 <table class="navbar" border="0" width="100%" cellpadding="0"
@@ -327,7 +383,7 @@ Outputs:
 <table border="0" cellpadding="0" cellspacing="0" width="100%%">
   <tr>
     <td align="left" class="footer">
-    Generated by Epydoc 3.0.1 on Wed Oct 29 23:02:47 2014
+    Generated by Epydoc 3.0.1 on Wed Nov 12 12:14:14 2014
     </td>
     <td align="right" class="footer">
       <a target="mainFrame" href="http://epydoc.sourceforge.net"
