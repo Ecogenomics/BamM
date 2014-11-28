@@ -639,6 +639,8 @@ void typeBamFiles(BM_fileInfo * BFI) {
                 break;
             // else next contig!
         }
+        if (in) sam_close(in);
+        if ( header ) bam_hdr_destroy(header);
         bam_destroy1(b);
         hts_idx_destroy(idx); // destroy the BAM index
     }
@@ -726,6 +728,8 @@ void destroyBFI(BM_fileInfo * BFI) {
             cfuhash_clear(BFI->links);
             cfuhash_destroy(BFI->links);
         }
+        free(BFI);
+        BFI = 0;
     }
 }
 
@@ -743,7 +747,9 @@ void destroyBamFiles(BM_bamFile ** BFs, int numBams) {
                 for(j = 0; j < BFs[i]->numTypes; ++j) {
                     free(BFs[i]->types[j]);
                 }
+                free(BFs[i]->types);
             }
+            free(BFs[i]);
         }
         free(BFs);
     }
