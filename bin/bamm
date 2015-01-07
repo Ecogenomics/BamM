@@ -444,7 +444,7 @@ ESPECIALLY if you are providing access to multiple / unknown users.
     make_opt_args.add_argument("-k", "--keep", action="store_true", default=False,
                            help="keep all generated database index files (see also --kept)")
     make_opt_args.add_argument("-K", "--kept", action="store_true", default=False,
-                           help="assume database indices already exist (e.g. previously this script was run with -k/--keep")
+                           help="assume database indices already exist (e.g. previously this script was run with -k/--keep)")
     make_opt_args.add_argument("-f", "--force", action="store_true", default=False,
                            help="force overwriting of index files if they are present")
 
