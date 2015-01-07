@@ -46,6 +46,10 @@ def printError(error):
                                                        ''.join(["*"]*80)))
 
 class BamMException(BaseException): pass
+
+class InvalidInstallationException(BamMException): pass
+
+
 class InvalidCoverageModeException(BamMException): pass
 class InvalidNumberOfTypesException(BamMException): pass
 class BAMFileNotFoundException(BamMException): pass

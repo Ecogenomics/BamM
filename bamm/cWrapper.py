@@ -36,6 +36,8 @@ __email__ = "mike@mikeimelfort.com"
 import os
 import ctypes as c
 
+from bamm.bammExceptions import *
+
 ###############################################################################
 ###############################################################################
 ###############################################################################
@@ -450,7 +452,15 @@ class CWrapper:
         else:
             c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
 
-        self.libPMBam = c.cdll.LoadLibrary(c_lib)
+        try:
+            self.libPMBam = c.cdll.LoadLibrary(c_lib)
+        except OSError:
+            printError("Problem importing the BamM c library. This typically " \
+                  "means that BamM is not installed correctly.\nPlease check " \
+                  "the installation logs for more details.\nIf you don't have "\
+                  "the installation logs then please try to reinstall BamM " \
+                  "and look at the output.")
+            raise InvalidInstallationException
 
         #---------------------------------
         # import C functions
