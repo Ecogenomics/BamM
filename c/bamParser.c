@@ -174,6 +174,7 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
     // free these original data
     if(old_bamFiles != 0) {
         free(old_bamFiles);
+        old_bamFiles = 0;
     }
 
     //-----
@@ -196,10 +197,13 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
     }
     if(old_coverages != 0) {
         for(i = 0; i < BFI_A->numContigs; ++i) {
-            if(old_coverages[i] != 0)
+            if(old_coverages[i] != 0) {
                 free(old_coverages[i]);
+                old_coverages[i] = 0;
+            }
         }
         free(old_coverages);
+        old_coverages = 0;
     }
 
     //-----
@@ -215,7 +219,10 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
                                           0);
         for (i = 0; i < (int)key_count; i++) {
             BM_linkPair * LP = cfuhash_get(BFI_B->links, keys[i]);
-            free(keys[i]);
+            if (keys[i] != 0) {
+                free(keys[i]);
+                keys[i] = 0;
+            }
             BM_linkInfo* LI = LP->LI;
             do {
                 BM_linkInfo * new_LI = cloneLinkInfo(LI);
@@ -227,8 +234,14 @@ void mergeBFIs(BM_fileInfo * BFI_A, BM_fileInfo * BFI_B) {
                         LP->cid2);
             } while(getNextLinkInfo(&LI));
         }
-        free(keys);
-        free(key_sizes);
+        if (keys != 0) {
+            free(keys);
+            keys = 0;
+        }
+        if (key_sizes != 0) {
+            free(key_sizes);
+            key_sizes = 0;
+        }
     }
     destroyBFI(BFI_B);
 }
@@ -318,10 +331,18 @@ int parseCoverageAndLinks(int doLinks,
 
         for (b = 0; b < numBams; ++b) {
             bgzf_close(data[b]->fp);
-            if (data[b]->iter) bam_itr_destroy(data[b]->iter);
-            free(data[b]);
+            if (data[b]->iter != 0) {
+                bam_itr_destroy(data[b]->iter);
+            }
+            if (data[b] != 0) {
+                free(data[b]);
+                data[b] = 0;
+            }
         }
-        free(data);
+        if (data != 0) {
+            free(data);
+            data = 0;
+        }
         return 0;
     }
 
@@ -363,8 +384,9 @@ int parseCoverageAndLinks(int doLinks,
                     for (b = 0; b < numBams; ++b) {
                         // load the coverages into the BFI
                         BFI->coverages[prev_tid][b] = coverage_values[b];
-                        if(pileup_values[b]) {
+                        if(pileup_values[b] != 0) {
                             free(pileup_values[b]); // free this up
+                            pileup_values[b] = 0;
                         }
                     }
                 }
@@ -464,28 +486,45 @@ int parseCoverageAndLinks(int doLinks,
         for (b = 0; b < numBams; ++b) {
             // load the coverages into the BFI
             BFI->coverages[prev_tid][b] = coverage_values[b];
-            if(pileup_values[b]) {
+            if(pileup_values[b] != 0) {
                 free(pileup_values[b]);
+                pileup_values[b] = 0;
             }
         }
     }
 
     // all done, time to clean up and leave
-    if (pileup_values)
+    if (pileup_values != 0) {
         free(pileup_values);
-    if (coverage_values)
+        pileup_values = 0;
+    }
+    if (coverage_values != 0) {
         free(coverage_values);
-
-    free(n_plp); free(plp);
+        coverage_values = 0;
+    }
+    if (n_plp != 0) {
+        free(n_plp);
+        n_plp = 0;
+    }
+    if (plp != 0) {
+        free(plp);
+        plp = 0;
+    }
     bam_mplp_destroy(mplp);
     bam_hdr_destroy(h);
 
     for (b = 0; b < numBams; ++b) {
         bgzf_close(data[b]->fp);
-        if (data[b]->iter) bam_itr_destroy(data[b]->iter);
-        free(data[b]);
+        if (data[b]->iter != 0) bam_itr_destroy(data[b]->iter);
+        if (data[b] != 0) {
+            free(data[b]);
+            data[b] = 0;
+        }
     }
-    free(data);
+    if (data != 0) {
+        free(data);
+        data = 0;
+    }
 
     /*
     int c = 0;
@@ -672,16 +711,34 @@ void typeBamFiles(BM_fileInfo * BFI) {
     }
 
     // clean up
-    free(num_found);
-    for (i = 0; i < BFI->numBams; ++i) {
-        free(orient_counts[i]);
-        for (j = 0; j < 3; ++j) {
-            free(inserts[i][j]);
-        }
-        free(inserts[i]);
+    if (num_found != 0) {
+        free(num_found);
+        num_found = 0;
     }
-    free(inserts);
-    free(orient_counts);
+    for (i = 0; i < BFI->numBams; ++i) {
+        if (orient_counts[i] != 0) {
+            free(orient_counts[i]);
+            orient_counts[i] = 0;
+        }
+        for (j = 0; j < 3; ++j) {
+            if (inserts[i][j] != 0) {
+                free(inserts[i][j]);
+                inserts[i][j] = 0;
+            }
+        }
+        if (inserts[i] != 0) {
+            free(inserts[i]);
+            inserts[i] = 0;
+        }
+    }
+    if (inserts != 0) {
+        free(inserts);
+        inserts = 0;
+    }
+    if (orient_counts != 0) {
+        free(orient_counts);
+        orient_counts = 0;
+    }
 }
 
 int initLW(BM_LinkWalker * walker, BM_fileInfo * BFI) {
@@ -699,10 +756,13 @@ void destroyBFI(BM_fileInfo * BFI) {
         if(BFI->numContigs != 0 && BFI->numBams != 0) {
             if(BFI->coverages != 0) {
                 for(i = 0; i < BFI->numContigs; ++i) {
-                    if(BFI->coverages[i] != 0)
+                    if(BFI->coverages[i] != 0) {
                         free(BFI->coverages[i]);
+                        BFI->coverages[i] = 0;
+                    }
                 }
                 free(BFI->coverages);
+                BFI->coverages = 0;
             }
 
             if(BFI->bamFiles != 0) {
@@ -711,15 +771,22 @@ void destroyBFI(BM_fileInfo * BFI) {
 
             if(BFI->contigNames != 0) {
                 for(i = 0; i < BFI->numContigs; ++i) {
-                    if(BFI->contigNames[i] != 0)
+                    if(BFI->contigNames[i] != 0) {
                         free(BFI->contigNames[i]);
+                        BFI->contigNames[i] = 0;
+                    }
                 }
                 free(BFI->contigNames);
-                free(BFI->contigNameLengths);
+                BFI->contigNames = 0;
+                if(BFI->contigNameLengths != 0) {
+                    free(BFI->contigNameLengths);
+                    BFI->contigNameLengths = 0;
+                }
             }
 
             if(BFI->contigLengths != 0)
                 free(BFI->contigLengths);
+                BFI->contigLengths = 0;
         }
 
         // destroy paired links
@@ -743,15 +810,26 @@ void destroyBamFiles(BM_bamFile ** BFs, int numBams) {
     if(BFs != 0) {
         for(i = 0; i < numBams; ++i) {
             if(BFs[i] != 0) {
-                free(BFs[i]->fileName);
-                for(j = 0; j < BFs[i]->numTypes; ++j) {
-                    free(BFs[i]->types[j]);
+                if (BFs[i]->fileName != 0) {
+                    free(BFs[i]->fileName);
+                    BFs[i]->fileName = 0;
                 }
-                free(BFs[i]->types);
+                for(j = 0; j < BFs[i]->numTypes; ++j) {
+                    if (BFs[i]->types[j] != 0) {
+                        free(BFs[i]->types[j]);
+                        BFs[i]->types[j] = 0;
+                    }
+                }
+                if (BFs[i]->types != 0) {
+                    free(BFs[i]->types);
+                    BFs[i]->types = 0;
+                }
+                free(BFs[i]);
+                BFs[i] = 0;
             }
-            free(BFs[i]);
         }
         free(BFs);
+        BFs = 0;
     }
 }
 

@@ -127,11 +127,14 @@ int partnerInSameGroup(BM_mappedRead * MR) {
 void destroyMappedReads(BM_mappedRead * root_MR) {
     BM_mappedRead * tmp_MR = 0;
     while(root_MR) {
-        if(root_MR->seqId) free(root_MR->seqId);
-        if(root_MR->seq) free(root_MR->seq);
-        if(root_MR->qual) free(root_MR->qual);
+        if(root_MR->seqId != 0) { free(root_MR->seqId); root_MR->seqId = 0; }
+        if(root_MR->seq != 0) { free(root_MR->seq); root_MR->seq = 0; }
+        if(root_MR->qual != 0) { free(root_MR->qual); root_MR->qual = 0; }
         tmp_MR = root_MR->nextRead;
-        free(root_MR);
+        if(root_MR != 0) {
+            free(root_MR);
+            root_MR = 0;
+        }
         root_MR = tmp_MR;
     }
 }
@@ -139,11 +142,14 @@ void destroyMappedReads(BM_mappedRead * root_MR) {
 void destroyPrintChain(BM_mappedRead * root_MR) {
     BM_mappedRead * tmp_MR = 0;
     while(root_MR) {
-        if(root_MR->seqId) free(root_MR->seqId);
-        if(root_MR->seq) free(root_MR->seq);
-        if(root_MR->qual) free(root_MR->qual);
+        if(root_MR->seqId != 0) { free(root_MR->seqId); root_MR->seqId = 0; }
+        if(root_MR->seq != 0) { free(root_MR->seq); root_MR->seq = 0; }
+        if(root_MR->qual != 0) { free(root_MR->qual); root_MR->qual = 0; }
         tmp_MR = root_MR->nextPrintingRead;
-        free(root_MR);
+        if(root_MR != 0) {
+            free(root_MR);
+            root_MR = 0;
+        }
         root_MR = tmp_MR;
     }
 }

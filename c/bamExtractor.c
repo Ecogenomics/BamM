@@ -202,7 +202,7 @@ BM_mappedRead * extractReads(char * bamFile,
                                     qual[i] = (char)(s[i] + 33);
                                 }
                             }
-                            else {
+                            else if (qual != 0) {
                                 free(qual);
                                 qual = 0;
                             }
@@ -348,8 +348,10 @@ BM_mappedRead * extractReads(char * bamFile,
 
                             }
 
-                            if(stripped_result) // free this!
+                            if(stripped_result != 0) { // free this!
                                 free(stripped_result);
+                                stripped_result = 0;
+                            }
                         }
                     }
                     hts_itr_destroy(iter);

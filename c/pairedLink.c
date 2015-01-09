@@ -116,7 +116,10 @@ void addLink(cfuhash_table_t * linkHash,
         // finally, add the lot to the hash
         cfuhash_put(linkHash, key, LP);
     }
-    free(key);
+    if (key != 0) {
+        free(key);
+        key = 0;
+    }
 }
 
 int initLinkWalker(BM_LinkWalker * walker, cfuhash_table_t * linkHash) {
@@ -132,18 +135,26 @@ int initLinkWalker(BM_LinkWalker * walker, cfuhash_table_t * linkHash) {
                                               0);
     if((walker->keys)[walker->keyCount] != 0) {
         // we don't need this
-        free(key_sizes);
+        if (key_sizes != 0) {
+            free(key_sizes);
+            key_sizes = 0;
+        }
         // load the first linkPair
         walker->pair = cfuhash_get(linkHash, (walker->keys)[walker->keyCount]);
-        free((walker->keys)[walker->keyCount]);
+        if ((walker->keys)[walker->keyCount] != 0) {
+            free((walker->keys)[walker->keyCount]);
+            (walker->keys)[walker->keyCount] = 0;
+        }
         // tee-up the first linkInfo
         walker->LI = (walker->pair)->LI;
         return 2;
     }
     else {
         // no links
-        free(walker->keys);
-        walker->keys = 0;
+        if (walker->keys != 0) {
+            free(walker->keys);
+            walker->keys = 0;
+        }
     }
     return 0;
 }
@@ -159,7 +170,10 @@ int stepLinkWalker(BM_LinkWalker * walker) {
         if(walker->keyCount < walker->numKeys) {
             walker->pair = cfuhash_get(walker->linkHash,
                                        walker->keys[walker->keyCount]);
-            free(walker->keys[walker->keyCount]);
+            if (walker->keys[walker->keyCount] != 0) {
+                free(walker->keys[walker->keyCount]);
+                walker->keys[walker->keyCount] = 0;
+            }
             walker->LI = (walker->pair)->LI;
             return 2;
         }
@@ -178,7 +192,10 @@ int getNextLinkInfo(BM_linkInfo** LI_ptr) {
 
 void destroyLinkWalker(BM_LinkWalker * walker) {
     if(walker != 0) {
-        if(walker->keys != 0) { free(walker->keys); }
+        if(walker->keys != 0) {
+            free(walker->keys);
+            walker->keys = 0;
+        }
     }
 }
 
@@ -186,13 +203,19 @@ int destroyLinkInfo_andNext(BM_linkInfo** LI_ptr) {
     BM_linkInfo* nextLink = (BM_linkInfo*) (*LI_ptr)->nextLink;
     if(*LI_ptr ==  nextLink) {
         // at the end of the chain
-        free(*LI_ptr);
+        if (*LI_ptr != 0 ) {
+            free(*LI_ptr);
+            *LI_ptr = 0;
+        }
         return 0;
     }
     else {
         // not done yet
         BM_linkInfo* tmp_link = *LI_ptr;
-        free(tmp_link);
+        if (tmp_link != 0) {
+            free(tmp_link);
+            tmp_link = 0;
+        }
         *LI_ptr = nextLink;
         return 1;
     }
@@ -208,18 +231,28 @@ void destroyLinks(cfuhash_table_t * linkHash) {
     for (i = 0; i < (int)key_count; i++) {
         BM_linkPair * base_LP = cfuhash_get(linkHash, keys[i]);
         if(keys[i] != 0)
+        {
             free(keys[i]);
+            keys[i] = 0;
+        }
         BM_linkInfo* LI = base_LP->LI;
         if (LI != 0)
             while(destroyLinkInfo_andNext(&LI));
-        if(base_LP !=0)
+        if(base_LP !=0) {
             free(base_LP);
+            base_LP = 0;
+        }
     }
-    if(keys != 0)
-        free(keys);
 
-    if(key_sizes != 0)
+    if(keys != 0) {
+        free(keys);
+        keys = 0;
+    }
+
+    if(key_sizes != 0) {
         free(key_sizes);
+        key_sizes = 0;
+    }
 }
 
 char * LT2Str(LT type) {
