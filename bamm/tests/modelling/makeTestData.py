@@ -196,15 +196,15 @@ def doWork( args ):
                     c2_seq = revcom(c2_seq)
                     pe.append((rid, c1_seq, c2_seq))
                     rev = [0, 1]
-                    header_f_string1 = "%s_PE 1"
-                    header_f_string2 = "%s_PE 2"
+                    header_f_string1 = "%s_PE"
+                    header_f_string2 = "%s_PE"
                     fname = bam_fnames['PE']
                 elif type == 'MP':
                     c1_seq = revcom(c1_seq)
                     mp.append((rid, c1_seq, c2_seq))
                     rev = [1, 0]
-                    header_f_string1 = "%s_MP 1"
-                    header_f_string2 = "%s_MP 2"
+                    header_f_string1 = "%s_MP"
+                    header_f_string2 = "%s_MP"
                     fname = bam_fnames['MP']
                 else:
                     up.append((rid, c1_seq))
@@ -414,7 +414,7 @@ def doWork( args ):
                                 pair_str_2 = "PR_PM"+pg
 
                             if con_1 != 'Z':
-                                hdr_1 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s_1" %(cid_2_grp[con_1],
+                                hdr_1 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s" %(cid_2_grp[con_1],
                                                                           pair_str_1,
                                                                           bam_fnames[type],
                                                                           con_1,
@@ -429,7 +429,7 @@ def doWork( args ):
                                     read_tracker[i_opt][b_opt][r_opt][g_opt][fn_1] = [hdr_1]
 
                             if con_2 != 'Z':
-                                hdr_2 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s_2" %(cid_2_grp[con_2],
+                                hdr_2 = "g_%s;p_%s;b_%s;c_%s;r_%s_%s" %(cid_2_grp[con_2],
                                                                           pair_str_2,
                                                                           bam_fnames[type],
                                                                           con_2,
@@ -461,13 +461,13 @@ def doWork( args ):
     with open(os.path.join(args.outdir, out_fnames['PE'][0]), "w") as pe1_fh:
         pe2_fh = open(os.path.join(args.outdir, out_fnames['PE'][1]), "w")
         for (rid, r1, r2) in pe:
-            pe1_fh.write(">%s_PE_1\n%s\n" % (rid, r1))
-            pe2_fh.write(">%s_PE_2\n%s\n" % (rid, r2))
+            pe1_fh.write(">%s_PE\n%s\n" % (rid, r1))
+            pe2_fh.write(">%s_PE\n%s\n" % (rid, r2))
         pe2_fh.close()
 
     with open(os.path.join(args.outdir, out_fnames['MP']), "w") as mp_fh:
         for (rid, r1, r2) in mp:
-            mp_fh.write(">%s_MP_1\n%s\n>%s_MP_2\n%s\n" % (rid, r1, rid, r2))
+            mp_fh.write(">%s_MP\n%s\n>%s_MP\n%s\n" % (rid, r1, rid, r2))
 
     with open(os.path.join(args.outdir, out_fnames['UP']), "w") as up_fh:
         for (rid, r1) in up:
