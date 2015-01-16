@@ -229,9 +229,11 @@ class TestBamParser:
 
                             # now extract the headers from the file
                             headers = []
-                            with gzip.open(full_path) as fh:
-                                for line in fh:
-                                    headers.append(line.rstrip())
+                            fh = gzip.open(full_path)
+                            for line in fh:
+                                headers.append(line.rstrip())
+                            fh.close()
+
                             headers = sort(headers)
                             test_headers = sort(hash_subset[file])
 

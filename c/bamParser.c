@@ -795,8 +795,9 @@ void destroyBFI(BM_fileInfo * BFI) {
             cfuhash_clear(BFI->links);
             cfuhash_destroy(BFI->links);
         }
-        free(BFI);
-        BFI = 0;
+        // these guys are alloc'd by ctypes, so we shouldn't free them
+        // free(BFI);
+        // BFI = 0;
     }
 }
 

@@ -196,15 +196,15 @@ def doWork( args ):
                     c2_seq = revcom(c2_seq)
                     pe.append((rid, c1_seq, c2_seq))
                     rev = [0, 1]
-                    header_f_string1 = "%s_PE_1"
-                    header_f_string2 = "%s_PE_2"
+                    header_f_string1 = "%s_PE 1"
+                    header_f_string2 = "%s_PE 2"
                     fname = bam_fnames['PE']
                 elif type == 'MP':
                     c1_seq = revcom(c1_seq)
                     mp.append((rid, c1_seq, c2_seq))
                     rev = [1, 0]
-                    header_f_string1 = "%s_MP_1"
-                    header_f_string2 = "%s_MP_2"
+                    header_f_string1 = "%s_MP 1"
+                    header_f_string2 = "%s_MP 2"
                     fname = bam_fnames['MP']
                 else:
                     up.append((rid, c1_seq))

@@ -621,24 +621,26 @@ class ReadSet(object):
             if out_file2 is not None:
                 fh2.close()
         else:
-            with self._writeOpen(out_file1, open_mode) as fh:
-                if printQueue:
-                    printQueue.put(" %s unpaired file: %s (%s)" % (mode_desc,
-                                                                   out_file1,
-                                                                   self))
-                while pBMM and self._threadsAreValid:
-                    group_name_c = self.groupNames[pBMM.contents.group]
-                    CW._sprintMappedRead(pBMM,
-                                         pbuffer_c,
-                                         pstr_len_c,
-                                         group_name_c,
-                                         headers,
-                                         unpaired_c)
-                    printable_string = \
-                      (c.cast(pbuffer_c,
-                      c.POINTER(c.c_char*str_len_c.value)).contents).value
-                    fh.write(printable_string)
-                    pBMM = CW._getNextPrintRead(pBMM)
+            fh = self._writeOpen(out_file1, open_mode)
+            if printQueue:
+                printQueue.put(" %s unpaired file: %s (%s)" % (mode_desc,
+                                                               out_file1,
+                                                               self))
+            while pBMM and self._threadsAreValid:
+                group_name_c = self.groupNames[pBMM.contents.group]
+                CW._sprintMappedRead(pBMM,
+                                     pbuffer_c,
+                                     pstr_len_c,
+                                     group_name_c,
+                                     headers,
+                                     unpaired_c)
+                printable_string = \
+                  (c.cast(pbuffer_c,
+                  c.POINTER(c.c_char*str_len_c.value)).contents).value
+                fh.write(printable_string)
+                pBMM = CW._getNextPrintRead(pBMM)
+
+            fh.close()
 
 ###############################################################################
 ###############################################################################
