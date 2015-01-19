@@ -128,7 +128,7 @@ class BamScheduler:
                                                'you need to supply a database')
 
         if not os.path.isfile(self.database):
-            raise InvalidParameterSetException('Specified database is not a valid file')
+            raise InvalidParameterSetException('Specified database (%s) is not a valid file' % self.database)
 
         if self.singleEnded == [] and \
            self.paired == [] and \

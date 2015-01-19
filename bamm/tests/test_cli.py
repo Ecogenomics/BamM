@@ -36,7 +36,7 @@ class TestCommandLineInterface:
     def setup_class(self):
         """Setup class variables before any tests."""
         self.scriptDir = os.path.dirname(os.path.realpath(__file__))
-        self.testDataDir = os.path.join(self.scriptDir, '..', '..', 'test', 'data')
+        self.testDataDir = os.path.join(self.scriptDir, 'data')
         self.database = os.path.join(self.testDataDir, 'test_database.fna')
         self.reads_1 = os.path.join(self.testDataDir, 'test_reads.1.fna')
         self.reads_2 = os.path.join(self.testDataDir, 'test_reads.2.fna')
@@ -116,21 +116,21 @@ class TestCommandLineInterface:
     def testOutputTam(self):
         """Test creation of TAM file with output prefix."""
         bs = BamScheduler(self.database,
-                        'bwasw',
-                        None,
-                        self.testDataDir,
-                        paired=[self.reads_1, self.reads_2],
-                        interleaved=[],
-                        singleEnded=[],
-                        keptFiles=True,
-                        keepFiles=False,
-                        outputTam=True,
-                        prefix='test_results.',
-                        numThreads=1,
-                        maxMemory=None,
-                        forceOverwriting=False,
-                        showCommands=False,
-                        quiet=True)
+                          'bwasw',
+                          None,
+                          self.testDataDir,
+                          paired=[self.reads_1, self.reads_2],
+                          interleaved=[],
+                          singleEnded=[],
+                          keptFiles=True,
+                          keepFiles=False,
+                          outputTam=True,
+                          prefix='test_results.',
+                           numThreads=1,
+                          maxMemory=None,
+                          forceOverwriting=False,
+                          showCommands=False,
+                          quiet=True)
 
         bs.makeBams()
         outputFile = os.path.join(self.testDataDir, 'test_results.test_database.test_reads.1.tam')
