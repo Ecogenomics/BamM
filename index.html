@@ -83,12 +83,7 @@
 Creating new database science_stuff.gm
 Parsing contigs
 Parsing BAM files using 1 threads
-Parsing file: ./my_reads1.sorted.bam
-Parsing file: ./my_reads2.sorted.bam
-<strong>*** Error in `/usr/bin/python': double free or corruption (!prev): 0x0000000041ba82c0 ***
-Error creating database: science_stuff.gm <type 'exceptions.IndexError'>
-Unexpected error: <type 'exceptions.IndexError'>
-</strong>Traceback (most recent call last):
+Traceback (most recent call last):
   File "/usr/local/bin/groopm", line 381, in <module>
     GM_parser.parseOptions(args)
   File "/usr/local/lib/python2.7/dist-packages/groopm/groopm.py", line 117, in parseOptions
@@ -97,7 +92,7 @@ Unexpected error: <type 'exceptions.IndexError'>
     threads)
   File "/usr/local/lib/python2.7/dist-packages/groopm/mstore.py", line 1773, in parse
     return ([BP.BFI.bamFiles[i].fileName for i in range(len(bamFiles))],
-IndexError: list index out of range
+<strong>IndexError: list index out of range</strong>
         </code></pre>
 
         The IndexError is a red herring. the problem is that the C code contained within BamM is crashing silently and the contents of an output list are not being filled. Unfortunately, there's no way for me or my code (as far as I know right now) to see when this happens, so everything keeps chugging along, right off the cliff. It's very frustrating. The most likely reason for this type of error is that your python version or some packages on your system are too old. Before you email, please download <a href="./aux/sysInfo.py.gz">this</a> script and run it on the system you're trying to run BamM on like this:
