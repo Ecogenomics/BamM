@@ -103,7 +103,7 @@ class TestBamParser:
     def rmTestFile(self, file):
         full_path = os.path.join(self.model_dir, file)
         if os.path.exists(full_path):
-            os.remove(full_path)
+            pass#os.remove(full_path)
         else:
             sys.stderr.write("No file: %s\n" % full_path)
 
