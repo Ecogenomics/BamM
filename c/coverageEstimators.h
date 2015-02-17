@@ -31,6 +31,9 @@
 #include <unistd.h>
 #include <stdint.h>
 
+// local includes
+#include "stats.h"
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -164,50 +167,6 @@ float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
 float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
                                        BM_coverageType * covType,
                                        uint32_t contigLength);
-        /***********************
-        ***   MATHY EXTRAS   ***
-        ***********************/
-/*!
- * @abstract Calculate the median of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @return float        the caluclated median
- *
- * MODIFIES THE ORDER OF VALUES IN values ARRAY!
- */
-float BM_median(uint32_t * values, uint32_t size);
-
-/*!
- * @abstract Calculate the mean of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @return float        the caluclated mean
- */
-float BM_mean(uint32_t * values, uint32_t size);
-
-/*!
- * @abstract Calculate the standard deviations of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @param  m            mean of the values array
- * @return float        the caluclated standard deviation
- */
-float BM_stdDev(uint32_t * values, uint32_t size, float m);
-
-/*!
- * @abstract Calculate the standard deviations of an array values
- *
- * @param  values       array of (integer) values
- * @param  size         size of values array
- * @return float        the caluclated standard deviation
- *
- * @discussion Everything is 3 stdevs from the mean right?
-*/
-float BM_fakeStdDev(uint32_t * values, uint32_t size);
-
 
 #ifdef __cplusplus
 }

@@ -45,12 +45,11 @@ else:
 # return to regular viewing
 setup(
     name='BamM',
-    version='1.3.6',
+    version='1.3.7',
     author='Michael Imelfort',
     author_email='mike@mikeimelfort.com',
     packages=['bamm'],
     scripts=['bin/bamm', 'bin/bamFlags'],
-    url='http://pypi.python.org/pypi/BamM/',
     license='LGPLv3',
     description='BamM',
     long_description=open('README.md').read(),

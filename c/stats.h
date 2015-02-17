@@ -1,7 +1,7 @@
 //#############################################################################
 //
 //   stats.h
-//   
+//
 //   Curse you C!!!!!
 //
 //   Copyright (C) Michael Imelfort
@@ -21,43 +21,164 @@
 //
 //#############################################################################
 
-#include <stdio.h> 
+#ifndef BM_STATS
+  #define BM_STATS
+
+#include <stdio.h>
 #include <stdint.h>
-#include <math.h> 
+#include <math.h>
 
-/*find and print the average*/ 
-float BM_mean(uint32_t * values, uint32_t size) 
-{ 
-    uint32_t sum = 0; 
-    int i = 0; 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
+/*!
+ * @abstract Calculate the mean of an array values
+ *
+ * @param  values       array of (integer) values
+ * @param  size         size of values array
+ * @return float        the caluclated mean
+ */
+float BM_mean(uint32_t * values, uint32_t size)
+{
+    uint32_t sum = 0;
+    int i = 0;
     for( i = 0; i < size; ++i) {
-        sum += *(values + i); 
+        sum += *(values + i);
     }
-    return (float)sum/(float)size; 
-} 
+    return (float)sum/(float)size;
+}
 
-float BM_stdDev(uint32_t * values, uint32_t size, float m) 
-{ 
-    float sum = 0; 
-    int i = 0; 
+/*!
+ * @abstract Calculate the standard deviations of an array values
+ *
+ * @param  values       array of (integer) values
+ * @param  size         size of values array
+ * @param  m            mean of the values array
+ * @return float        the caluclated standard deviation
+ */
+float BM_stdDev(uint32_t * values, uint32_t size, float m)
+{
+    float sum = 0;
+    int i = 0;
     if(m == -1)
-        m = BM_mean(values, size); 
+        m = BM_mean(values, size);
     for(i = 0; i < size; ++i) {
-        sum += pow((float)*(values + i) - m, 2); 
+        sum += pow((float)*(values + i) - m, 2);
     }
-    return sqrt(sum/(float)size); 
-} 
+    return sqrt(sum/(float)size);
+}
 
-float BM_fakeStdDev(uint32_t * values, uint32_t size) 
-{ 
+/*!
+ * @abstract Calculate the standard deviations of an array values
+ *
+ * @param  values       array of (integer) values
+ * @param  size         size of values array
+ * @return float        the caluclated standard deviation
+ *
+ * @discussion Everything is 3 stdevs from the mean right?
+*/
+float BM_fakeStdDev(uint32_t * values, uint32_t size)
+{
     // everything is 3 stdevs from the mean right?
-    uint32_t max = 0, min = 1<<30; 
-    int i = 0; 
+    uint32_t max = 0, min = 1<<30;
+    int i = 0;
     for( i = 0; i < size; ++i) {
         if (*(values + i) > max)
             max = *(values + i);
         else if (*(values + i) < min)
             min = *(values + i);
     }
-    return (float)(max-min)/6; 
-} 
+    return (float)(max-min)/6;
+}
+
+int cmpfunc_uint32(const void * a, const void * b)
+{
+    const uint32_t *x = a, *y = b;
+    if(*x > *y)
+        return 1;
+    else
+        return(*x < *y) ? -1: 0;
+}
+
+/*!
+ * @abstract Calculate the median of an array values
+ *
+ * @param  values       array of (integer) values
+ * @param  size         size of values array
+ * @return float        the caluclated median
+ *
+ * MODIFIES THE ORDER OF VALUES IN values ARRAY!
+ */
+float BM_median(uint32_t * values,
+                uint32_t size)
+{
+    if (size == 0)
+        return NAN;
+
+    qsort(values, size, sizeof(uint32_t), cmpfunc_uint32);
+
+    if (size % 2) {
+        // number is odd so return middle number
+        return values[size/2];
+    }
+
+    // number is even so return mean of two middle numbers
+    return (float)(values[size/2 - 1] + values[size/2]) / 2.0f;
+}
+
+/*
+#define ELEM_SWAP(a,b) { register int t=(a);(a)=(b);(b)=t; }
+
+uint32_t BM_median(uint32_t * values,
+                   uint32_t size)
+{
+    uint32_t low, high ;
+    uint32_t median;
+    uint32_t middle, ll, hh;
+    low = 0 ; high = size-1 ; median = (low + high) / 2;
+    for (;;) {
+        if (high <= low) // One element only
+            return values[median] ;
+        if (high == low + 1) { // Two elements only
+            if (values[low] > values[high])
+                ELEM_SWAP(values[low], values[high]) ;
+            return values[median] ;
+        }
+        // Find median of low, middle and high items; swap into position low
+        middle = (low + high) / 2;
+        if (values[middle] > values[high])
+            ELEM_SWAP(values[middle], values[high]) ;
+        if (values[low] > values[high])
+            ELEM_SWAP(values[low], values[high]) ;
+        if (values[middle] > values[low])
+            ELEM_SWAP(values[middle], values[low]) ;
+        // Swap low item (now in position middle) into position (low+1)
+        ELEM_SWAP(values[middle], values[low+1]) ;
+        // Nibble from each end towards middle, swapping items when stuck
+        ll = low + 1;
+        hh = high;
+        for (;;) {
+            do ll++; while (values[low] > values[ll]) ;
+            do hh--; while (values[hh] > values[low]) ;
+            if (hh < ll)
+                break;
+            ELEM_SWAP(values[ll], values[hh]) ;
+        }
+        // Swap middle item (in position low) back into correct position
+        ELEM_SWAP(values[low], values[hh]) ;
+        // Re-set active partition
+        if (hh <= median)
+            low = ll;
+        if (hh >= median)
+            high = hh - 1;
+    }
+    return values[median] ;
+}
+*/
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif // BM_STATS
