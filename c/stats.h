@@ -22,11 +22,7 @@
 //#############################################################################
 
 #ifndef BM_STATS_H
-  #define BM_STATS_H
-
-#include <stdio.h>
-#include <stdint.h>
-#include <math.h>
+#define BM_STATS_H
 
 #ifdef __cplusplus
 extern "C" {

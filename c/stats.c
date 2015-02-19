@@ -1,6 +1,6 @@
 //#############################################################################
 //
-//   stats.h
+//   stats.c
 //
 //   Curse you C!!!!!
 //
@@ -23,6 +23,7 @@
 
 // system includes
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 
@@ -140,5 +141,3 @@ uint32_t BM_median(uint32_t * values,
     return values[median] ;
 }
 */
-
-#endif // BM_STATS_H
