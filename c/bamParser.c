@@ -44,6 +44,7 @@
 #include "bamParser.h"
 #include "pairedLink.h"
 #include "coverageEstimators.h"
+#include "stats.h"
 
 BM_fileInfo * createBFI(void) {
     return (BM_fileInfo*) calloc(1, sizeof(BM_fileInfo));

@@ -459,8 +459,9 @@ class CWrapper:
                   "means that BamM is not installed correctly.\nPlease check " \
                   "the installation logs for more details.\nIf you don't have "\
                   "the installation logs then please try to reinstall BamM " \
-                  "and look at the output.")
-            raise # InvalidInstallationException
+                  "and look at the output.\nLooking for the c library at: %s" %\
+                  c_lib)
+            raise# InvalidInstallationException
 
         #---------------------------------
         # import C functions

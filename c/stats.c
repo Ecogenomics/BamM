@@ -1,6 +1,6 @@
 //#############################################################################
 //
-//   stats.h
+//   stats.c
 //
 //   Curse you C!!!!!
 //
@@ -23,6 +23,7 @@
 
 // system includes
 #include <stdio.h>
+#include <stdlib.h>
 #include <stdint.h>
 #include <math.h>
 
