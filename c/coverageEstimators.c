@@ -33,6 +33,11 @@
 #include "coverageEstimators.h"
 #include "stats.h"
 
+// need this huh?
+#ifndef NAN
+    #define NAN (0.0/0.0)
+#endif
+
 //****************** partial quicksort includes and defines *********/
 #include "pqsort.h"
 static inline int Uint32_tCmp(const uint32_t a, const uint32_t b) {

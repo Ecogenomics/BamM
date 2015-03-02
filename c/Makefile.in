@@ -10,7 +10,7 @@ LIBCFU_LDFLAGS = @LIBCFU_LDFLAGS@
 LIBCFU_LIBS = @LIBCFU_LIBS@
 LIBCFU_LIB_DIR = @LIBCFU_LIB_DIR@
 
-CFLAGS = -g -fPIC -pthread -O2 -Wall $(LIBHTS_CPPFLAGS) $(LIBCFU_CPPFLAGS)
+CFLAGS = -std=gnu99 -g -fPIC -pthread -O2 -Wall $(LIBHTS_CPPFLAGS) $(LIBCFU_CPPFLAGS)
 #LIB_FLAGS = -static-libgcc -shared -Wl,-rpath,$(LIBHTS_LIB_DIR),-soname,libBamM.so.0
 LIB_FLAGS = -static-libgcc -shared -Wl,-rpath,$(LIBHTS_LIB_DIR)
 LIBS =  -lm $(LIBCFU_LDFLAGS) $(LIBCFU_LIBS) $(LIBHTS_LDFLAGS) $(LIBHTS_LIBS)
