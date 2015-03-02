@@ -28,6 +28,7 @@
 
 // local includes
 #include "stats.h"
+#include "pqsort.h"
 
 float BM_mean(uint32_t * values, uint32_t size)
 {
@@ -140,5 +141,3 @@ uint32_t BM_median(uint32_t * values,
     return values[median] ;
 }
 */
-
-#endif // BM_STATS_H

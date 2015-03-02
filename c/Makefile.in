@@ -19,9 +19,9 @@ BMM_PARSER = bamParser
 BMM_EXTRACTOR = bamExtractor
 BMM_LIB = libBamM.a
 
-LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c
+LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c stats.c
 
-LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o
+LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o stats.o
 
 all: library
       
