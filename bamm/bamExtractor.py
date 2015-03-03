@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from six.moves import range
+from six.moves import zip
 ###############################################################################
 #                                                                             #
 #    BamExtractor.py                                                          #
@@ -39,15 +42,15 @@ from multiprocessing import Manager, Process, Value
 import numpy as np
 import sys
 import gzip
-import Queue
+import six.moves.queue
 import time
 from threading import Thread
 
 # local imports
-from cWrapper import *
-from bamFile import *
-from bammExceptions import *
-from bamRead import *
+from .cWrapper import *
+from .bamFile import *
+from .bammExceptions import *
+from .bamRead import *
 
 ###############################################################################
 ###############################################################################
@@ -570,9 +573,9 @@ class BamExtractor:
             w.start()
 
         # each thread gets its own queue for recieving ReadSet instances on
-        response_queues = dict(zip(thread_ids,
+        response_queues = dict(list(zip(thread_ids,
                                    [self.manager.Queue() for _ in range(threads)]
-                                   )
+                                   ))
                                )
         # The RSM is waiting wor this queue too
         self.RSM.setResponseQueues(response_queues)

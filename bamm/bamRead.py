@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from six.moves import range
 ###############################################################################
 #                                                                             #
 #    bamRead.py                                                               #
@@ -37,13 +39,13 @@ import ctypes as c
 import sys
 import multiprocessing as mp
 import gzip
-import Queue
+import six.moves.queue
 import time
 from copy import deepcopy
 
 # local import
-from bammExceptions import *
-from cWrapper import *
+from .bammExceptions import *
+from .cWrapper import *
 
 ###############################################################################
 ###############################################################################
@@ -119,7 +121,7 @@ class ReadSetManager(object):
          None
         '''
         self._threadsAreValid = False
-        for file_name in self.fnPrefix2ReadSet.keys():
+        for file_name in list(self.fnPrefix2ReadSet.keys()):
             self.fnPrefix2ReadSet[file_name].threadsAreValid = False
 
     def setResponseQueues(self, queues):
@@ -237,7 +239,7 @@ class ReadSetManager(object):
                                                  f_rpi,
                                                  f_thread_id)
                             except InvalidParameterSetException: pass
-                        except Queue.Empty:
+                        except six.moves.queue.Empty:
                             # avoid wheel spinning
                             time.sleep(2)
                     # else, we have the RS and we're good to go

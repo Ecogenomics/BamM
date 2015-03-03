@@ -1,3 +1,6 @@
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 #!/usr/bin/env python
 ###############################################################################
 #                                                                             #
@@ -40,7 +43,7 @@ import sys
 import tempfile
 
 # local imports
-from bammExceptions import *
+from .bammExceptions import *
 
 ###############################################################################
 ###############################################################################
@@ -289,9 +292,9 @@ class BamScheduler:
         # we've made it this far. Lets tell the user what we intend to do
         if self.showCommands and not self.silent:
             for BM in self.BMs:
-                print BM
+                print(BM)
                 sys.stdout.flush()
-            print "-------------------------------------------"
+            print("-------------------------------------------")
             sys.stdout.flush()
 
     def makeBams(self):
@@ -555,7 +558,7 @@ class BamMaker:
                             self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -656,7 +659,7 @@ class BamMaker:
                         self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -685,7 +688,7 @@ class BamMaker:
                           self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -712,7 +715,7 @@ class BamMaker:
                          self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -746,7 +749,7 @@ class BamMaker:
                         self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -779,7 +782,7 @@ class BamMaker:
                         self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -817,7 +820,7 @@ class BamMaker:
                         self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -858,7 +861,7 @@ class BamMaker:
                                   self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
         self.samtoolsIndex(self.outFileName)
@@ -900,7 +903,7 @@ class BamMaker:
                             self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -935,7 +938,7 @@ class BamMaker:
                          self.errorOutput])
 
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -958,7 +961,7 @@ class BamMaker:
                         sortedBamFile+'.bam',
                         self.errorOutput])
         if self.showCommands and not self.silent:
-            print cmd
+            print(cmd)
             sys.stdout.flush()
         subprocess.check_call(cmd, shell=True)
 
@@ -976,7 +979,7 @@ class BamMaker:
         '''
         if os.path.isfile(fileName):
             if self.showCommands and not self.silent:
-                print 'rm ' + fileName
+                print('rm ' + fileName)
                 sys.stdout.flush()
             os.system('rm ' + fileName)
 

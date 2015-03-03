@@ -1,3 +1,4 @@
+from __future__ import absolute_import
 #!/usr/bin/env python
 ###############################################################################
 #                                                                             #
@@ -37,7 +38,7 @@ __email__ = "mike@mikeimelfort.com"
 import ctypes as c
 
 # local imports
-from cWrapper import *
+from .cWrapper import *
 
 ###############################################################################
 ###############################################################################
