@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
+from six.moves import zip
 ###############################################################################
 #                                                                             #
 #    BamParser.py                                                             #
@@ -42,10 +46,10 @@ import numpy as np
 import sys
 
 # local imports
-from cWrapper import *
-from bamLink import *
-from bamFile import *
-from bammExceptions import *
+from .cWrapper import *
+from .bamLink import *
+from .bamFile import *
+from .bammExceptions import *
 
 ###############################################################################
 ###############################################################################
@@ -89,7 +93,7 @@ def externalParseWrapper(bAMpARSER,
             break
 
         if verbose:
-            print "Parsing file: %s" % bAMpARSER.bamFiles[bid]
+            print("Parsing file: %s" % bAMpARSER.bamFiles[bid])
 
         # go back into the class to do the work
         coverages = []
@@ -542,7 +546,7 @@ class BamParser:
                 self.BFI.printLinks(sys.stdout)
             else:
                 with open(fileName, "w") as fh:
-                    self.BFI.printLinks(dict(zip(range(len(self.bamFiles)),self.bamFiles)), fh)
+                    self.BFI.printLinks(dict(list(zip(list(range(len(self.bamFiles))),self.bamFiles))), fh)
 
 ###############################################################################
 ###############################################################################

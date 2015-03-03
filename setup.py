@@ -1,3 +1,5 @@
+from __future__ import absolute_import
+from __future__ import print_function
 from distutils.core import setup
 from distutils.command.install import INSTALL_SCHEMES
 import sys
@@ -14,12 +16,12 @@ xtra_opts = {"--with-libcfu-inc":"libcfu headers at this location",
 if '-help' not in sys.argv and '-h' not in sys.argv and '--help' not in sys.argv and '--h' not in sys.argv:
     if 'sdist' not in sys.argv:
         # set the location of the compiled c library to the place where the headers will be
-        for scheme in INSTALL_SCHEMES.values():
+        for scheme in list(INSTALL_SCHEMES.values()):
             scheme['data'] = join(scheme['platlib'], 'bamm', 'c')
 
         # grab extra configuration arguments
         configure_args = []
-        for opt in xtra_opts.keys():
+        for opt in list(xtra_opts.keys()):
             try:
                 opt_idx = sys.argv.index(opt)
                 configure_args.append(opt+"="+abspath(sys.argv[opt_idx+1]))
@@ -36,11 +38,11 @@ if '-help' not in sys.argv and '-h' not in sys.argv and '--help' not in sys.argv
         call(['make'])
         chdir(cur_dir)
 else:
-    print
-    print "Embedded C options (for building libPMBam.a) USE: --OPTION<space>PATH"
-    for opt in xtra_opts.keys():
-        print "  %s  %s"%(opt,xtra_opts[opt])
-    print
+    print()
+    print("Embedded C options (for building libPMBam.a) USE: --OPTION<space>PATH")
+    for opt in list(xtra_opts.keys()):
+        print("  %s  %s"%(opt,xtra_opts[opt]))
+    print()
 
 # return to regular viewing
 setup(

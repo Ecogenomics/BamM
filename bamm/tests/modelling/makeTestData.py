@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 ###############################################################################
 #
 # makeTestReads.py - make reads for use in unit testing
@@ -116,7 +119,7 @@ def cutMers(seq, k):
         rmer = revcom(mer)
         mers[mer] = 1
         mers[rmer] = 1
-    return (mers.keys(), maxx*2)
+    return (list(mers.keys()), maxx*2)
 
 def getAndCheckSeq(seq, s_len, c_len, mers):
     tmp_mers = []
@@ -154,7 +157,7 @@ def doWork( args ):
                     cid_2_grp[cid] = os.path.split(group_name)[1]
                     cid_2_grp_comb[cid] = "allGroups"
         except:
-            print "Error opening file:", group_name, sys.exc_info()[0]
+            print("Error opening file:", group_name, sys.exc_info()[0])
             raise
 
     # parse fasta file
@@ -166,14 +169,14 @@ def doWork( args ):
                     continue
                 seq.append(line.rstrip())
     except:
-        print "Error opening file:", args.fasta, sys.exc_info()[0]
+        print("Error opening file:", args.fasta, sys.exc_info()[0])
         raise
     seq = "".join(seq)
     s_len = len(seq)
 
     # now make the contigs
     mers = {}
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         c_len = contigs[cid][0]*mult
         contigs[cid][1] = getAndCheckSeq(seq, s_len, c_len, mers)
         for type in types:
@@ -244,7 +247,7 @@ def doWork( args ):
                                     fname]
                         links.append(link)
     except:
-        print "Error opening file:", args.readkey, sys.exc_info()[0]
+        print("Error opening file:", args.readkey, sys.exc_info()[0])
         raise
 
 #----------------------------
@@ -252,7 +255,7 @@ def doWork( args ):
 
     # counts
     cov_type = 'counts'
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         if cid == 'Z':
             continue
         for type in types:
@@ -260,7 +263,7 @@ def doWork( args ):
 
     # cmean
     cov_type = 'cmean'
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         if cid == 'Z':
             continue
         for type in types:
@@ -269,7 +272,7 @@ def doWork( args ):
     # pmean
     cov_type = 'pmean'
     pmean_cov = []
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         if cid == 'Z':
             continue
         for type in types:
@@ -278,7 +281,7 @@ def doWork( args ):
     # opmean
     cov_type = 'opmean'
     opmean_cov = []
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         if cid == 'Z':
             continue
         c_len = contigs[cid][0]*mult
@@ -302,7 +305,7 @@ def doWork( args ):
     # tpmean
     cov_type = 'tpmean'
     tpmean_cov = []
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         if cid == 'Z':
             continue
         c_len = contigs[cid][0]*mult
@@ -322,7 +325,7 @@ def doWork( args ):
     # pmedian
     cov_type = 'pmedian'
     pmedian_cov = []
-    for cid in contigs.keys():
+    for cid in list(contigs.keys()):
         if cid == 'Z':
             continue
         for type in types:
@@ -454,7 +457,7 @@ def doWork( args ):
                    )
 
     with open(os.path.join(args.outdir, contigs_filename), "w") as con_fh:
-        for cid in contigs.keys():
+        for cid in list(contigs.keys()):
             if cid != 'Z':
                 con_fh.write(">%s\n%s\n" % (cid, contigs[cid][1]))
 

@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from six.moves import range
+from six.moves import zip
 ###############################################################################
 #                                                                             #
 #    CWrapper.py                                                              #
@@ -45,7 +48,7 @@ from bamm.bammExceptions import *
 
 # C-style enums FTW!
 def enum(*sequential, **named):
-    enums = dict(zip(sequential, range(len(sequential))), **named)
+    enums = dict(list(zip(sequential, list(range(len(sequential))))), **named)
     return type('Enum', (), enums)
 
 ###############################################################################

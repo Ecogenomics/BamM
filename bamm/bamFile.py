@@ -1,4 +1,7 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
+from __future__ import print_function
+from six.moves import range
 ###############################################################################
 #                                                                             #
 #    BamFiles.py                                                              #
@@ -39,8 +42,8 @@ import numpy as np
 import sys
 
 # local imports
-from bamLink import *
-from cWrapper import *
+from .bamLink import *
+from .cWrapper import *
 
 ###############################################################################
 ###############################################################################
@@ -201,8 +204,8 @@ class BM_fileInfo(object):
             try:
                 tmp[:,-1] = np.reshape(BFIb.coverages, (1, self.numContigs))
             except ValueError:
-                print "Error combining results from different BAMs. Are you " \
-                      "sure they're from the same mapping?"
+                print("Error combining results from different BAMs. Are you " \
+                      "sure they're from the same mapping?")
                 raise
             self.coverages = tmp
 
@@ -210,7 +213,7 @@ class BM_fileInfo(object):
         for BF in BFIb.bamFiles:
             self.bamFiles.append(BF)
 
-        for key in BFIb.links.keys():
+        for key in list(BFIb.links.keys()):
             try:
                 (self.links[key]).links += (BFIb.links[key]).links
             except KeyError:
@@ -293,7 +296,7 @@ class BM_fileInfo(object):
                 "\n".join([self.links[key].printMore(self.contigNames,
                                                      self.contigLengths,
                                                      bamFileNames)
-                           for key in self.links.keys()]))
+                           for key in list(self.links.keys())]))
 
     def __str__(self):
         '''Override basic string function

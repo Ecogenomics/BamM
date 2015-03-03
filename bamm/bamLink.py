@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from __future__ import absolute_import
 ###############################################################################
 #                                                                             #
 #    bamLink.py                                                               #
@@ -37,7 +38,7 @@ __email__ = "mike@mikeimelfort.com"
 import ctypes as c
 
 # local imports
-from cWrapper import *
+from .cWrapper import *
 
 ###############################################################################
 ###############################################################################
