@@ -1,8 +1,7 @@
-# generated automatically by aclocal 1.11.3 -*- Autoconf -*-
+# generated automatically by aclocal 1.14.1 -*- Autoconf -*-
 
-# Copyright (C) 1996, 1997, 1998, 1999, 2000, 2001, 2002, 2003, 2004,
-# 2005, 2006, 2007, 2008, 2009, 2010, 2011 Free Software Foundation,
-# Inc.
+# Copyright (C) 1996-2013 Free Software Foundation, Inc.
+
 # This file is free software; the Free Software Foundation
 # gives unlimited permission to copy and/or distribute it,
 # with or without modifications, as long as this notice is preserved.
@@ -11,6 +10,57 @@
 # but WITHOUT ANY WARRANTY, to the extent permitted by law; without
 # even the implied warranty of MERCHANTABILITY or FITNESS FOR A
 # PARTICULAR PURPOSE.
+
+m4_ifndef([AC_CONFIG_MACRO_DIRS], [m4_defun([_AM_CONFIG_MACRO_DIRS], [])m4_defun([AC_CONFIG_MACRO_DIRS], [_AM_CONFIG_MACRO_DIRS($@)])])
+# AM_CONDITIONAL                                            -*- Autoconf -*-
+
+# Copyright (C) 1997-2013 Free Software Foundation, Inc.
+#
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# AM_CONDITIONAL(NAME, SHELL-CONDITION)
+# -------------------------------------
+# Define a conditional.
+AC_DEFUN([AM_CONDITIONAL],
+[AC_PREREQ([2.52])dnl
+ m4_if([$1], [TRUE],  [AC_FATAL([$0: invalid condition: $1])],
+       [$1], [FALSE], [AC_FATAL([$0: invalid condition: $1])])dnl
+AC_SUBST([$1_TRUE])dnl
+AC_SUBST([$1_FALSE])dnl
+_AM_SUBST_NOTMAKE([$1_TRUE])dnl
+_AM_SUBST_NOTMAKE([$1_FALSE])dnl
+m4_define([_AM_COND_VALUE_$1], [$2])dnl
+if $2; then
+  $1_TRUE=
+  $1_FALSE='#'
+else
+  $1_TRUE='#'
+  $1_FALSE=
+fi
+AC_CONFIG_COMMANDS_PRE(
+[if test -z "${$1_TRUE}" && test -z "${$1_FALSE}"; then
+  AC_MSG_ERROR([[conditional "$1" was never defined.
+Usually this means the macro was only invoked conditionally.]])
+fi])])
+
+# Copyright (C) 2006-2013 Free Software Foundation, Inc.
+#
+# This file is free software; the Free Software Foundation
+# gives unlimited permission to copy and/or distribute it,
+# with or without modifications, as long as this notice is preserved.
+
+# _AM_SUBST_NOTMAKE(VARIABLE)
+# ---------------------------
+# Prevent Automake from outputting VARIABLE = @VARIABLE@ in Makefile.in.
+# This macro is traced by Automake.
+AC_DEFUN([_AM_SUBST_NOTMAKE])
+
+# AM_SUBST_NOTMAKE(VARIABLE)
+# --------------------------
+# Public sister of _AM_SUBST_NOTMAKE.
+AC_DEFUN([AM_SUBST_NOTMAKE], [_AM_SUBST_NOTMAKE($@)])
 
 dnl SYNOPSIS
 dnl
@@ -32,7 +82,7 @@ dnl AC_SUBST(LIBCFU_CPPFLAGS)
 dnl AC_SUBST(LIBCFU_LDFLAGS)
 dnl AC_SUBST([LIBCFU_LIBS])
 dnl AC_SUBST(LIBCFU_LIB_DIR)
-dnl 
+dnl
 dnl And sets:
 dnl
 dnl HAVE_LIBCFU
@@ -55,16 +105,18 @@ AC_DEFUN([AX_LIBCFU],
         [libcfu_include_dir="$withval"],
         [
         dnl Default behavior is implicit yes
-        if test -f /usr/local/include/cfuhash.h ; then
+if test -f /usr/local/include/cfuhash.h ; then
             libcfu_include_dir=/usr/local/include
         elif test -f /usr/include/cfuhash.h; then
             libcfu_include_dir=/usr/include
+        elif test -f ${ac_abs_top_builddir}/libcfu-0.03/cfuhash.h; then
+            libcfu_include_dir=${ac_abs_top_builddir}/libcfu-0.03/include
         else
             libcfu_include_dir=""
         fi
         ]
     )
-    
+
     AC_ARG_WITH([libcfu-lib],
         AS_HELP_STRING([--with-libcfu-lib=@<:@ARG@:>@],
         [libcfu library is at this location (ARG=path)]
@@ -72,10 +124,12 @@ AC_DEFUN([AX_LIBCFU],
         [libcfu_lib_dir="$withval"],
         [
         dnl Default behavior is implicit yes
-        if test -f /usr/local/lib/libcfu.a ; then
+if test -f /usr/local/lib/libcfu.a ; then
             libcfu_lib_dir=/usr/local/lib
         elif test -f /usr/lib/libcfu.a; then
             libcfu_lib_dir=/usr/lib
+        elif test -f ${ac_abs_top_builddir}/libcfu-0.03/libcfu.a; then
+            libcfu_lib_dir=${ac_abs_top_builddir}/libcfu-0.03/lib
         else
             libcfu_lib_dir=""
         fi
@@ -110,7 +164,7 @@ AC_DEFUN([AX_LIBCFU],
 
     saved_LIBS="$LIBS"
     LIBS="$libcfu_libs $PTHREAD_LIBS $LIBS"
-    
+
     dnl echo "libs: ${LIBS}"
     dnl echo "cppflags: ${CPPFLAGS}"
     dnl echo "ldflags: ${LDFLAGS}"
@@ -169,7 +223,7 @@ cfuhash_table_t *links = cfuhash_new_with_initial_size(30); cfuhash_destroy(link
     CPPFLAGS="$saved_CPPFLAGS"
     LDFLAGS="$saved_LDFLAGS"
     LIBS="$saved_LIBS"
- 
+
     if test "$libcfu_header_found" = "yes" -a "$libcfu_lib_found" = "yes"; then
 
         AC_SUBST([LIBCFU_CPPFLAGS])
@@ -229,12 +283,14 @@ AC_DEFUN([AX_LIBHTS],
             libhts_include_dir=/usr/local/include
         elif test -d /usr/include/htslib; then
             libhts_include_dir=/usr/include
+        elif test -d htslib; then
+            libhts_include_dir=htslib
         else
             libhts_include_dir=""
         fi
         ]
     )
-    
+
     AC_ARG_WITH([libhts-lib],
         AS_HELP_STRING([--with-libhts-lib=@<:@ARG@:>@],
         [libhts library is at this location (ARG=path)]
@@ -265,7 +321,7 @@ AC_DEFUN([AX_LIBHTS],
         libhts_lib_found="no"
         AC_MSG_RESULT([not found])
     fi
-    
+
     libhts_libs="-lhts"
 
     dnl
@@ -280,7 +336,7 @@ AC_DEFUN([AX_LIBHTS],
 
     saved_LIBS="$LIBS"
     LIBS="$libhts_libs $PTHREAD_LIBS $LIBS"
-    
+
     dnl echo "libs: ${LIBS}"
     dnl echo "cppflags: ${CPPFLAGS}"
     dnl echo "ldflags: ${LDFLAGS}"
@@ -339,11 +395,11 @@ bam_hdr_t *h = 0;
     CPPFLAGS="$saved_CPPFLAGS"
     LDFLAGS="$saved_LDFLAGS"
     LIBS="$saved_LIBS"
- 
+
     if test "$libhts_header_found" = "yes" -a "$libhts_lib_found" = "yes"; then
 
         LIBHTS_LIB_DIR="$libhts_lib_dir"
-    
+
         AC_SUBST([LIBHTS_CPPFLAGS])
         AC_SUBST([LIBHTS_LDFLAGS])
         AC_SUBST([LIBHTS_LIBS])
@@ -354,58 +410,3 @@ bam_hdr_t *h = 0;
         HAVE_LIBHTS="no"
     fi
 ])
-# AM_CONDITIONAL                                            -*- Autoconf -*-
-
-# Copyright (C) 1997, 2000, 2001, 2003, 2004, 2005, 2006, 2008
-# Free Software Foundation, Inc.
-#
-# This file is free software; the Free Software Foundation
-# gives unlimited permission to copy and/or distribute it,
-# with or without modifications, as long as this notice is preserved.
-
-# serial 9
-
-# AM_CONDITIONAL(NAME, SHELL-CONDITION)
-# -------------------------------------
-# Define a conditional.
-AC_DEFUN([AM_CONDITIONAL],
-[AC_PREREQ(2.52)dnl
- ifelse([$1], [TRUE],  [AC_FATAL([$0: invalid condition: $1])],
-	[$1], [FALSE], [AC_FATAL([$0: invalid condition: $1])])dnl
-AC_SUBST([$1_TRUE])dnl
-AC_SUBST([$1_FALSE])dnl
-_AM_SUBST_NOTMAKE([$1_TRUE])dnl
-_AM_SUBST_NOTMAKE([$1_FALSE])dnl
-m4_define([_AM_COND_VALUE_$1], [$2])dnl
-if $2; then
-  $1_TRUE=
-  $1_FALSE='#'
-else
-  $1_TRUE='#'
-  $1_FALSE=
-fi
-AC_CONFIG_COMMANDS_PRE(
-[if test -z "${$1_TRUE}" && test -z "${$1_FALSE}"; then
-  AC_MSG_ERROR([[conditional "$1" was never defined.
-Usually this means the macro was only invoked conditionally.]])
-fi])])
-
-# Copyright (C) 2006, 2008, 2010 Free Software Foundation, Inc.
-#
-# This file is free software; the Free Software Foundation
-# gives unlimited permission to copy and/or distribute it,
-# with or without modifications, as long as this notice is preserved.
-
-# serial 3
-
-# _AM_SUBST_NOTMAKE(VARIABLE)
-# ---------------------------
-# Prevent Automake from outputting VARIABLE = @VARIABLE@ in Makefile.in.
-# This macro is traced by Automake.
-AC_DEFUN([_AM_SUBST_NOTMAKE])
-
-# AM_SUBST_NOTMAKE(VARIABLE)
-# --------------------------
-# Public sister of _AM_SUBST_NOTMAKE.
-AC_DEFUN([AM_SUBST_NOTMAKE], [_AM_SUBST_NOTMAKE($@)])
-

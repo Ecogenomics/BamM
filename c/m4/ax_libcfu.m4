@@ -18,7 +18,7 @@ dnl AC_SUBST(LIBCFU_CPPFLAGS)
 dnl AC_SUBST(LIBCFU_LDFLAGS)
 dnl AC_SUBST([LIBCFU_LIBS])
 dnl AC_SUBST(LIBCFU_LIB_DIR)
-dnl 
+dnl
 dnl And sets:
 dnl
 dnl HAVE_LIBCFU
@@ -41,16 +41,18 @@ AC_DEFUN([AX_LIBCFU],
         [libcfu_include_dir="$withval"],
         [
         dnl Default behavior is implicit yes
-        if test -f /usr/local/include/cfuhash.h ; then
+if test -f /usr/local/include/cfuhash.h ; then
             libcfu_include_dir=/usr/local/include
         elif test -f /usr/include/cfuhash.h; then
             libcfu_include_dir=/usr/include
+        elif test -f ${ac_abs_top_builddir}/libcfu-0.03/cfuhash.h; then
+            libcfu_include_dir=${ac_abs_top_builddir}/libcfu/
         else
             libcfu_include_dir=""
         fi
         ]
     )
-    
+
     AC_ARG_WITH([libcfu-lib],
         AS_HELP_STRING([--with-libcfu-lib=@<:@ARG@:>@],
         [libcfu library is at this location (ARG=path)]
@@ -58,10 +60,12 @@ AC_DEFUN([AX_LIBCFU],
         [libcfu_lib_dir="$withval"],
         [
         dnl Default behavior is implicit yes
-        if test -f /usr/local/lib/libcfu.a ; then
+if test -f /usr/local/lib/libcfu.a ; then
             libcfu_lib_dir=/usr/local/lib
         elif test -f /usr/lib/libcfu.a; then
             libcfu_lib_dir=/usr/lib
+        elif test -f ${ac_abs_top_builddir}/libcfu-0.03/libcfu.a; then
+            libcfu_lib_dir=${ac_abs_top_builddir}/libcfu/
         else
             libcfu_lib_dir=""
         fi
@@ -96,7 +100,7 @@ AC_DEFUN([AX_LIBCFU],
 
     saved_LIBS="$LIBS"
     LIBS="$libcfu_libs $PTHREAD_LIBS $LIBS"
-    
+
     dnl echo "libs: ${LIBS}"
     dnl echo "cppflags: ${CPPFLAGS}"
     dnl echo "ldflags: ${LDFLAGS}"
@@ -155,7 +159,7 @@ cfuhash_table_t *links = cfuhash_new_with_initial_size(30); cfuhash_destroy(link
     CPPFLAGS="$saved_CPPFLAGS"
     LDFLAGS="$saved_LDFLAGS"
     LIBS="$saved_LIBS"
- 
+
     if test "$libcfu_header_found" = "yes" -a "$libcfu_lib_found" = "yes"; then
 
         AC_SUBST([LIBCFU_CPPFLAGS])

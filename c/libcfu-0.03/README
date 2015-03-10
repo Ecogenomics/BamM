@@ -1,0 +1,6 @@
+Libcfu is a library of thread-safe functions and data structures that
+I have found useful.  See the texinfo documentation for detailed
+information.
+
+Cut down to be used for BamM by Mike Imelfort
+

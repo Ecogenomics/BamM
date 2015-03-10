@@ -45,12 +45,14 @@ AC_DEFUN([AX_LIBHTS],
             libhts_include_dir=/usr/local/include
         elif test -d /usr/include/htslib; then
             libhts_include_dir=/usr/include
+        elif test -d htslib; then
+            libhts_include_dir=htslib
         else
             libhts_include_dir=""
         fi
         ]
     )
-    
+
     AC_ARG_WITH([libhts-lib],
         AS_HELP_STRING([--with-libhts-lib=@<:@ARG@:>@],
         [libhts library is at this location (ARG=path)]
@@ -81,7 +83,7 @@ AC_DEFUN([AX_LIBHTS],
         libhts_lib_found="no"
         AC_MSG_RESULT([not found])
     fi
-    
+
     libhts_libs="-lhts"
 
     dnl
@@ -96,7 +98,7 @@ AC_DEFUN([AX_LIBHTS],
 
     saved_LIBS="$LIBS"
     LIBS="$libhts_libs $PTHREAD_LIBS $LIBS"
-    
+
     dnl echo "libs: ${LIBS}"
     dnl echo "cppflags: ${CPPFLAGS}"
     dnl echo "ldflags: ${LDFLAGS}"
@@ -155,11 +157,11 @@ bam_hdr_t *h = 0;
     CPPFLAGS="$saved_CPPFLAGS"
     LDFLAGS="$saved_LDFLAGS"
     LIBS="$saved_LIBS"
- 
+
     if test "$libhts_header_found" = "yes" -a "$libhts_lib_found" = "yes"; then
 
         LIBHTS_LIB_DIR="$libhts_lib_dir"
-    
+
         AC_SUBST([LIBHTS_CPPFLAGS])
         AC_SUBST([LIBHTS_LDFLAGS])
         AC_SUBST([LIBHTS_LIBS])

@@ -1,0 +1,29 @@
+CC = gcc
+
+CFLAGS = -I../include -std=gnu99 -W -pthread -g -fPIC -pthread -O2 -Wall
+
+LIB_FLAGS = -static-libgcc -shared -Wl,-rpath
+
+CFU_LIB = libcfu.a
+
+LIBCFU_SOURCES = cfu.c cfuconf.c cfuhash.c cfulist.c cfuopt.c cfustring.c  cfuthread_queue.c cfutime.c
+
+LIBCFU_OBJS = cfu.o cfuconf.o cfuhash.o cfulist.o cfuopt.o cfustring.o  cfuthread_queue.o cfutime.o
+
+all: library
+	  
+.SUFFIXES: .c .o
+
+.c.o:
+	$(CC) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
+
+$(CFU_LIB) : $(LIBCFU_OBJS)
+	@-rm -f $@
+	$(CC) $(CFLAGS) $(LIB_FLAGS) -o $@ $(LIBCFU_SOURCES) $(LIBS)
+
+library: $(CFU_LIB)
+	@echo "Building library"
+
+clean:
+	$(RM) *.o
+	$(RM) $(CFU_LIB)
