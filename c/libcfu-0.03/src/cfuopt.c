@@ -3,11 +3,11 @@
  * Change log:
  */
 
-#include "cfu.h"
-#include "cfuopt.h"
-#include "cfuhash.h"
-#include "cfulist.h"
-#include "cfustring.h"
+#include "../include/cfu.h"
+#include "../include/cfuopt.h"
+#include "../include/cfuhash.h"
+#include "../include/cfulist.h"
+#include "../include/cfustring.h"
 
 #include <stdlib.h>
 

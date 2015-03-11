@@ -38,8 +38,8 @@
    OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cfu.h"
-#include "cfutime.h"
+#include "../include/cfu.h"
+#include "../include/cfutime.h"
 #include <string.h>
 #include <stdlib.h>
 

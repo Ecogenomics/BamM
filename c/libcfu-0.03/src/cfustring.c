@@ -38,9 +38,9 @@
    OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cfu.h"
+#include "../include/cfu.h"
 
-#include "cfustring.h"
+#include "../include/cfustring.h"
 
 #include <stdlib.h>
 #include <stdarg.h>

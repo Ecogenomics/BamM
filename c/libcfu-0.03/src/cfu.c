@@ -38,7 +38,7 @@
    OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cfu.h"
+#include "../include/cfu.h"
 
 struct libcfu_item {
 	libcfu_type type;

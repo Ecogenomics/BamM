@@ -38,12 +38,12 @@
    OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cfu.h"
+#include "../include/cfu.h"
 
 #include <stdlib.h>
 
-#include "cfulist.h"
-#include "cfustring.h"
+#include "../include/cfulist.h"
+#include "../include/cfustring.h"
 
 #ifdef CFU_DEBUG
 #ifdef NDEBUG

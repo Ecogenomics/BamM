@@ -38,15 +38,15 @@
    OF THE POSSIBILITY OF SUCH DAMAGE.
 */
 
-#include "cfu.h"
+#include "../include/cfu.h"
 
 #include <pthread.h>
 #include <string.h>
 #include <stdlib.h>
 #include <ctype.h>
 
-#include "cfuhash.h"
-#include "cfustring.h"
+#include "../include/cfuhash.h"
+#include "../include/cfustring.h"
 
 #ifdef CFU_DEBUG
 #ifdef NDEBUG

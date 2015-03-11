@@ -5,8 +5,8 @@
 
  */
 
-#include "cfuthread_queue.h"
-#include "cfulist.h"
+#include "../include/cfuthread_queue.h"
+#include "../include/cfulist.h"
 
 #include <pthread.h>
 #include <stdlib.h>
