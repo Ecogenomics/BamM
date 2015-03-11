@@ -30,8 +30,7 @@
 #include <libgen.h>
 
 // htslib
-//#include "htslib/bgzf.h"
-#include "htslib/sam.h"
+#include "sam.h"
 
 // cfuhash
 #include "cfuhash.h"

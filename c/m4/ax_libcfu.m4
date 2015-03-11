@@ -45,8 +45,6 @@ if test -f /usr/local/include/cfuhash.h ; then
             libcfu_include_dir=/usr/local/include
         elif test -f /usr/include/cfuhash.h; then
             libcfu_include_dir=/usr/include
-        elif test -f ${ac_abs_top_builddir}/libcfu-0.03/cfuhash.h; then
-            libcfu_include_dir=${ac_abs_top_builddir}/libcfu/
         else
             libcfu_include_dir=""
         fi
@@ -64,8 +62,6 @@ if test -f /usr/local/lib/libcfu.a ; then
             libcfu_lib_dir=/usr/local/lib
         elif test -f /usr/lib/libcfu.a; then
             libcfu_lib_dir=/usr/lib
-        elif test -f ${ac_abs_top_builddir}/libcfu-0.03/libcfu.a; then
-            libcfu_lib_dir=${ac_abs_top_builddir}/libcfu/
         else
             libcfu_lib_dir=""
         fi
@@ -82,8 +78,16 @@ if test -f /usr/local/lib/libcfu.a ; then
     if test -n "$libcfu_lib_dir"; then
         libcfu_ldflags="-L$libcfu_lib_dir"
     else
-        libcfu_lib_found="no"
-        AC_MSG_RESULT([not found])
+        saved_dir=$(pwd)
+        CFU_SRC_DIR=$saved_dir/"libcfu-0.03"
+        AC_MSG_RESULT([libcfu location not specified - building from local version])
+        cd $CFU_SRC_DIR
+        ./configure
+        make clean && make && make install
+        cd $saved_dir
+        libcfu_ldflags="-L$CFU_SRC_DIR/lib"
+        libcfu_lib_dir="$CFU_SRC_DIR/lib"
+        libcfu_include_dir="$CFU_SRC_DIR/include"
     fi
 
     libcfu_libs="-lcfu"

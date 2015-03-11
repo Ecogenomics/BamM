@@ -80,8 +80,16 @@ AC_DEFUN([AX_LIBHTS],
     if test -n "$libhts_lib_dir"; then
         libhts_ldflags="-L$libhts_lib_dir"
     else
-        libhts_lib_found="no"
-        AC_MSG_RESULT([not found])
+        saved_dir=$(pwd)
+        HTS_SRC_DIR=$saved_dir/"htslib-1.2.1"
+        AC_MSG_RESULT([htslib location not specified - building from local version])
+        cd $HTS_SRC_DIR
+        ./configure
+        make clean && make
+        cd $saved_dir
+        libhts_ldflags="-L$HTS_SRC_DIR"
+        libhts_lib_dir="$HTS_SRC_DIR"
+        libhts_include_dir="$HTS_SRC_DIR/htslib"
     fi
 
     libhts_libs="-lhts"
@@ -110,7 +118,7 @@ AC_DEFUN([AX_LIBHTS],
     AC_COMPILE_IFELSE([
         AC_LANG_PROGRAM(
             [[
-@%:@include <$libhts_include_dir/htslib/sam.h>
+@%:@include <$libhts_include_dir/sam.h>
             ]],
             [[]]
         )],
@@ -135,7 +143,7 @@ AC_DEFUN([AX_LIBHTS],
         AC_LINK_IFELSE([
             AC_LANG_PROGRAM(
                 [[
-@%:@include <$libhts_include_dir/htslib/sam.h>
+@%:@include <$libhts_include_dir/sam.h>
                 ]],
                 [[
 bam_hdr_t *h = 0;

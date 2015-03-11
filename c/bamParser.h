@@ -36,8 +36,8 @@
 #include <stdint.h>
 
 // htslib
-#include "htslib/bgzf.h"
-#include "htslib/sam.h"
+#include "bgzf.h"
+#include "sam.h"
 
 // cfuhash
 #include "cfuhash.h"

@@ -15,15 +15,14 @@ CFLAGS = -std=gnu99 -g -fPIC -pthread -O2 -Wall $(LIBHTS_CPPFLAGS) $(LIBCFU_CPPF
 LIB_FLAGS = -static-libgcc -shared -Wl,-rpath,$(LIBHTS_LIB_DIR)
 LIBS =  -lm $(LIBCFU_LDFLAGS) $(LIBCFU_LIBS) $(LIBHTS_LDFLAGS) $(LIBHTS_LIBS)
 
-BMM_PARSER = bamParser
-BMM_EXTRACTOR = bamExtractor
+HTS_DIR = htslib-1.2.1
+CFU_DIR = libcfu-0.03
 BMM_LIB = libBamM.a
 
 LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c stats.c
-
 LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o stats.o
 
-all: library
+all: lib_only
       
 .SUFFIXES: .c .o
 
@@ -34,14 +33,8 @@ $(BMM_LIB) : $(LIBBAMM_OBJS)
 	@-rm -f $@
 	$(CC) $(CFLAGS) $(LIB_FLAGS) -o $@ $(LIBBAMM_SOURCES) $(LIBS)
 
-$(BMM_PARSER): $(PARSER_SOURCES)
-	$(CC) $(CFLAGS) -o $@ $(PARSER_SOURCES) $(LIBS)
-
-$(BMM_EXTRACTOR): $(EXTRACTOR_SOURCES)
-	$(CC) $(CFLAGS) -o $@ $(EXTRACTOR_SOURCES) $(LIBS)
-
-library: $(BMM_LIB)
-	@echo "Building library"
+lib_only: $(BMM_LIB) 
+	@echo "Building BamM library"
 
 clean:
 	$(RM) $(BMM_PARSER)

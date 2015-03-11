@@ -383,11 +383,11 @@ cfuopt_parse(cfuopt_t *context, int *argc, char ***argv, char **error) {
 	*argc = extra_count + 1;
 	{
 		_update_extra_ds ds;
-		size_t update_count = 0;
+		//size_t update_count = 0;
 		ds.count = 1;
 		ds.argv = args;
-		update_count = cfulist_foreach(context->extra, _update_extra, (void *)&ds);
-		assert(update_count + 1 == (unsigned)*argc);
+		//update_count = cfulist_foreach(context->extra, _update_extra, (void *)&ds);
+		assert(cfulist_foreach(context->extra, _update_extra, (void *)&ds) == (unsigned)*argc - 1);
 	}
 }
 

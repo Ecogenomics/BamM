@@ -94,7 +94,7 @@ static u_int32_t
 hash_func(const void *key, size_t length) {
 	register size_t i = length;
 	register u_int hv = 0; /* could put a seed here instead of zero */
-	register const unsigned char *s = (char *)key;
+	register const unsigned char *s = (unsigned char *)key;
 	while (i--) {
 		hv += *s++;
 		hv += (hv << 10);
@@ -876,12 +876,12 @@ cfuhash_bencode_strings(cfuhash_table_t *ht) {
 	for (i = 0; i < num_keys; i++) {
 		char *val = NULL;
 
-		snprintf(len_str, 32, "%d:", (keys[i] ? strlen(keys[i]) : 0));
+		snprintf(len_str, 32, "%zd:", (keys[i] ? strlen(keys[i]) : 0));
 		cfustring_append(bencoded, len_str);
 		cfustring_append(bencoded, keys[i]);
 
 		val = (char *)cfuhash_get(ht, keys[i]);
-		snprintf(len_str, 32, "%d:", (val ? strlen(val) : 0));
+		snprintf(len_str, 32, "%zd:", (val ? strlen(val) : 0));
 		cfustring_append(bencoded, len_str);
 		cfustring_append(bencoded, val);
 

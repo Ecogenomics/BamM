@@ -8,13 +8,13 @@
 #define PACKAGE_BUGREPORT "mike@mikeimelfort.com"
 
 /* Define to the full name of this package. */
-#define PACKAGE_NAME "BamM_C"
+#define PACKAGE_NAME "BamM"
 
 /* Define to the full name and version of this package. */
-#define PACKAGE_STRING "BamM_C 0.1"
+#define PACKAGE_STRING "BamM 0.1"
 
 /* Define to the one symbol short name of this package. */
-#define PACKAGE_TARNAME "BamM_C"
+#define PACKAGE_TARNAME "bamm"
 
 /* Define to the home page for this package. */
 #define PACKAGE_URL ""

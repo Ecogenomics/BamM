@@ -17,10 +17,6 @@ AC_CHECK_LIB([m],[lgamma,log,exp],
               AC_DEFINE([HAVE_M],[1],[Defines to 1 if the m library (-lm) is found])],
              [AC_MSG_ERROR([libm not found])])
 
-dnl Add the default location for libcfu and htslib
-AC_CONFIG_SUBDIRS([libcfu-0.03 htslib-1.2.1])
-AC_OUTPUT
-
 # test for libcfu
 AX_LIBCFU
 if test $HAVE_LIBCFU = no; then
@@ -29,7 +25,6 @@ else
 AM_CONDITIONAL([LIBCFU_FOUND], [test $HAVE_LIBCFU = yes])
 fi
 
-
 # test for libhts
 AX_LIBHTS
 if test $HAVE_LIBHTS = no; then
@@ -37,6 +32,9 @@ AC_MSG_ERROR([Cannot find libhts])
 else
 AM_CONDITIONAL([LIBHTS_FOUND], [test $HAVE_LIBHTS = yes])
 fi
+
+dnl Add the default location for libcfu and htslib
+AC_CONFIG_SUBDIRS([libcfu-0.03 htslib-1.2.1])
 
 dnl Write #defines to config.h file.
 dnl You need to generate config.h.in, for example using autoheader.
