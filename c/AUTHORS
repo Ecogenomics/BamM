@@ -1,0 +1,4 @@
+libBamM code originally written by Mike Imelfort
+htslib is mana from heaven AKA. the samtools people. It's bad for to lump their code in here but s many people
+are having trouble installing this thing there is little choice for me
+libcfu originally written by Don Owens <don@owensnet.com>.  Mike stripped some stuff down, remade the build environment and lumped it in here for the same reasons as for htslib
