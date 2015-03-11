@@ -24,4 +24,4 @@ c/libcfu-0.03/src/cfustring.o
 c/libcfu-0.03/src/cfuthread_queue.o
 c/libcfu-0.03/src/cfutime.o
 c/libcfu-0.03/src/libcfu.a
-
+c/libcfu-0.03/autom4te.cache/*
