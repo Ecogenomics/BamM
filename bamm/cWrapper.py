@@ -35,6 +35,7 @@ __email__ = "mike@mikeimelfort.com"
 
 import os
 import ctypes as c
+from pkg_resources import working_set, resource_filename
 
 from bamm.bammExceptions import *
 
@@ -430,7 +431,7 @@ class CWrapper:
     ''' Multiprocessing can't pickle cTypes pointers and functions.
     This class is a hack which quarantines the cTypes functions.
     '''
-    def __init__(self, unitTests=False):
+    def __init__(self, UT=False):
         '''Default constructor.
 
         Loads libBamM.a and instantiates wrappers to the functions we wish
@@ -445,12 +446,16 @@ class CWrapper:
         #---------------------------------
         # load the c library
         #---------------------------------
-        package_dir, filename = os.path.split(__file__)
-        package_dir = os.path.abspath(package_dir)
-        if unitTests:
-            c_lib = os.path.join(package_dir, '..', 'c', 'libBamM.a')
+        if UT:
+            # unit tests are run from within the install dir which confuses
+            # pkg_resources as there is a folder there called bamm
+            # this is a hack to get around that -> prefer resource_filename
+            for dist_path, dist in working_set.entry_keys.items():
+                for d in dist:
+                    if d == 'bamm':
+                        c_lib = os.path.join(dist_path, d, 'libBamM.a')
         else:
-            c_lib = os.path.join(package_dir, 'c', 'libBamM.a')
+            c_lib = os.path.abspath(resource_filename('bamm', 'libBamM.a'))
 
         try:
             self.libPMBam = c.cdll.LoadLibrary(c_lib)

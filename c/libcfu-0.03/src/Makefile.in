@@ -644,8 +644,8 @@ uninstall-am: uninstall-__FINAL_LIB_LIBRARIES
 default: libcfu.a
 
 clean:
-	rm *.o
-	rm ../lib/libcfu.a
+	rm -f *.o
+	rm -f ../lib/libcfu.a
 
 # Tell versions [3.59,3.63) of GNU make to not export all variables.
 # Otherwise a system limit (for SysV at least) may be exceeded.
