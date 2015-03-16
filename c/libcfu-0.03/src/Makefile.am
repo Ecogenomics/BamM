@@ -9,6 +9,6 @@ AM_CPPFLAGS = -I$(top_srcdir)/include
 default: libcfu.a
 
 clean:
-	rm *.o
-	rm ../lib/libcfu.a
+	rm -f *.o
+	rm -f ../lib/libcfu.a
 
