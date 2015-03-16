@@ -37,7 +37,5 @@ lib_only: $(BMM_LIB)
 	@echo "Building BamM library"
 
 clean:
-	$(RM) $(BMM_PARSER)
-	$(RM) $(BMM_EXTRACTOR)
-	$(RM) *.o
-	$(RM) $(BMM_LIB)
+	rm -f *.o
+	rm -f $(BMM_LIB)
