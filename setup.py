@@ -29,6 +29,7 @@ if '-help' not in sys.argv and \
         # configure and make the c portion of the program
         cur_dir = getcwd()
         chdir(join(cur_dir, 'c'))
+        call(join(getcwd(), "autogen.sh"))
         call([join(getcwd(), "configure")] + configure_args)
         call(['make','clean'])
         call(['make'])
@@ -47,7 +48,7 @@ else:
 # return to regular viewing
 setup(
     name='BamM',
-    version='1.3.8',
+    version='1.4.0',
     author='Michael Imelfort',
     author_email='mike@mikeimelfort.com',
     packages=['bamm'],
