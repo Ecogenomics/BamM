@@ -20,10 +20,12 @@ http://minillinim.github.io/BamM/manual/BamM_manual.pdf
 
 If you're running 'bamm make' you'll need to have bwa and samtools installed. Installation of these tools is really straightforward. You can find the code and instructions at:
 
-Samtools:   https://github.com/samtools/samtools
-BWA:        https://github.com/lh3/bwa
+Samtools:   https://github.com/samtools/samtools  (tested with version: 1.2)
+BWA:        https://github.com/lh3/bwa            (tested with version: 0.7.12)
 
-If you're installing system-wide then you can use your favourite package manager to install htslib and libcfu. For local installs, or installs that will work with the linux "modules" system, you need to be a bit trickier. This is the type of install that's documented in the manual.
+BamM depends on two libraries: htslib and libcfu. Several users have reported difficulty installing these dependencies so they are now packaged with the BamM source. It it still possible to use your local version of these libraries, see the manual for more details.
+
+We have tested BamM on CentOS and Ubuntu and recommend these or similar systems. Several people have reported success with installing BamM on OSX varieties however a greater number have not been able to get it installed on their MACs. This is something we're aware of and are working on however **it is probably safe to assume that BamM is not supported on OSX**.
 
 ## Example usage
 
