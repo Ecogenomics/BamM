@@ -25,7 +25,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -37,7 +37,6 @@ __email__ = "mike@mikeimelfort.com"
 import ctypes as c
 
 # local imports
-from cWrapper import *
 
 ###############################################################################
 ###############################################################################

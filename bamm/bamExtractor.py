@@ -24,7 +24,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -44,10 +44,14 @@ import time
 from threading import Thread
 
 # local imports
-from cWrapper import *
-from bamFile import *
-from bammExceptions import *
-from bamRead import *
+from cWrapper import (BM_mappedRead_C,
+                      CWrapper,
+                      RPI,
+                      RPIConv,
+                      RPI2Str,
+                      MI)
+from bammExceptions import MixedFileTypesException
+from bamRead import ReadSetManager
 
 ###############################################################################
 ###############################################################################

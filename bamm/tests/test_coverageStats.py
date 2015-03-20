@@ -1,17 +1,17 @@
 ###############################################################################
 #                                                                             #
-#    This program is free software: you can redistribute it and/or modify     #
-#    it under the terms of the GNU General Public License as published by     #
-#    the Free Software Foundation, either version 3 of the License, or        #
-#    (at your option) any later version.                                      #
+#    This library is free software; you can redistribute it and/or            #
+#    modify it under the terms of the GNU Lesser General Public               #
+#    License as published by the Free Software Foundation; either             #
+#    version 3.0 of the License, or (at your option) any later version.       #
 #                                                                             #
-#    This program is distributed in the hope that it will be useful,          #
+#    This library is distributed in the hope that it will be useful,          #
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
-#    GNU General Public License for more details.                             #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU        #
+#    Lesser General Public License for more details.                          #
 #                                                                             #
-#    You should have received a copy of the GNU General Public License        #
-#    along with this program. If not, see <http://www.gnu.org/licenses/>.     #
+#    You should have received a copy of the GNU Lesser General Public         #
+#    License along with this library.                                         #
 #                                                                             #
 ###############################################################################
 
@@ -22,14 +22,24 @@ __license__ = "LGPLv3"
 __maintainer__ = "Donovan Parks"
 __email__ = "donovan.parks@gmail.com"
 
+###############################################################################
+
+# system imports
 import random
 from math import isnan
 from numpy import mean, median, std, array
 from nose.tools import assert_equals, assert_true
 import sys
 from os.path import join
+import ctypes as c
 
-from bamm.cWrapper import *
+# local imports
+from bamm.cWrapper import BM_coverageType_C, CT, CWrapper
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 class TestCoverageStats:
     @classmethod
@@ -418,3 +428,8 @@ class TestCoverageStats:
         trim_lower = int(BCT.lowerCut/100.0 * len(self.even_list)) + 1
         trim_upper = len(self.even_list) - int(BCT.upperCut/100.0 * len(self.even_list)) - 1
         assert_equals(coverage, mean(self.even_list[trim_lower:trim_upper]))
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################

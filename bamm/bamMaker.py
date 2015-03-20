@@ -25,7 +25,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort, Ben Woodcroft"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort", "Ben Woodcroft"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -40,7 +40,7 @@ import sys
 import tempfile
 
 # local imports
-from bammExceptions import *
+from bammExceptions import InvalidParameterSetException
 
 ###############################################################################
 ###############################################################################

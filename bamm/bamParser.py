@@ -25,7 +25,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -42,10 +42,18 @@ import numpy as np
 import sys
 
 # local imports
-from cWrapper import *
-from bamLink import *
-from bamFile import *
-from bammExceptions import *
+from cWrapper import (CWrapper,
+                      BM_bamFile_C,
+                      BM_fileInfo_C,
+                      BM_LinkWalker_C,
+                      BM_coverageType_C,
+                      BM_bamType_C,
+                      CT)
+from bamLink import BM_linkPair
+from bamFile import BM_bamFile, BM_bamType, BM_fileInfo, BM_coverageType
+from bammExceptions import (InvalidNumberOfTypesException,
+                            BAMFileNotFoundException,
+                            NoBAMSFoundException)
 
 ###############################################################################
 ###############################################################################

@@ -25,7 +25,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -39,8 +39,8 @@ import numpy as np
 import sys
 
 # local imports
-from bamLink import *
-from cWrapper import *
+from bamLink import BM_linkPair, BM_linkInfo
+from cWrapper import OT2Str, OT
 
 ###############################################################################
 ###############################################################################

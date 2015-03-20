@@ -25,10 +25,10 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort","Ben Woodcroft", "Donovan Parks"]
 __license__ = "LGPLv3"
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -51,11 +51,12 @@ try:
 except ImportError:
     sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..'))
 
-from bamm.bamParser import BamParser, BM_coverageType
+from bamm.bamParser import BamParser
+from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
-from bamm.bammExceptions import *
-from bamm.cWrapper import *
+from bamm.bammExceptions import printError, InvalidParameterSetException
+from bamm.cWrapper import CT
 
 ###############################################################################
 ###############################################################################

@@ -24,7 +24,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -40,10 +40,11 @@ import gzip
 import Queue
 import time
 from copy import deepcopy
+import os
 
 # local import
-from bammExceptions import *
-from cWrapper import *
+from bammExceptions import InvalidParameterSetException
+from cWrapper import RPI, CWrapper, BM_mappedRead_C
 
 ###############################################################################
 ###############################################################################

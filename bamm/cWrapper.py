@@ -25,7 +25,7 @@
 ###############################################################################
 
 __author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014"
+__copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
@@ -37,7 +37,7 @@ import os
 import ctypes as c
 from pkg_resources import working_set, resource_filename
 
-from bamm.bammExceptions import *
+from bamm.bammExceptions import printError
 
 ###############################################################################
 ###############################################################################
@@ -466,7 +466,7 @@ class CWrapper:
                   "the installation logs then please try to reinstall BamM " \
                   "and look at the output.\nLooking for the c library at: %s" %\
                   c_lib)
-            raise# InvalidInstallationException
+            raise
 
         #---------------------------------
         # import C functions

@@ -1,20 +1,30 @@
 ###############################################################################
 #                                                                             #
-#    This program is free software: you can redistribute it and/or modify     #
-#    it under the terms of the GNU General Public License as published by     #
-#    the Free Software Foundation, either version 3 of the License, or        #
-#    (at your option) any later version.                                      #
+#    This library is free software; you can redistribute it and/or            #
+#    modify it under the terms of the GNU Lesser General Public               #
+#    License as published by the Free Software Foundation; either             #
+#    version 3.0 of the License, or (at your option) any later version.       #
 #                                                                             #
-#    This program is distributed in the hope that it will be useful,          #
+#    This library is distributed in the hope that it will be useful,          #
 #    but WITHOUT ANY WARRANTY; without even the implied warranty of           #
-#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the            #
-#    GNU General Public License for more details.                             #
+#    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the GNU        #
+#    Lesser General Public License for more details.                          #
 #                                                                             #
-#    You should have received a copy of the GNU General Public License        #
-#    along with this program. If not, see <http://www.gnu.org/licenses/>.     #
+#    You should have received a copy of the GNU Lesser General Public         #
+#    License along with this library.                                         #
 #                                                                             #
 ###############################################################################
 
+__author__ = "Michael Imelfort, Ben Woodcroft"
+__copyright__ = "Copyright 2014,2015"
+__credits__ = ["Michael Imelfort", "Ben Woodcroft"]
+__license__ = "LGPLv3"
+__maintainer__ = "Michael Imelfort"
+__email__ = "mike@mikeimelfort.com"
+
+###############################################################################
+
+# system imports
 import random
 from math import isnan
 from numpy import mean, median, std, array, round, sort
@@ -24,7 +34,10 @@ import os
 import json
 import gzip
 
-from bamm.cWrapper import *
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################
 
 class TestBamParser:
     @classmethod
@@ -103,7 +116,7 @@ class TestBamParser:
     def rmTestFile(self, file):
         full_path = os.path.join(self.model_dir, file)
         if os.path.exists(full_path):
-            pass#os.remove(full_path)
+            os.remove(full_path)
         else:
             sys.stderr.write("No file: %s\n" % full_path)
 
@@ -245,3 +258,8 @@ class TestBamParser:
                                 assert_equals(headers[i], test_headers[i])
 
                             self.rmTestFile(file)
+
+###############################################################################
+###############################################################################
+###############################################################################
+###############################################################################

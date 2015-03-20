@@ -48,7 +48,7 @@ else:
 # return to regular viewing
 setup(
     name='BamM',
-    version='1.4.0',
+    version='1.4.1',
     author='Michael Imelfort',
     author_email='mike@mikeimelfort.com',
     packages=['bamm'],
