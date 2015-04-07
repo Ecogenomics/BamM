@@ -71,6 +71,16 @@ int cmpfunc_uint32(const void * a, const void * b);
  */
 float BM_median(uint32_t * values, uint32_t size);
 
+/*!
+ * @abstract Calculate the variance of an array values
+ *
+ * @param values array of (integer) values
+ * @param size size of values array
+ * @param m mean of the values array
+ * @return float the calculated variance
+ */
+float BM_variance(uint32_t * values, uint32_t size, float m);
+
 #ifdef __cplusplus
 }
 #endif
