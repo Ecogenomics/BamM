@@ -55,7 +55,7 @@ from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
-from bamm.bammExceptions import printError, InvalidParameterSetException
+from bamm.bammExceptions import printError, InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
 
 ###############################################################################
