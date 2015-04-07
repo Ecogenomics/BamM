@@ -468,7 +468,18 @@ ESPECIALLY if you are providing access to multiple / unknown users.
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
                                         add_help=False,
                                         description='get bamfile type and/or coverage profiles and/or linking reads',
-                                        epilog='''Coverage calculation modes:
+                                        epilog='''Example usage:
+
+ Calculate insert distribution, print to STDOUT
+   bamm parse -b my.bam
+  
+ Calculate contig-wise coverage
+   bamm parse -b my.bam -c output_coverage.tsv
+  
+ Calculate linking information on 2 bam files
+   bamm parse -b first.bam second.bam -l output_links.tsv
+                                        
+Coverage calculation modes:
 * opmean:    outlier pileup coverage: average of reads overlapping each base,
              after bases with coverage outside mean +/- 1 standard deviation
              have been excluded. The number of standard deviation used for the
@@ -494,9 +505,9 @@ second is the upper. If only one value is supplied then lower == upper.'''
     parser_req_args.add_argument('-b', '--bamfiles', nargs='+', help="bam files to parse", required=True)
 
     parser_opt_args = parse_parser.add_argument_group('optional arguments')
-    parser_opt_args.add_argument('-l', '--links', help="filename to write pairing links to", default="")
-    parser_opt_args.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
-    parser_opt_args.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
+    parser_opt_args.add_argument('-c', '--coverages', help="filename to write coverage profiles to [default: don't calculate coverage]", default="")
+    parser_opt_args.add_argument('-l', '--links', help="filename to write pairing links to [default: don't calculate links]", default="")
+    parser_opt_args.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to [default: print to STDOUT]", default="")
 
     parser_opt_args.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
     parser_opt_args.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean',
