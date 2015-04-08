@@ -398,8 +398,13 @@ if __name__ == '__main__':
                                         help='make a BAM/TAM file (sorted + indexed)',
                                         add_help=False,
                                         description='make a BAM/TAM file (sorted + indexed)',
-                                        epilog='''EXAMPLE: bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -s reads4_singles.fq.gz -t 40
-will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads
+                                        epilog='''Example usage:
+
+ Produce a sorted, indexed BAM file with reads mapped onto contigs.fa using 40 threads
+   bamm make -d contigs.fa -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -t 40
+   
+ Produce a 3 sorted, indexed BAM files with reads mapped onto contigs.fa.gz
+   bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -s reads4_singles.fq.gz
 
 Extra arguments are passed on a "per-mode" basis using the format:
 
