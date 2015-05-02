@@ -42,6 +42,17 @@ def printError(error):
     sys.stderr.write("%s\n\nERROR:\n\n%s\n\n%s\n\n" % (''.join(["*"]*80),
                                                        str(error),
                                                        ''.join(["*"]*80)))
+def printShortUsage(mode=None):
+    """Point the user to a fuller help with a short message on STDERR
+    mode: bamm mode, or None for general help
+    """
+    
+    if mode:
+        mode_and_space = ' %s' % mode
+    else:
+        mode_and_space = ''
+        
+    sys.stderr.write("For further usage details:\n\nbamm%s -h\n\n" % mode_and_space)
 
 class BamMException(BaseException): pass
 

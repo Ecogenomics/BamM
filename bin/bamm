@@ -55,7 +55,8 @@ from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
-from bamm.bammExceptions import printError, InvalidParameterSetException, BAMFileNotFoundException
+from bamm.bammExceptions import printError, printShortUsage, \
+    InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
 
 ###############################################################################
@@ -106,7 +107,7 @@ def doWork( args ):
                        os.environ["PATH"])
             error = True
         if error:
-            subparsers.choices['make'].print_help()
+            printShortUsage('make')
             sys.exit(1)
 
         # The BamMaker class is able to take care of making fileNames etc
@@ -136,10 +137,10 @@ def doWork( args ):
                               )
         except InvalidParameterSetException as e:
             printError(e)
-            subparsers.choices['make'].print_help()
+            printShortUsage('make')
             sys.exit(1)
         except AttributeError as e:
-            subparsers.choices['make'].print_help()
+            printShortUsage('make')
             sys.exit(1)
 
         # create indexes if required
@@ -157,7 +158,7 @@ def doWork( args ):
 
         if args.bamfiles is None:
             printError("You must supply come bam files to parse")
-            subparsers.choices['parse'].print_help()
+            printShortUsage('parse')
             sys.exit(1)
 
         # convert the coverage mode. We know it's legit cause argparse said so
@@ -192,7 +193,7 @@ def doWork( args ):
             BCT = BM_coverageType(ct, cr[0], cr[1])
         else:
             printError("cutoff_range takes at most two arguments")
-            subparsers.choices['parse'].print_help()
+            printShortUsage('parse')
             sys.exit(1)
         BP = BamParser(BCT,
                        minLength=args.length,
@@ -217,7 +218,7 @@ def doWork( args ):
                                verbose=args.verbose)
         except BAMFileNotFoundException as e:
             printError(e)
-            subparsers.choices['parse'].print_help()
+            printShortUsage('parse')
             sys.exit(1)
 
         if ret == 0:
@@ -233,7 +234,7 @@ def doWork( args ):
 
         if args.groups == [] or args.bamfiles == []:
             printError('-l and -b arguments are mandatory')
-            subparsers.choices['extract'].print_help()
+            printShortUsage('extract')
             sys.exit(1)
 
         try:
@@ -261,15 +262,14 @@ def doWork( args ):
 
         except InvalidParameterSetException as e:
             printError(e)
-            subparsers.choices['extract'].print_help()
+            printShortUsage('extract')
             sys.exit(1)
 
         # and then extract!
         BE.extract(args.threads, args.verbose)
 
     else:
-        printError("Unknown mode '%s'" % args.subparser_name)
-        parser.print_help()
+        printError("Programming error: unexpected args subparser '%s' encountered" % args.subparser_name)
         sys.exit(1)
 
 def makeGroupLists(groups):
