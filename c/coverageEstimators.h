@@ -46,6 +46,7 @@ typedef enum {CT_NONE,           // do not calculate coverage
               CT_P_MEDIAN,       // median pileup depth
               CT_P_MEAN_TRIMMED, // pileup mean trancated based on upper lower %
               CT_P_MEAN_OUTLIER, // pileup mean trancated based on distributions
+              CT_P_VARIANCE,     // variance of pileup depth
               } CT;
 
 /*! @typedef
@@ -167,6 +168,18 @@ float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
 float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
                                        BM_coverageType * covType,
                                        uint32_t contigLength);
+
+  /*
+ * @abstract Return variance of pileup coverage along a single contig
+ *
+ * @param pileupValues array of int read starts (len == contigLength)
+ * @param BM_coverageType BM_coverageType struct with initialised values
+ * @param contigLength Length of the contig being assesed
+ * @return float that is the calculated coverage
+*/
+  float estimate_P_VARIANCE_Coverage(uint32_t * pileupValues,
+                                     BM_coverageType * covType,
+                                     uint32_t contigLength);
 
 #ifdef __cplusplus
 }
