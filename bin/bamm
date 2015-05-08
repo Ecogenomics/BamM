@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 ###############################################################################
 #                                                                             #
-#    BamM.py                                                                  #
+#    bamm                                                                     #
 #                                                                             #
 #    Get info from the BAM                                                    #
 #                                                                             #
@@ -28,7 +28,7 @@ __author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
 __copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort","Ben Woodcroft", "Donovan Parks"]
 __license__ = "LGPLv3"
-__version__ = "1.4.1"
+__version__ = "1.4.2"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -55,7 +55,7 @@ from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
-from bamm.bammExceptions import printError, InvalidParameterSetException
+from bamm.bammExceptions import printError, InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
 
 ###############################################################################
