@@ -45,7 +45,7 @@ class TestCommandLineInterface:
     def setup_class(self):
         """Setup class variables before any tests."""
         self.scriptDir = os.path.dirname(os.path.realpath(__file__))
-        self.testDataDir = os.path.join(self.scriptDir, 'data')
+        self.testDataDir = os.path.join(self.scriptDir, 'cli_test_data')
         self.database = os.path.join(self.testDataDir, 'test_database.fna')
         self.reads_1 = os.path.join(self.testDataDir, 'test_reads.1.fna')
         self.reads_2 = os.path.join(self.testDataDir, 'test_reads.2.fna')
