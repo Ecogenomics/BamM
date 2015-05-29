@@ -1,0 +1,3 @@
+To get BamM installed on OSX you will need to install a bunch of autotools stuff.
+
+The install.sh script in this folder can do this for you however you should note that it has hardcoded verisons of the various packages which may be out of date. You should always check to see if there are newer versions of these tools, also you should check if these versions (or newer ones) are compatible with your system. 

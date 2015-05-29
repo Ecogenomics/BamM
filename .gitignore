@@ -6,7 +6,7 @@ c/*.o
 c/config.log
 c/config.status
 c/libBamM.a
-install.sh
+./install.sh
 lib/
 MANIFEST
 bamm/*.pyc
@@ -45,3 +45,4 @@ c/htslib-1.2.1/test/test-vcf-api
 c/htslib-1.2.1/test/test-vcf-sweep
 c/htslib-1.2.1/test/test_view
 c/htslib-1.2.1/version.h
+c/libcfu-0.03/src/.deps

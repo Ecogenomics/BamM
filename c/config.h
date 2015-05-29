@@ -1,9 +1,6 @@
 /* config.h.  Generated from config.h.in by configure.  */
 /* config.h.in.  Generated from configure.ac by autoheader.  */
 
-/* Defines to 1 if the m library (-lm) is found */
-#define HAVE_M 1
-
 /* Define to the address where bug reports for this package should be sent. */
 #define PACKAGE_BUGREPORT "mike@mikeimelfort.com"
 

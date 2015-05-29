@@ -838,14 +838,21 @@ class BamMaker:
             e_args = self.extraArguments['mem']
         except KeyError:
             e_args = ''
+
+        if self.isInterleaved:
+            p_arg = '-p'
+        else:
+            p_arg = ''
+
         bwa_cmd = ' '.join(['bwa mem -t',
                             str(self.numThreads),
+                            p_arg,
                             e_args,
                             self.database,
                             self.errorOutput,
                             ''])
         if self.isInterleaved:
-            bwa_cmd += ' '.join(['-p',self.readFile1])
+            bwa_cmd += self.readFile1
         else:
             bwa_cmd += ' '.join([self.readFile1,self.readFile2])
 

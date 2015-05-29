@@ -11,11 +11,11 @@ AC_PROG_CC
 AC_PROG_CXX
 
 # test for libm
-m_flags=
-AC_CHECK_LIB([m],[lgamma,log,exp],
-             [m_flags="-lm"
-              AC_DEFINE([HAVE_M],[1],[Defines to 1 if the m library (-lm) is found])],
-             [AC_MSG_ERROR([libm not found])])
+#m_flags=
+#AC_CHECK_LIB([m],[lgamma,log,exp],
+#             [m_flags="-lm"
+#              AC_DEFINE([HAVE_M],[1],[Defines to 1 if the m library (-lm) is found])],
+#             [AC_MSG_ERROR([libm not found])])
 
 # test for libcfu
 AX_LIBCFU
