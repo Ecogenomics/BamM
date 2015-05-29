@@ -97,18 +97,18 @@ class TestBamParser:
 
     @classmethod
     def teardown_class(self):
-        #self.rmTestFile(self.mpFile)
-        #self.rmTestFile(self.peFile[0])
-        #self.rmTestFile(self.peFile[1])
-        #self.rmTestFile(self.upFile)
-        #self.rmTestFile(self.contigsFile)
+        self.rmTestFile(self.mpFile)
+        self.rmTestFile(self.peFile[0])
+        self.rmTestFile(self.peFile[1])
+        self.rmTestFile(self.upFile)
+        self.rmTestFile(self.contigsFile)
         self.rmTestFile(self.poFile)
-        #self.rmTestFile(self.peBamFile[0])
-        #self.rmTestFile(self.peBamFile[1])
-        #self.rmTestFile(self.mpBamFile[0])
-        #self.rmTestFile(self.mpBamFile[1])
-        #self.rmTestFile(self.upBamFile[0])
-        #self.rmTestFile(self.upBamFile[1])
+        self.rmTestFile(self.peBamFile[0])
+        self.rmTestFile(self.peBamFile[1])
+        self.rmTestFile(self.mpBamFile[0])
+        self.rmTestFile(self.mpBamFile[1])
+        self.rmTestFile(self.upBamFile[0])
+        self.rmTestFile(self.upBamFile[1])
         self.rmTestFile("covs")
         self.rmTestFile("links")
 
@@ -239,6 +239,7 @@ class TestBamParser:
                         for file in hash_subset.keys():
                             full_path = os.path.join(self.model_dir, file)
                             assert_true(os.path.exists(full_path))
+                            sys.stdout.write("%s ---\n" % full_path)
 
                             # now extract the headers from the file
                             headers = []
