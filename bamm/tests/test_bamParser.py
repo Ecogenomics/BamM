@@ -45,7 +45,7 @@ class TestBamParser:
         """Setup class variables before any tests."""
 
         # the following files already exist
-        self.fastaFile = 'MG1655.fa'
+        self.fastaFile = 'MG1655.fna.gz'
         self.readKey = 'readkey.csv'
         self.bins = ['bin1', 'bin2']
 
@@ -57,7 +57,7 @@ class TestBamParser:
         self.poFile = "predicted_outputs.json"  # predicted outputs
 
         # we need to make some test data based on out test model
-        self.model_dir = os.path.join(os.path.split(__file__)[0], "modelling")
+        self.model_dir = os.path.join(os.path.split(__file__)[0], "modeling")
         self.model_data_dir = os.path.join(self.model_dir, "data")
         os.system("%s -o %s -r %s -f %s -g %s %s" % \
                   (os.path.join(self.model_dir,"makeTestData.py"),

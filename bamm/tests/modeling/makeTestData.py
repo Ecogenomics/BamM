@@ -160,8 +160,19 @@ def doWork( args ):
 
     # parse fasta file
     seq = []
+    import mimetypes
+    all_open = open
     try:
-        with open(args.fasta, "r") as fh:
+        # handle gzipped files
+        mime = mimetypes.guess_type(args.fasta)
+        if mime[1] == 'gzip':
+            import gzip
+            all_open = gzip.open
+    except:
+        print "Error when guessing refs file mimetype"
+        raise
+    try:
+        with all_open(args.fasta, "r") as fh:
             for line in fh:
                 if line[0] == '>':
                     continue
