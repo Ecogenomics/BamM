@@ -16,7 +16,7 @@ The BAM parsing is done using c and a few external libraries. This slightly comp
 
 BamM is not available via pip, so you'll need to install it manually. Complete instructions are available in the manual at:
 
-http://minillinim.github.io/BamM/manual/BamM_manual.pdf
+http://ecogenomics.github.io/BamM/manual/BamM_manual.pdf
 
 If you're running 'bamm make' you'll need to have bwa and samtools installed. Installation of these tools is really straightforward. You can find the code and instructions at:
 
@@ -29,15 +29,15 @@ We have tested BamM on CentOS and Ubuntu and recommend these or similar systems.
 
 ## Example usage
 
-Please refer to the manual or http://minillinim.github.io/BamM for more information about example usage.
+Please refer to the manual or http://ecogenomics.github.io/BamM for more information about example usage.
 
 ## Help
 
-If you experience any problems using BamM, open an [issue](https://github.com/minillinim/BamM/issues) on GitHub and tell us about it.
+If you experience any problems using BamM, open an [issue](https://github.com/ecogenomics/BamM/issues) on GitHub and tell us about it.
 
 ## Licence and referencing
 
-Project home page, info on the source tree, documentation, issues and how to contribute, see http://github.com/minillinim/BamM
+Project home page, info on the source tree, documentation, issues and how to contribute, see http://github.com/ecogenomics/BamM
 
 This software is currently unpublished
 
