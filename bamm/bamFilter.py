@@ -1,6 +1,6 @@
 ###############################################################################
 #                                                                             #
-#    BamFilterer.py                                                           #
+#    BamFilter.py                                                             #
 #                                                                             #
 #    Class for filtering BAM file reads                                       #
 #                                                                             #
@@ -45,7 +45,7 @@ from cWrapper import CWrapper
 ###############################################################################
 ###############################################################################
 
-class BamFilterer:
+class BamFilter:
     '''Class used to manage filtering reads from multiple BAM files'''
     def __init__(self,
                  bamFile,

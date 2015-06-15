@@ -19,11 +19,11 @@ HTS_DIR = htslib-1.2.1
 CFU_DIR = libcfu-0.03
 BMM_LIB = libBamM.a
 
-LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c stats.c
-LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o stats.o
+LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c stats.c bamFilter.c
+LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o stats.o bamFilter.o
 
 all: lib_only
-      
+
 .SUFFIXES: .c .o
 
 .c.o:
@@ -33,7 +33,7 @@ $(BMM_LIB) : $(LIBBAMM_OBJS)
 	@-rm -f $@
 	$(CC) $(CFLAGS) $(LIB_FLAGS) -o $@ $(LIBBAMM_SOURCES) $(LIBS)
 
-lib_only: $(BMM_LIB) 
+lib_only: $(BMM_LIB)
 	@echo "Building BamM library"
 
 clean:

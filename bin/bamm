@@ -55,7 +55,7 @@ from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
-from bamm.filterer import BamFilterer
+from bamm.bamFilter import BamFilter
 from bamm.bammExceptions import printError, InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
 
@@ -274,7 +274,7 @@ def doWork( args ):
             sys.exit(1)
 
         try:
-          BamFilterer(args.bamfile,
+          BamFilter(args.bamfile,
                       outFolder=args.out_folder,
                       minMapQual=args.mapping_quality,
                       minLength=args.length,
