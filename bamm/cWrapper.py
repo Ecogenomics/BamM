@@ -472,6 +472,19 @@ class CWrapper:
         # import C functions
         #---------------------------------
 
+        self._filterBam = self.libPMBam.filterBam
+        self._filterBam.argtypes = [c.POINTER(c.c_char),
+                                    c.POINTER(c.c_char),
+                                    c.c_int,
+                                    c.c_int,
+                                    c.c_int,
+                                    c.c_double,
+                                    c.c_double,
+                                    c.c_int,
+                                    c.c_int]
+        self._filterBams.restype = c.c_int
+        #----------------
+
         self._mergeBFI = self.libPMBam.mergeBFIs
 
         #-----------------

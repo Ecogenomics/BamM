@@ -55,6 +55,7 @@ from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
+from bamm.filterer import BamFilterer
 from bamm.bammExceptions import printError, InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
 
@@ -264,6 +265,30 @@ def doWork( args ):
 
         # and then extract!
         BE.extract(args.threads, args.verbose)
+
+    elif(args.subparser_name == 'filter'):
+
+        if args.bamfile is None:
+            printError("You must supply a bam file to filter")
+            subparsers.choices['filter'].print_help()
+            sys.exit(1)
+
+        try:
+          BamFilterer(args.bamfile,
+                      outFolder=args.out_folder,
+                      minMapQual=args.mapping_quality,
+                      minLength=args.length,
+                      maxMisMatches=args.max_distance,
+                      minPcId=args.percentage_id,
+                      minPcAln=args.percentage_aln,
+                      useSuppAlignments=args.use_supplementary,
+                      useSecondaryAlignments=args.use_secondary
+          ).filter()
+
+        except InvalidParameterSetException as e:
+            printError(e)
+            subparsers.choices['extract'].print_help()
+            sys.exit(1)
 
     else:
         printError("Unknown mode '%s'" % args.subparser_name)
@@ -540,6 +565,29 @@ second is the upper. If only one value is supplied then lower == upper.'''
 
     extract_opt_args.add_argument('-v', '--verbose', action="store_true", default=False, help="be verbose")
     extract_opt_args.add_argument('-t', '--threads', help="maximum number of threads to use", type=int, default=1)
+    extract_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
+
+    #-------------------------------------------------
+    # read filter
+    extract_parser = subparsers.add_parser('filter',
+                                        formatter_class=CustomHelpFormatter,
+                                        help='filter bamfile',
+                                        add_help=False,
+                                        description='Apply stringency filter to Bam file reads')
+    extract_req_args = extract_parser.add_argument_group('required arguments')
+    extract_req_args.add_argument('-b', '--bamfile', nargs='+', default=[], help="bam file to filter", required=True)
+
+    extract_opt_args = extract_parser.add_argument_group('optional arguments')
+    extract_opt_args.add_argument('-o', '--out_folder', default=".", help="write to this folder (output file has '_filtered.bam' suffix)")
+
+    extract_opt_args.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    extract_opt_args.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
+    extract_opt_args.add_argument('--length', help="minimum allowable query length", type=int, default=0)
+    extract_opt_args.add_argument('--percent_id', help="minimum allowable percentage base identity of a mapped read", type=float, default=0)
+    extract_opt_args.add_argument('--percent_aln', help="minimum allowable percentage read bases mapped", type=float, default=0)
+    extract_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    extract_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
+
     extract_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
     #-------------------------------------------------
