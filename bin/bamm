@@ -275,14 +275,14 @@ def doWork( args ):
 
         try:
           BamFilter(args.bamfile,
-                      outFolder=args.out_folder,
-                      minMapQual=args.mapping_quality,
-                      minLength=args.length,
-                      maxMisMatches=args.max_distance,
-                      minPcId=args.percentage_id,
-                      minPcAln=args.percentage_aln,
-                      useSuppAlignments=args.use_supplementary,
-                      useSecondaryAlignments=args.use_secondary
+                    outFolder=args.out_folder,
+                    minMapQual=args.mapping_quality,
+                    minLength=args.length,
+                    maxMisMatches=args.max_distance,
+                    minPcId=args.percentage_id,
+                    minPcAln=args.percentage_aln,
+                    useSuppAlignments=args.use_supplementary,
+                    useSecondaryAlignments=args.use_secondary
           ).filter()
 
         except InvalidParameterSetException as e:
@@ -404,6 +404,7 @@ def printHelp():
     bamm make     ->  Make BAM/TAM files (sorted + indexed)
     bamm parse    ->  Get coverage profiles / linking reads / insert types
     bamm extract  ->  Extract reads / headers from BAM files
+    bamm filter   ->  Filter BAM file reads
 
     USE: bamm OPTION -h to see detailed options
     ''' % __version__
@@ -569,26 +570,26 @@ second is the upper. If only one value is supplied then lower == upper.'''
 
     #-------------------------------------------------
     # read filter
-    extract_parser = subparsers.add_parser('filter',
+    filter_parser = subparsers.add_parser('filter',
                                         formatter_class=CustomHelpFormatter,
                                         help='filter bamfile',
                                         add_help=False,
                                         description='Apply stringency filter to Bam file reads')
-    extract_req_args = extract_parser.add_argument_group('required arguments')
-    extract_req_args.add_argument('-b', '--bamfile', nargs='+', default=[], help="bam file to filter", required=True)
+    filter_req_args = filter_parseradd_argument_group('required arguments')
+    filter_req_args.add_argument('-b', '--bamfile', default="", help="bam file to filter", required=True)
 
-    extract_opt_args = extract_parser.add_argument_group('optional arguments')
-    extract_opt_args.add_argument('-o', '--out_folder', default=".", help="write to this folder (output file has '_filtered.bam' suffix)")
+    filter_opt_args = filter_parser.add_argument_group('optional arguments')
+    filter_opt_args.add_argument('-o', '--out_folder', default=".", help="write to this folder (output file has '_filtered.bam' suffix)")
 
-    extract_opt_args.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
-    extract_opt_args.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
-    extract_opt_args.add_argument('--length', help="minimum allowable query length", type=int, default=0)
-    extract_opt_args.add_argument('--percent_id', help="minimum allowable percentage base identity of a mapped read", type=float, default=0)
-    extract_opt_args.add_argument('--percent_aln', help="minimum allowable percentage read bases mapped", type=float, default=0)
-    extract_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
-    extract_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
+    filter_opt_args.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
+    filter_opt_args.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
+    filter_opt_args.add_argument('--length', help="minimum allowable query length", type=int, default=0)
+    filter_opt_args.add_argument('--percentage_id', help="minimum allowable percentage base identity of a mapped read (int between 0 and 100)", type=float, default=0.)
+    filter_opt_args.add_argument('--percentage_aln', help="minimum allowable percentage read bases mapped (int between 0 and 100)", type=float, default=0.)
+    filter_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    filter_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
 
-    extract_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
+    filter_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
     #-------------------------------------------------
     # get and check options

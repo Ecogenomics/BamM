@@ -51,22 +51,24 @@ extern "C" {
  * @param  minMapQual           mapping quality threshold
  * @param  minLen               min query length
  * @param  maxMisMatches        maximum number of mismatches to accept (NM flag)
- * @param  minPcId              minimum percentage identity to accept
- * @param  minPcAln             minimum percentage alignment to accept
+ * @param  minPcId              minimum percentage identity to accept (int between 0 and 100)
+ * @param  minPcAln             minimum percentage alignment to accept (int between 0 and 100)
  * @param  ignoreSuppAlignments == 1 -> ignore supplmentary alignments
  * @param  ignoreSecondaryAlignments  == 1 -> ignore secondary alignments
  * @return 0 for success
  *
  */
-void filterBam(char * outFile,
-              char * bamFile,
-              int mapQ,
-              int minLen,
-              int maxMisMatches,
-              double minPcId,
-              double minPcAln,
-              int ignoreSuppAlignments,
-              int ignoreSecondaryAlignments);
+void filterReads(char * bamFile,
+                 char * outFile,
+                 int mapQ,
+                 int minLen,
+                 int maxMisMatches,
+                 float minPcId,
+                 float minPcAln,
+                 int ignoreSuppAlignments,
+                 int ignoreSecondaryAlignments);
+
+int bam_cigar2matches(int n_cigar, const uint32_t *cigar);
 
 #ifdef __cplusplus
 }

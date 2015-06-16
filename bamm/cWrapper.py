@@ -478,8 +478,8 @@ class CWrapper:
                                       c.c_int,
                                       c.c_int,
                                       c.c_int,
-                                      c.c_double,
-                                      c.c_double,
+                                      c.c_float,
+                                      c.c_float,
                                       c.c_int,
                                       c.c_int]
         self._filterReads.restype = None

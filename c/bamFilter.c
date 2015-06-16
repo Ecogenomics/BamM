@@ -35,15 +35,15 @@
 // local includes
 #include "bamFilter.h"
 
-void filterBam(char * outFile,
-              char * bamFile,
-              int minMapQual,
-              int minLen,
-              int maxMisMatches,
-              double minPcId,
-              double minPcAln,
-              int ignoreSuppAlignments,
-              int ignoreSecondaryAlignments) {
+void filterReads(char * inBamFile,
+                 char * outBamFile,
+                 int minMapQual,
+                 int minLen,
+                 int maxMisMatches,
+                 float minPcId,
+                 float minPcAln,
+                 int ignoreSuppAlignments,
+                 int ignoreSecondaryAlignments) {
     //
     int result = -1;
 
@@ -57,18 +57,19 @@ void filterBam(char * outFile,
 
     // helper variables
     bamFile *in = 0;
+    bamFile *out = 0;
     bam1_t *b = bam_init1();
 
     // open bam
-    if ((in = bgzf_open(bamFile, "r")) == 0) {
-        fprint(stderr,
+    if ((in = bgzf_open(inBamFile, "r")) == 0) {
+        fprintf(stderr,
                "ERROR: Failed to open \"%s\" for reading.\n",
-               bamFile);
+               inBamFile);
     }
-    if ((out = bgzf_open(outFile, "w")) == 0) {
-        fprint(stderr,
+    if ((out = bgzf_open(outBamFile, "w")) == 0) {
+        fprintf(stderr,
                "ERROR: Failed to open \"%s\" for writing.\n",
-               outFile);
+               outBamFile);
     }
     else {
         // fetch alignments
@@ -84,39 +85,38 @@ void filterBam(char * outFile,
                 continue;
 
             // not too many absolute mismatches
-            int mismatches = bam_aux2i(bam_aux_get(b, "NM"))
+            int mismatches = bam_aux2i(bam_aux_get(b, "NM"));
             if (mismatches > maxMisMatches)
                 continue;
 
             // not too short
-            int qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b))
+            int qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
             if (qLen < minLen)
                 continue;
 
             // only high percent identity
-            int matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b))
-            double pcId = (matches - mismatches) / (double)matches
+            int matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b));
+            int pcId = (matches - mismatches) / (float)matches; // percentage as int between 0 to 100
             if (pcId < minPcId)
                 continue;
 
             // only high percent alignment
-            double pcAln = matches / (double)qLen
+            int pcAln = (100*matches) / (float)qLen; // percentage as int between 0 to 100
             if (pcAln < minPcAln)
                 continue;
 
             if (bam_write1(out, b) < -1) {
-                fprintf(stderr, "ERROR: attempt to write read %s to file failed.", line)
+                fprintf(stderr, "ERROR: attempt to write read failed after %d lines.", line);
             }
-            bam_destroy1(b)
-            b = bam_init1()
+            bam_destroy1(b);
+            b = bam_init1();
         }
         if (result < -1) {
-            fprintf(stderr, "ERROR: retrieval of read %s from file failed.", line)
+            fprintf(stderr, "ERROR: retrieval of read failed after %d lines, with code %d.", line, result);
         }
     }
-    if (in) bgzf_close(in)
-    if (out) bgzf_close(out)
-    return void;
+    if (in) bgzf_close(in);
+    if (out) bgzf_close(out);
 }
 
 
@@ -124,7 +124,7 @@ int bam_cigar2matches(int n_cigar, const uint32_t *cigar)
 {
     int k, l;
     for (k = l = 0; k < n_cigar; ++k)
-        if (bar_cigar_type(bam_cigar_op(cigar[k]))==3)
-            l += bam_cigar_oplen(cigar[k])
+        if (bam_cigar_type(bam_cigar_op(cigar[k]))==3)
+            l += bam_cigar_oplen(cigar[k]);
     return l;
 }

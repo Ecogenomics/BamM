@@ -53,8 +53,8 @@ class BamFilter:
                  minMapQual=0,
                  minLength=0,
                  maxMisMatches=1000,
-                 minPcId=0,
-                 minPcAln=0,
+                 minPcId=0.,
+                 minPcAln=0.,
                  useSuppAlignments=False,
                  useSecondaryAlignments=False,
                  ):
@@ -125,7 +125,7 @@ class BamFilter:
         bamfile_c = self.bamFile
 
         outfile_c = c.c_char_p()
-        outfile_c = os.path.join(os.path.abspath(outFolder), "%s_%s.bam" % (self.prettyBamFileName, 'filtered'))
+        outfile_c = os.path.join(os.path.abspath(self.outFolder), "%s_%s.bam" % (self.prettyBamFileName, 'filtered'))
 
         min_mapping_quality_c = c.c_uint32()
         min_mapping_quality_c = self.minMapQual
@@ -136,23 +136,23 @@ class BamFilter:
         max_mismatches_c = c.c_uint32()
         max_mismatches_c = self.maxMisMatches
 
-        min_percentage_id_c = c.c_double()
+        min_percentage_id_c = c.c_float()
         min_percentage_id_c = self.minPcId
 
-        min_percentage_aln_c = c.c_double()
+        min_percentage_aln_c = c.c_float()
         min_percentage_aln_c = self.minPcAln
 
         # call the C function to filter the reads
         CW = CWrapper()
-        CW._filterBam(bamfile_c,
-                      outfile_c,
-                      min_mapping_quality_c,
-                      min_query_length_c,
-                      max_mismatches_c,
-                      min_percentage_id_c,
-                      min_percentage_aln_c,
-                      ignoreSuppAlignments,
-                      ignoreSecondaryAlignments)
+        CW._filterReads(bamfile_c,
+                        outfile_c,
+                        min_mapping_quality_c,
+                        min_query_length_c,
+                        max_mismatches_c,
+                        min_percentage_id_c,
+                        min_percentage_aln_c,
+                        self.ignoreSuppAlignments,
+                        self.ignoreSecondaryAlignments)
 
     def makeSurePathExists(self, path):
         '''Make sure that a path exists, make it if necessary
