@@ -575,7 +575,7 @@ second is the upper. If only one value is supplied then lower == upper.'''
                                         help='filter bamfile',
                                         add_help=False,
                                         description='Apply stringency filter to Bam file reads')
-    filter_req_args = filter_parseradd_argument_group('required arguments')
+    filter_req_args = filter_parser.add_argument_group('required arguments')
     filter_req_args.add_argument('-b', '--bamfile', default="", help="bam file to filter", required=True)
 
     filter_opt_args = filter_parser.add_argument_group('optional arguments')

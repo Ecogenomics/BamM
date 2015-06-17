@@ -46,6 +46,7 @@ void filterReads(char * inBamFile,
                  int ignoreSecondaryAlignments) {
     //
     int result = -1;
+    int outResult = -1;
 
     int supp_check = 0x0;
     if (ignoreSuppAlignments) {
@@ -59,6 +60,7 @@ void filterReads(char * inBamFile,
     bamFile *in = 0;
     bamFile *out = 0;
     bam1_t *b = bam_init1();
+    bam_hdr_t *h;
 
     // open bam
     if ((in = bgzf_open(inBamFile, "r")) == 0) {
@@ -66,53 +68,68 @@ void filterReads(char * inBamFile,
                "ERROR: Failed to open \"%s\" for reading.\n",
                inBamFile);
     }
-    if ((out = bgzf_open(outBamFile, "w")) == 0) {
+    else if ((h = bam_hdr_read(in)) == 0) {
+        fprintf(stderr,
+                "ERROR: Failed to read BAM header of file \"%s\".\n",
+                inBamFile);
+    }
+    else if ((out = bgzf_open(outBamFile, "w")) == 0) {
         fprintf(stderr,
                "ERROR: Failed to open \"%s\" for writing.\n",
                outBamFile);
     }
     else {
+        bam_hdr_write(out, h);
+        bam_hdr_destroy(h);
         // fetch alignments
         int line = 0;
+        int matches, mismatches, qLen;
+        float pcAln, pcId;
         while ((result = bam_read1(in, b)) >= 0) {
             line += 1;
-            // only high quality
-            if (b->core.qual < minMapQual)
-                continue;
 
             // only primary mappings
             if ((b->core.flag & supp_check) != 0)
                 continue;
 
+            // only high quality
+            if (b->core.qual < minMapQual)
+                continue;
+
             // not too many absolute mismatches
-            int mismatches = bam_aux2i(bam_aux_get(b, "NM"));
+            mismatches = bam_aux2i(bam_aux_get(b, "NM"));
             if (mismatches > maxMisMatches)
                 continue;
 
             // not too short
-            int qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
+            qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
             if (qLen < minLen)
                 continue;
 
             // only high percent identity
-            int matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b));
-            int pcId = (matches - mismatches) / (float)matches; // percentage as int between 0 to 100
+            matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b));
+            pcId = (matches - mismatches) / (float)matches; // percentage as float between 0 to 1
             if (pcId < minPcId)
                 continue;
 
             // only high percent alignment
-            int pcAln = (100*matches) / (float)qLen; // percentage as int between 0 to 100
+            pcAln = matches / (float)qLen; // percentage as float between 0 to 1
             if (pcAln < minPcAln)
                 continue;
 
-            if (bam_write1(out, b) < -1) {
-                fprintf(stderr, "ERROR: attempt to write read failed after %d lines.", line);
+            if ((outResult = bam_write1(out, b)) < -1) {
+                fprintf(stderr,
+                        "ERROR: Attempt to write read no. %d to file \"%s\" failed with code %d.\n",
+                        line, outBamFile, outResult);
             }
+
             bam_destroy1(b);
             b = bam_init1();
         }
         if (result < -1) {
-            fprintf(stderr, "ERROR: retrieval of read failed after %d lines, with code %d.", line, result);
+            fprintf(stderr,
+                    "ERROR: retrieval of read no. %d from file \"%s\" failed with code %d.\n",
+                    line, inBamFile, result);
         }
     }
     if (in) bgzf_close(in);
