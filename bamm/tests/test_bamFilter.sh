@@ -46,15 +46,16 @@ fi
 if [ ! "$bam_id" ]
 then echo "ERROR: Missing test .bam index" >&2; exit 1;
 fi
+input_file=$data_dir/$bam_id$f.bam
+output_dir=$data_dir/$bam_id/output
 
 ### Helpers ###
-output_dir=$data_dir/$bam_id/output
-OUTPUT_FILE=$output_dir/${bam_id}_filtered.bam
+OUTPUT_FILE=$output_dir/$(basename $input_file .bam)_filtered.bam
 FAILED=
 v=
 
 run_test() {
-  CURRENT_TEST="$bamm_exe filter -b $data_dir/$bam_id$f.bam -o $output_dir $@"
+  CURRENT_TEST="$bamm_exe filter -b $input_file -o $output_dir $@"
   if [ $v ]
   then echo "RUNNING: $CURRENT_TEST" >&2
   fi
