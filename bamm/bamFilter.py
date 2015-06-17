@@ -23,9 +23,9 @@
 #                                                                             #
 ###############################################################################
 
-__author__ = "Michael Imelfort"
-__copyright__ = "Copyright 2014,2015"
-__credits__ = ["Michael Imelfort", "Tim Lamberton"]
+__author__ = "Tim Lamberton"
+__copyright__ = "Copyright 2015"
+__credits__ = ["Tim Lamberton"]
 __license__ = "LGPLv3"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
