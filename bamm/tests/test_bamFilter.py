@@ -45,16 +45,23 @@ class TestBamFilter:
         self.dataDir = os.path.join(os.path.split(__file__)[0], "filter_test_data")
         self.bamNames = ["1", "2"]
 
-
         # the following files already exist
         self.bamFiles = dict(zip(self.bamNames,
                                  [os.path.join(self.dataDir, "%s.bam" % name) for name in self.bamNames]))
         self.testDataDirs = dict(zip(self.bamNames,
                                      [os.path.join(self.dataDir, name) for name in self.bamNames]))
 
+
         # generated files
         self.outputBamFnames = dict(zip(self.bamNames,
                                            ["%s_filtered.bam" % name for name in self.bamNames]))
+
+        # if True tests should fail
+        if True:
+            self.bamFiles = dict(zip(self.bamNames,
+                                     [os.path.join(self.dataDir, "f.bam") for _ in self.bamNames]))
+            self.outputBamFnames = dict(zip(self.bamNames,
+                                           ["f_filtered.bam" for _ in self.bamNames]))
 
         # test parameters
         self.params = {
@@ -116,7 +123,7 @@ class TestBamFilter:
         try:
             aln_out = pysam.AlignmentFile(out, "rb")
         except:
-            raise AssertionError('File of filtered reads "%s" exists and is readable.' % expected)
+            raise AssertionError('File of filtered reads "%s" exists and is readable.' % out)
 
         while True:
             try:
@@ -134,7 +141,6 @@ class TestBamFilter:
 
             assert_true(expected_read is not None and out_read is not None, 'Filtered file "%s" contains expected number of reads.' %out)
             assert_true(expected_read.compare(out_read) == 0, 'Filtered file "%s" queries match expected queries.' % out)
-            #assert_equals(expected_read.query_sequence, out_read.query_sequence, 'Filtered file "%s" query sequences match expected sequences.' % out)
 
         aln_out.close()
         aln_expected.close()
