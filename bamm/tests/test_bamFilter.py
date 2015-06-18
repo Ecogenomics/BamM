@@ -29,7 +29,6 @@ from nose.tools import assert_equals, assert_true
 import sys
 import os
 import subprocess
-import pysam
 
 ###############################################################################
 ###############################################################################
@@ -55,6 +54,9 @@ class TestBamFilter:
         # generated files
         self.outputBamFnames = dict(zip(self.bamNames,
                                            ["%s_filtered.bam" % name for name in self.bamNames]))
+
+        # check for 'samtools'
+        subprocess.check_call("which samtools", shell=True)
 
         # test parameters
         self.params = {
@@ -107,37 +109,17 @@ class TestBamFilter:
         subprocess.call(cmd, shell=True)
 
 
-    def assert_equal_query_sequences(self, out, expected):
-        try:
-            aln_expected = pysam.AlignmentFile(expected, "rb")
-        except:
-            raise AssertionError('File of expected reads "%s" exists and is readable.' % expected)
+    def numReads(self, file):
+        cmd = "samtools view %s |wc -l" % file
+        (size, err) = subprocess.Popen(cmd, shell=True, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate()
+        if err:
+            sys.stderr.write("ERROR: %s" % err)
+        int(size)
 
-        try:
-            aln_out = pysam.AlignmentFile(out, "rb")
-        except:
-            raise AssertionError('File of filtered reads "%s" exists and is readable.' % expected)
 
-        while True:
-            try:
-                expected_read = aln_expected.next()
-            except StopIteration:
-                expected_read = None
-
-            try:
-                out_read = aln_out.next()
-            except StopIteration:
-                out_read = None
-
-            if expected_read is None and out_read is None:
-                break
-
-            assert_true(expected_read is not None and out_read is not None, 'Filtered file "%s" contains expected number of reads.' %out)
-            assert_true(expected_read.compare(out_read) == 0, 'Filtered file "%s" queries match expected queries.' % out)
-            #assert_equals(expected_read.query_sequence, out_read.query_sequence, 'Filtered file "%s" query sequences match expected sequences.' % out)
-
-        aln_out.close()
-        aln_expected.close()
+    def assert_equal_num_reads(self, out, expected):
+        assert_true(os.path.exists(expected),'File of expected reads "%s" exists.' % expected)
+        assert_equals(self.numReads(out), self.numReads(expected), 'Filtered file "%s" contains expected number of reads.' % out)
 
 
     def testFilter(self):
@@ -147,8 +129,7 @@ class TestBamFilter:
                 self.generate_bam(bamName, args)
                 out = os.path.join(self.dataDir, self.outputBamFnames[bamName])
                 test = os.path.join(self.testDataDirs[bamName], "%s_%s.bam" % (bamName, testName))
-                #self.assert_equal_num_reads(out, test)
-                self.assert_equal_query_sequences(out, test)
+                self.assert_equal_num_reads(out, test)
                 #self.rmTestFile(bamName)
 
 
