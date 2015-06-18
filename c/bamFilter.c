@@ -57,8 +57,8 @@ void filterReads(char * inBamFile,
     }
 
     // helper variables
-    bamFile *in = 0;
-    bamFile *out = 0;
+    BGZF* in = 0;
+    BGZF* out = 0;
     bam1_t *b = bam_init1();
     bam_hdr_t *h;
 
