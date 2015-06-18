@@ -30,6 +30,7 @@
 //#include <libgen.h>
 
 // htslib
+#include "bgzf.h"
 #include "sam.h"
 
 // local includes
@@ -68,7 +69,7 @@ void filterReads(char * inBamFile,
                "ERROR: Failed to open \"%s\" for reading.\n",
                inBamFile);
     }
-    else if ((h = bam_hdr_read(in)) == 0) {
+    else if ((h = bam_hdr_read(in)) == 0) { // read header
         fprintf(stderr,
                 "ERROR: Failed to read BAM header of file \"%s\".\n",
                 inBamFile);
@@ -79,6 +80,7 @@ void filterReads(char * inBamFile,
                outBamFile);
     }
     else {
+        // write and destroy header
         bam_hdr_write(out, h);
         bam_hdr_destroy(h);
 
@@ -143,9 +145,6 @@ void filterReads(char * inBamFile,
                         "ERROR: Attempt to write read no. %d to file \"%s\" failed with code %d.\n",
                         line, outBamFile, outResult);
             }
-
-            bam_destroy1(b);
-            b = bam_init1();
         }
         if (result < -1) {
             fprintf(stderr,
@@ -155,6 +154,7 @@ void filterReads(char * inBamFile,
     }
     if (in) bgzf_close(in);
     if (out) bgzf_close(out);
+    bam_destroy1(b);
 }
 
 
