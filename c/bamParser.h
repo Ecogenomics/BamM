@@ -66,10 +66,10 @@ typedef enum {OT_OUT, OT_SAME, OT_IN, OT_NONE, OT_ERROR} OT;
  * @field min_mapQ mapQ filter
  * @field min_len length filter
  */
-typedef struct {                    //
-    bamFile *fp;                    // the file handler
-    hts_itr_t *iter;                // NULL if a region not specified
-    int min_mapQ, min_len;          // mapQ filter; length filter
+typedef struct {            //
+    bamFile *fp;            // the file handler
+    hts_itr_t *iter;        // NULL if a region not specified
+    int min_mapQ, min_len;  // mapQ filter; length filter
 } aux_t;
 
 /*! @typedef
