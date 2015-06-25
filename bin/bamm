@@ -56,7 +56,8 @@ from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamMaker, BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bamFilter import BamFilter
-from bamm.bammExceptions import printError, InvalidParameterSetException, BAMFileNotFoundException
+from bamm.bammExceptions import printError, printShortUsage, \
+    InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
 
 ###############################################################################
@@ -107,7 +108,7 @@ def doWork( args ):
                        os.environ["PATH"])
             error = True
         if error:
-            subparsers.choices['make'].print_help()
+            printShortUsage('make')
             sys.exit(1)
 
         # The BamMaker class is able to take care of making fileNames etc
@@ -137,10 +138,10 @@ def doWork( args ):
                               )
         except InvalidParameterSetException as e:
             printError(e)
-            subparsers.choices['make'].print_help()
+            printShortUsage('make')
             sys.exit(1)
         except AttributeError as e:
-            subparsers.choices['make'].print_help()
+            printShortUsage('make')
             sys.exit(1)
 
         # create indexes if required
@@ -158,7 +159,7 @@ def doWork( args ):
 
         if args.bamfiles is None:
             printError("You must supply come bam files to parse")
-            subparsers.choices['parse'].print_help()
+            printShortUsage('parse')
             sys.exit(1)
 
         # convert the coverage mode. We know it's legit cause argparse said so
@@ -180,6 +181,8 @@ def doWork( args ):
             ct = CT.P_MEAN_OUTLIER
             if cr is None:
                 cr = [BM_def_outlier_range]
+        elif args.coverage_mode == 'pvariance':
+            ct = CT.P_VARIANCE
 
         # set this to 0 here so we don't confuse matters downstream
         if cr is None:
@@ -191,7 +194,7 @@ def doWork( args ):
             BCT = BM_coverageType(ct, cr[0], cr[1])
         else:
             printError("cutoff_range takes at most two arguments")
-            subparsers.choices['parse'].print_help()
+            printShortUsage('parse')
             sys.exit(1)
         BP = BamParser(BCT,
                        minLength=args.length,
@@ -216,7 +219,7 @@ def doWork( args ):
                                verbose=args.verbose)
         except BAMFileNotFoundException as e:
             printError(e)
-            subparsers.choices['parse'].print_help()
+            printShortUsage('parse')
             sys.exit(1)
 
         if ret == 0:
@@ -232,7 +235,7 @@ def doWork( args ):
 
         if args.groups == [] or args.bamfiles == []:
             printError('-l and -b arguments are mandatory')
-            subparsers.choices['extract'].print_help()
+            printShortUsage('extract')
             sys.exit(1)
 
         try:
@@ -260,7 +263,7 @@ def doWork( args ):
 
         except InvalidParameterSetException as e:
             printError(e)
-            subparsers.choices['extract'].print_help()
+            printShortUsage('extract')
             sys.exit(1)
 
         # and then extract!
@@ -291,8 +294,7 @@ def doWork( args ):
             sys.exit(1)
 
     else:
-        printError("Unknown mode '%s'" % args.subparser_name)
-        parser.print_help()
+        printError("Programming error: unexpected args subparser '%s' encountered" % args.subparser_name)
         sys.exit(1)
 
 def makeGroupLists(groups):
@@ -422,8 +424,13 @@ if __name__ == '__main__':
                                         help='make a BAM/TAM file (sorted + indexed)',
                                         add_help=False,
                                         description='make a BAM/TAM file (sorted + indexed)',
-                                        epilog='''EXAMPLE: bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -s reads4_singles.fq.gz -t 40
-will produce 4 sorted, indexed BAM files with reads mapped onto contigs.fa.gz using 40 threads
+                                        epilog='''Example usage:
+
+ Produce a sorted, indexed BAM file with reads mapped onto contigs.fa using 40 threads
+   bamm make -d contigs.fa -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -t 40
+   
+ Produce a 3 sorted, indexed BAM files with reads mapped onto contigs.fa.gz
+   bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -s reads4_singles.fq.gz
 
 Extra arguments are passed on a "per-mode" basis using the format:
 
@@ -492,20 +499,33 @@ ESPECIALLY if you are providing access to multiple / unknown users.
                                         help='get bamfile type and/or coverage profiles and/or linking reads',
                                         add_help=False,
                                         description='get bamfile type and/or coverage profiles and/or linking reads',
-                                        epilog='''Coverage calculation modes:
- * opmean:  outlier pileup coverage: average of reads overlapping each base,
-            after bases with coverage outside mean +/- 1 standard deviation
-            have been excluded. The number of standard deviation used for the
-            cutoff can be changed with --cutoff_range.
- * pmean:   pileup coverage: average of number of reads overlapping each base
- * tpmean:  trimmed pileup coverage: average of reads overlapping each base,
-            after bases with in the top and bottom 10% have been excluded. The
-            10% range can be changed using --cutoff_range and should be specified
-            as a percentage (e.g., 15 for 15%).
- * counts:  absolute number of reads mapping
- * cmean:   like 'counts' except divided by the length of the contig
- * pmedian: median pileup coverage: median of number of reads overlapping each
-            base
+                                        epilog='''Example usage:
+
+ Calculate insert distribution, print to STDOUT
+   bamm parse -b my.bam
+  
+ Calculate contig-wise coverage
+   bamm parse -b my.bam -c output_coverage.tsv
+  
+ Calculate linking information on 2 bam files
+   bamm parse -b first.bam second.bam -l output_links.tsv
+                                        
+Coverage calculation modes:
+* opmean:    outlier pileup coverage: average of reads overlapping each base,
+             after bases with coverage outside mean +/- 1 standard deviation
+             have been excluded. The number of standard deviation used for the
+             cutoff can be changed with --cutoff_range.
+* pmean:     pileup coverage: average of number of reads overlapping each base
+* tpmean:    trimmed pileup coverage: average of reads overlapping each base,
+             after bases with in the top and bottom 10% have been excluded. The
+             10% range can be changed using --cutoff_range and should be
+             specified as a percentage (e.g., 15 for 15%).
+* counts:    absolute number of reads mapping
+* cmean:     like 'counts' except divided by the length of the contig
+* pmedian:   median pileup coverage: median of number of reads overlapping each
+             base
+* pvariance: variance of pileup coverage: variance of number of reads
+             overlapping each base
 
 The 'cutoff_range' variable is used for trimmed mean and outlier mean. This
 parameter takes at most two values. The first is the lower cutoff and the
@@ -516,13 +536,13 @@ second is the upper. If only one value is supplied then lower == upper.'''
     parser_req_args.add_argument('-b', '--bamfiles', nargs='+', help="bam files to parse", required=True)
 
     parser_opt_args = parse_parser.add_argument_group('optional arguments')
-    parser_opt_args.add_argument('-l', '--links', help="filename to write pairing links to", default="")
-    parser_opt_args.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to", default="")
-    parser_opt_args.add_argument('-c', '--coverages', help="filename to write coverage profiles to", default="")
+    parser_opt_args.add_argument('-c', '--coverages', help="filename to write coverage profiles to [default: don't calculate coverage]", default="")
+    parser_opt_args.add_argument('-l', '--links', help="filename to write pairing links to [default: don't calculate links]", default="")
+    parser_opt_args.add_argument('-i', '--inserts', help="filename to write bamfile insert distributions to [default: print to STDOUT]", default="")
 
     parser_opt_args.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
     parser_opt_args.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean',
-        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian'])
+        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian', 'pvariance'])
     parser_opt_args.add_argument('-r', '--cutoff_range', nargs='+', type=float, help="range used to calculate upper and lower bounds when calculating coverage", default=None)
 
     parser_opt_args.add_argument('--length', help="minimum Q length", type=int, default=50)

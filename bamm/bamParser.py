@@ -53,6 +53,7 @@ from bamLink import BM_linkPair
 from bamFile import BM_bamFile, BM_bamType, BM_fileInfo, BM_coverageType
 from bammExceptions import (InvalidNumberOfTypesException,
                             BAMFileNotFoundException,
+                            BAMIndexNotFoundException,
                             NoBAMSFoundException)
 
 ###############################################################################
