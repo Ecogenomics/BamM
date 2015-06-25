@@ -628,6 +628,28 @@ class BamMaker:
                 self.mem_single_to_sorted_indexed_bam()
             else:
                 self.mem_to_sorted_indexed_bam()
+                
+    def _sam_to_sorted_cmdline_fragment(self):
+        '''Return a string of the command line fragment that converts to
+        BAM and sorts the BAM
+        
+        Parameters
+        ----------
+        None
+        
+        Returns
+        -------
+        String e.g. ' | samtools view -SubhF 4 - | samtools sort - outname'
+        with additional parameters from instance variables.'''
+         
+        return ' '.join([' | samtools view -SubhF 4 -',
+                 self.errorOutput,
+                 '| samtools sort -m',
+                 self.maxMemory,
+                 '-',
+                 self.outFileName,
+                self.errorOutput])
+    
 
     #---------------------------------------------------------------
     # aln algorithm
@@ -736,14 +758,8 @@ class BamMaker:
                         self.sai2,
                         self.readFile1,
                         self.readFile2])
-
-        cmd += ' '.join([' | samtools view -SubhF 4 -',
-                         self.errorOutput,
-                         '| samtools sort -m',
-                         self.maxMemory,
-                         '-',
-                         self.outFileName,
-                        self.errorOutput])
+        
+        cmd += self._sam_to_sorted_cmdline_fragment()
 
         if self.showCommands and not self.silent:
             print cmd
@@ -770,13 +786,7 @@ class BamMaker:
                         self.sai1,
                         self.readFile1])
 
-        cmd += ' '.join([' | samtools view -SubhF 4 -',
-                         self.errorOutput,
-                         '| samtools sort -m',
-                         self.maxMemory,
-                         '-',
-                         self.outFileName,
-                        self.errorOutput])
+        cmd += self._sam_to_sorted_cmdline_fragment()
 
         if self.showCommands and not self.silent:
             print cmd
@@ -808,13 +818,7 @@ class BamMaker:
                         self.readFile1,
                         self.errorOutput])
 
-        cmd += ' '.join([' | samtools view -SubhF 4 -',
-                         self.errorOutput,
-                         ' | samtools sort -m',
-                         self.maxMemory,
-                         '-',
-                         self.outFileName,
-                        self.errorOutput])
+        cmd += self._sam_to_sorted_cmdline_fragment()
 
         if self.showCommands and not self.silent:
             print cmd
@@ -849,13 +853,7 @@ class BamMaker:
         else:
             bwa_cmd += ' '.join([self.readFile1,self.readFile2])
 
-        cmd = bwa_cmd + ' '.join([' | samtools view -SubhF 4 -',
-                                  self.errorOutput,
-                                  ' | samtools sort -m',
-                                  self.maxMemory,
-                                  '-',
-                                  self.outFileName,
-                                  self.errorOutput])
+        cmd = bwa_cmd + self._sam_to_sorted_cmdline_fragment()
 
         if self.showCommands and not self.silent:
             print cmd
@@ -926,13 +924,7 @@ class BamMaker:
         if not self.isSingleEnded:
             cmd += ' ' + self.readFile2
 
-        cmd += ' '.join([' | samtools view -SubhF 4 -',
-                         self.errorOutput,
-                         '| samtools sort -m',
-                         self.maxMemory,
-                         '-',
-                         self.outFileName,
-                         self.errorOutput])
+        cmd += self._sam_to_sorted_cmdline_fragment()
 
         if self.showCommands and not self.silent:
             print cmd
