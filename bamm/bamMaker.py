@@ -38,6 +38,7 @@ import subprocess
 import os
 import sys
 import tempfile
+import shutil
 
 # local imports
 from bammExceptions import InvalidParameterSetException
@@ -86,30 +87,15 @@ class BamScheduler:
                  extraArguments='',
                  showCommands=False,
                  quiet = False,
-                 silent=False
+                 silent=False,
+                 tmpdir=tempfile.gettempdir()
                  ):
         '''Default constructor.
 
         Initializes a BamScheduler instance with the provided set of properties.
 
         Inputs:
-         database - full path to fasta file of contigs (may be gzipped),
-         alignmentAlgorithm - one of BWA's alignment algorithms,
-         indexAlgorithm - one of BWA's index algorithms,
-         paired - [fileName pairs], always even numbered in length, in order
-                  [R_A_1, R_A_2, R_B_1, R_B_2, ...]
-         interleaved - [fileNames], containing interleaved paired reads
-         singleEnded - [fileNames], containing single ended reads
-         keptFiles - == True -> indexes for the db already exist,
-         keepFiles - == True -> don't delete indexes at the end,
-         outputTam - == True -> you love text files to bits,
-         numThreads - int, the maximum number of threads to use
-         maxMemory - string, maximum memory program will use (samtools style)
-         forceOverwriting - == True -> force overwriting index files,
-         extraArguments - string, extra args to pass to BWA
-         showCommands - == True -> show all commands being run
-         quiet - == True -> suppress output from the mapper
-         silent - == True -> suppress all output
+         As per BamMaker
 
         Outputs:
          None
@@ -148,8 +134,8 @@ class BamScheduler:
         self.extraArguments = extraArguments
         self.quiet = quiet
         self.silent = silent
+        self.tmpdir = tmpdir
         self.showCommands = showCommands
-
 
         if self.maxMemory is None:
             # default to 2GBs per number of threads
@@ -217,7 +203,8 @@ class BamScheduler:
                           extraArguments=self.extraArguments,
                           quiet=self.quiet,
                           silent=self.silent,
-                          showCommands=self.showCommands
+                          showCommands=self.showCommands,
+                          tmpdir=self.tmpdir
                           )
             self.BMs.append(BM)
 
@@ -250,7 +237,8 @@ class BamScheduler:
                           extraArguments=self.extraArguments,
                           quiet=self.quiet,
                           silent=self.silent,
-                          showCommands=self.showCommands
+                          showCommands=self.showCommands,
+                          tmpdir=self.tmpdir
                           )
             self.BMs.append(BM)
 
@@ -282,7 +270,8 @@ class BamScheduler:
                           extraArguments=self.extraArguments,
                           quiet=self.quiet,
                           silent=self.silent,
-                          showCommands=self.showCommands
+                          showCommands=self.showCommands,
+                          tmpdir=self.tmpdir
                           )
             self.BMs.append(BM)
 
@@ -380,7 +369,8 @@ class BamMaker:
                  extraArguments='',
                  showCommands=False,
                  quiet=False,
-                 silent=False
+                 silent=False,
+                 tmpdir=tempfile.gettempdir()
                  ):
         '''Default constructor.
 
@@ -405,6 +395,8 @@ class BamMaker:
          showCommands - == True -> show all commands being run
          quiet - == True -> suppress output from the mapper
          silent - == True -> suppress all output
+         tmpdir - == tempfile.gettempdir() -> temporary directory for 
+             intermediate files 
 
         Outputs:
          None
@@ -418,6 +410,7 @@ class BamMaker:
         self.quiet = quiet
         self.showCommands = showCommands
         self.silent = silent
+        self.tmpdir = tmpdir
 
         self.errorOutput = ''
         if self.quiet or self.silent:
@@ -584,7 +577,7 @@ class BamMaker:
     # main wrapper
 
     def makeBam(self):
-        '''Use BWA ans samtools to make a BAM/TAM file
+        '''Use BWA and samtools to make a BAM/TAM file
 
         Inputs:
          None
@@ -629,26 +622,46 @@ class BamMaker:
             else:
                 self.mem_to_sorted_indexed_bam()
                 
-    def _sam_to_sorted_cmdline_fragment(self):
-        '''Return a string of the command line fragment that converts to
-        BAM and sorts the BAM
+    def _sam_to_sorted_and_run(self, cmdline):
+        '''Given a cmdline that generates a SAM file on stdout, run that through
+        samtools view |samtools sort
         
         Parameters
         ----------
-        None
+        cmdline: str
+            Command that outputs on stdout a SAM file
         
         Returns
         -------
-        String e.g. ' | samtools view -SubhF 4 - | samtools sort - outname'
-        with additional parameters from instance variables.'''
-         
-        return ' '.join([' | samtools view -SubhF 4 -',
-                 self.errorOutput,
-                 '| samtools sort -m',
-                 self.maxMemory,
-                 '-',
-                 self.outFileName,
-                self.errorOutput])
+        Nothing'''
+        
+        # On some systems where the sorted BAM file goes eventually is on a
+        # slower disk, and it would be faster to write to tmp and then
+        # move the sorted file to the correct location upon completion.
+        # Assume it is faster to do that.
+        with tempfile.NamedTemporaryFile(prefix="bamm_make",
+                                         dir=self.tmpdir) as f:
+            cmdline +=  ' '.join([' | samtools view -SubhF 4 -',
+                     self.errorOutput,
+                     '| samtools sort -m',
+                     self.maxMemory,
+                     '-@',
+                     str(self.numThreads),
+                     '-',
+                     f.name,
+                    self.errorOutput])
+            self._run_cmd(cmdline)
+            
+            # It would be preferable to use samtools sort -f, but that seems
+            # broken (at least in 0.1.19) for bam files that get split up.
+            shutil.move("%s.bam" % f.name, 
+                        "%s.bam" % self.outFileName)
+        
+    def _run_cmd(self, cmd):
+        if self.showCommands and not self.silent:
+            print "BamM: Running command: '%s'" % cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
     
 
     #---------------------------------------------------------------
@@ -676,11 +689,7 @@ class BamMaker:
                         '>',
                         saiFile,
                         self.errorOutput])
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._run_cmd(cmd)
 
     def sampe(self):
         '''call bwa sampe
@@ -705,11 +714,7 @@ class BamMaker:
                           '>',
                           self.outFileName,
                           self.errorOutput])
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._run_cmd(cmd)
 
     def samse(self):
         '''call bwa samse
@@ -732,11 +737,7 @@ class BamMaker:
                          '>',
                          self.outFileName,
                          self.errorOutput])
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._run_cmd(cmd)
 
     def sampe_to_sorted_indexed_bam(self):
         '''call bwa sampe and sort + index the result
@@ -758,13 +759,7 @@ class BamMaker:
                         self.sai2,
                         self.readFile1,
                         self.readFile2])
-        
-        cmd += self._sam_to_sorted_cmdline_fragment()
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._sam_to_sorted_and_run(cmd)
         self.samtoolsIndex(self.outFileName)
 
     def samse_to_sorted_indexed_bam(self):
@@ -785,14 +780,7 @@ class BamMaker:
                         self.database,
                         self.sai1,
                         self.readFile1])
-
-        cmd += self._sam_to_sorted_cmdline_fragment()
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
-
+        self._sam_to_sorted_and_run(cmd)
         self.samtoolsIndex(self.outFileName)
 
     #---------------------------------------------------------------
@@ -817,14 +805,7 @@ class BamMaker:
                         self.database,
                         self.readFile1,
                         self.errorOutput])
-
-        cmd += self._sam_to_sorted_cmdline_fragment()
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
-
+        self._sam_to_sorted_and_run(cmd)
         self.samtoolsIndex(self.outFileName)
 
     def mem_to_sorted_indexed_bam(self):
@@ -852,13 +833,7 @@ class BamMaker:
             bwa_cmd += ' '.join(['-p',self.readFile1])
         else:
             bwa_cmd += ' '.join([self.readFile1,self.readFile2])
-
-        cmd = bwa_cmd + self._sam_to_sorted_cmdline_fragment()
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._sam_to_sorted_and_run(bwa_cmd)
         self.samtoolsIndex(self.outFileName)
 
     #---------------------------------------------------------------
@@ -896,11 +871,7 @@ class BamMaker:
                             '>',
                             self.outFileName,
                             self.errorOutput])
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._run_cmd(cmd)
 
     def bwasw_to_sorted_indexed_bam(self):
         '''call bwasw and sort and index the result
@@ -923,14 +894,7 @@ class BamMaker:
 
         if not self.isSingleEnded:
             cmd += ' ' + self.readFile2
-
-        cmd += self._sam_to_sorted_cmdline_fragment()
-
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
-
+        self._sam_to_sorted_and_run(cmd)
         self.samtoolsIndex(self.outFileName)
 
     #---------------------------------------------------------------
@@ -949,10 +913,7 @@ class BamMaker:
         cmd = ' '.join(['samtools index',
                         sortedBamFile+'.bam',
                         self.errorOutput])
-        if self.showCommands and not self.silent:
-            print cmd
-            sys.stdout.flush()
-        subprocess.check_call(cmd, shell=True)
+        self._run_cmd(cmd)
 
     #---------------------------------------------------------------
     # utilities
@@ -1003,8 +964,3 @@ class BamMaker:
             (self.database, self.outFileName, suffix, self.numThreads)
         str += "  Alignment algorithm: %s" % self.alignmentAlgorithm
         return str
-
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################

@@ -23,6 +23,7 @@
 #    License along with this library.                                         #
 #                                                                             #
 ###############################################################################
+import tempfile
 
 __author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
 __copyright__ = "Copyright 2014,2015"
@@ -53,7 +54,7 @@ except ImportError:
 
 from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
-from bamm.bamMaker import BamMaker, BamScheduler
+from bamm.bamMaker import BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bamFilter import BamFilter
 from bamm.bammExceptions import printError, printShortUsage, \
@@ -73,7 +74,7 @@ def which(program):
     def is_exe(fpath):
         return os.path.isfile(fpath) and os.access(fpath, os.X_OK)
 
-    fpath, fname = os.path.split(program)
+    fpath, _ = os.path.split(program)
     if fpath:
         if is_exe(program):
             return program
@@ -134,15 +135,16 @@ def doWork( args ):
                               extraArguments=args.extras,
                               showCommands=args.show_commands,
                               quiet=args.quiet,
-                              silent=args.silent
+                              silent=args.silent,
+                              tmpdir=args.temporary_directory
                               )
         except InvalidParameterSetException as e:
             printError(e)
             printShortUsage('make')
-            sys.exit(1)
+            sys.exit(2)
         except AttributeError as e:
             printShortUsage('make')
-            sys.exit(1)
+            sys.exit(3)
 
         # create indexes if required
         if(args.kept is False):
@@ -277,7 +279,7 @@ def doWork( args ):
             sys.exit(1)
 
         try:
-          BamFilter(args.bamfile,
+            BamFilter(args.bamfile,
                     outFolder=args.out_folder,
                     minMapQual=args.mapping_quality,
                     minLength=args.length,
@@ -486,6 +488,7 @@ ESPECIALLY if you are providing access to multiple / unknown users.
 
     make_opt_args.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
     make_opt_args.add_argument("-m", "--memory", default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads). Suffix K/M/G recognized")
+    make_opt_args.add_argument("--temporary_directory", default=tempfile.gettempdir(), help="temporary directory for working with BAM files")
     make_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
     make_opt_args.add_argument('--show_commands', action="store_true", default=False, help="show all commands being run")
