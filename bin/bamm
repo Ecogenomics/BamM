@@ -488,7 +488,7 @@ ESPECIALLY if you are providing access to multiple / unknown users.
 
     make_opt_args.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
     make_opt_args.add_argument("-m", "--memory", default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads). Suffix K/M/G recognized")
-    make_opt_args.add_argument("--temporary_directory", default=tempfile.gettempdir(), help="temporary directory for working with BAM files")
+    make_opt_args.add_argument("--temporary_directory", default=None, help="temporary directory for working with BAM files (default do not use)")
     make_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
     make_opt_args.add_argument('--show_commands', action="store_true", default=False, help="show all commands being run")

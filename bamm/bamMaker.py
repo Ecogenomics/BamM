@@ -638,25 +638,33 @@ class BamMaker:
         # On some systems where the sorted BAM file goes eventually is on a
         # slower disk, and it would be faster to write to tmp and then
         # move the sorted file to the correct location upon completion.
-        # Assume it is faster to do that.
-        with tempfile.NamedTemporaryFile(prefix="bamm_make",
-                                         dir=self.tmpdir) as f:
-            cmdline +=  ' '.join([' | samtools view -SubhF 4 -',
-                     self.errorOutput,
-                     '| samtools sort -m',
-                     self.maxMemory,
-                     '-@',
-                     str(self.numThreads),
-                     '-',
-                     f.name,
-                    self.errorOutput])
+        # It is maybe faster to do that, but people may run out of disk space
+        # so don't use temporary directory by default.
+        cmdline +=  ' '.join([' | samtools view -SubhF 4 -',
+            self.errorOutput,
+            '| samtools sort -m',
+            self.maxMemory,
+            '-@',
+            str(self.numThreads),
+            '-'])
+        if self.tmpdir:
+            with tempfile.NamedTemporaryFile(prefix="bamm_make",
+                                             dir=self.tmpdir) as f:
+                cmdline += ' '+' '.join([f.name,
+                                   self.errorOutput])
+                self._run_cmd(cmdline)
+            
+                # It would be preferable to use samtools sort -f, but that seems
+                # broken (at least in 0.1.19) for bam files that get split up.
+                shutil.move("%s.bam" % f.name, 
+                            "%s.bam" % self.outFileName)
+        else:
+            # no temporary directory specified, use regular output
+            cmdline += ' '+' '.join([self.outFileName,
+                               self.errorOutput])
             self._run_cmd(cmdline)
             
-            # It would be preferable to use samtools sort -f, but that seems
-            # broken (at least in 0.1.19) for bam files that get split up.
-            shutil.move("%s.bam" % f.name, 
-                        "%s.bam" % self.outFileName)
-        
+            
     def _run_cmd(self, cmd):
         if self.showCommands and not self.silent:
             print "BamM: Running command: '%s'" % cmd
