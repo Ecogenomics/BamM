@@ -14,6 +14,8 @@
 #    License along with this library.                                         #
 #                                                                             #
 ###############################################################################
+import unittest
+import subprocess
 
 __author__ = "Michael Imelfort, Ben Woodcroft"
 __copyright__ = "Copyright 2014,2015"
@@ -25,9 +27,7 @@ __email__ = "mike@mikeimelfort.com"
 ###############################################################################
 
 # system imports
-import random
-from math import isnan
-from numpy import mean, median, std, array, round, sort
+from numpy import round, sort
 from nose.tools import assert_equals, assert_true
 import sys
 import os
@@ -128,21 +128,20 @@ class TestBamParser:
              os.path.join(self.model_dir, self.peFile[1]),
              os.path.join(self.model_dir, self.upFile),
              self.model_dir)
-        os.system(cmd)
+        subprocess.check_call(cmd, shell=True)
 
-        EX = os.path.exists(os.path.join(self.model_dir,
-                                         self.peBamFile[0]))
-        EX &= os.path.exists(os.path.join(self.model_dir,
-                                          self.peBamFile[1]))
-        EX &= os.path.exists(os.path.join(self.model_dir,
-                                          self.mpBamFile[0]))
-        EX &= os.path.exists(os.path.join(self.model_dir,
-                                          self.mpBamFile[1]))
-        EX &= os.path.exists(os.path.join(self.model_dir,
-                                          self.upBamFile[0]))
-        EX &= os.path.exists(os.path.join(self.model_dir,
-                                          self.upBamFile[1]))
-        assert(EX)
+        assert_true(os.path.exists(os.path.join(self.model_dir,
+                                         self.peBamFile[0])))
+        assert_true(os.path.exists(os.path.join(self.model_dir,
+                                          self.peBamFile[1])))
+        assert_true(os.path.exists(os.path.join(self.model_dir,
+                                          self.mpBamFile[0])))
+        assert_true(os.path.exists(os.path.join(self.model_dir,
+                                          self.mpBamFile[1])))
+        assert_true(os.path.exists(os.path.join(self.model_dir,
+                                          self.upBamFile[0])))
+        assert_true(os.path.exists(os.path.join(self.model_dir,
+                                          self.upBamFile[1])))
 
     def squishLink(self, link):
         return ",".join([str(i) for i in link])
@@ -260,7 +259,5 @@ class TestBamParser:
 
                             self.rmTestFile(file)
 
-###############################################################################
-###############################################################################
-###############################################################################
-###############################################################################
+if __name__ == "__main__":
+    unittest.main()

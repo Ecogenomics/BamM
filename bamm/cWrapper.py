@@ -336,6 +336,7 @@ class BM_bamFile_C(c.Structure):
 # CT_P_MEDIAN        median pileup depth
 # CT_P_MEAN_TRIMMED  pileup mean trancated based on upper lower %
 # CT_P_MEAN_OUTLIER  pileup mean trancated based on distributions
+# P_VARIANCE         Variance of pileup depth
 
 global CT
 CT = enum('NONE',
@@ -344,7 +345,8 @@ CT = enum('NONE',
           'P_MEAN',
           'P_MEDIAN',
           'P_MEAN_TRIMMED',
-          'P_MEAN_OUTLIER')
+          'P_MEAN_OUTLIER',
+          'P_VARIANCE')
 
 def CT2Str(ct):
     '''Convert a CT into a human readable string
@@ -369,6 +371,8 @@ def CT2Str(ct):
         return 'Mean_trimmed_pileup_depth'
     elif ct == CT.P_MEAN_OUTLIER:
         return 'Mean_outlier_pileup_depth'
+    elif ct == CT.P_VARIANCE:
+        return 'Variance_pileup_depth'
 
 ###############################################################################
 ###############################################################################
@@ -446,6 +450,7 @@ class CWrapper:
         #---------------------------------
         # load the c library
         #---------------------------------
+        c_lib = os.path.abspath(resource_filename('bamm', 'libBamM.a'))
         if UT:
             # unit tests are run from within the install dir which confuses
             # pkg_resources as there is a folder there called bamm
@@ -454,8 +459,6 @@ class CWrapper:
                 for d in dist:
                     if d == 'bamm':
                         c_lib = os.path.join(dist_path, d, 'libBamM.a')
-        else:
-            c_lib = os.path.abspath(resource_filename('bamm', 'libBamM.a'))
 
         try:
             self.libPMBam = c.cdll.LoadLibrary(c_lib)
@@ -588,6 +591,10 @@ class CWrapper:
         self._estimate_P_MEAN_OUTLIER_Coverage = self.libPMBam.estimate_P_MEAN_OUTLIER_Coverage
         self._estimate_P_MEAN_OUTLIER_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_P_MEAN_OUTLIER_Coverage.restype = c.c_float
+        
+        self._estimate_P_VARIANCE_Coverage = self.libPMBam.estimate_P_VARIANCE_Coverage
+        self._estimate_P_VARIANCE_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_P_VARIANCE_Coverage.restype = c.c_float
 
         self._BM_median = self.libPMBam.BM_median
         self._BM_median.argtypes = [c.POINTER(c.c_uint32), c.c_uint32]
