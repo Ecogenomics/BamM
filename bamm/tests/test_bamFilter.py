@@ -41,7 +41,7 @@ class TestBamFilter:
     def setup_class(self):
         """Setup class variables before any tests."""
 
-        self.bamm = os.path.join("~", "git", "BamM", "bin", "bamm")
+        #self.bamm = os.path.join("~", "git", "BamM", "bin", "bamm")
         self.dataDir = os.path.join(os.path.split(__file__)[0], "filter_test_data")
         self.bamNames = ["1", "2"]
 
@@ -112,8 +112,8 @@ class TestBamFilter:
 
 
     def generate_bam(self, name, args):
-        cmd = "%s filter -b %s -o %s %s" % (self.bamm, self.bamFiles[name], self.dataDir, " ".join(args))
-        subprocess.call(cmd, shell=True)
+        cmd = "bamm filter -b %s -o %s %s" % (self.bamFiles[name], self.dataDir, " ".join(args))
+        subprocess.check_call(cmd, shell=True)
 
 
     def assert_equal_query_sequences(self, out, expected):
