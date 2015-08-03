@@ -429,6 +429,28 @@ class TestCoverageStats:
         trim_upper = len(self.even_list) - int(BCT.upperCut/100.0 * len(self.even_list)) - 1
         assert_equals(coverage, mean(self.even_list[trim_lower:trim_upper]))
 
+    #########################################################################
+    # Pileup variance mode
+    #########################################################################
+    def testVarianceCoverage(self):
+        """Verify computation of pileup variance coverage."""
+
+        observed = self.CW._estimate_P_VARIANCE_Coverage(self.even_c_array, self.pBCT, len(self.even_list))
+        expected = pow(std(self.even_list), 2)
+        assert_equals(expected, observed)
+ 
+    def testVarianceSingle(self):
+        """Verify C implementation of variance when given array with a single element."""
+ 
+        observed = self.CW._estimate_P_VARIANCE_Coverage(self.single_num_c_array, self.pBCT, len(self.single_num_list))
+        expected = pow(std(self.single_num_list), 2)
+        assert_equals(expected, observed)
+ 
+    def testVarianceZero(self):
+        """Verify C implementation of variance when given array of zeros."""
+ 
+        observed = self.CW._estimate_P_VARIANCE_Coverage(self.zero_c_array, self.pBCT, len(self.zero_list))
+        assert_equals(0.0, observed)
 ###############################################################################
 ###############################################################################
 ###############################################################################

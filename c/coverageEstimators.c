@@ -76,6 +76,9 @@ void estimateCoverages(float * coverageValues,
         case CT_P_MEAN_OUTLIER:
             cf = estimate_P_MEAN_OUTLIER_Coverage;
             break;
+        case CT_P_VARIANCE:
+            cf = estimate_P_VARIANCE_Coverage;
+            break;
         case CT_NONE:
         default:
             return;
@@ -204,4 +207,13 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
     else {
         return (float)(plp_sum) / divisor;
     }
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_P_VARIANCE_Coverage(uint32_t * pileupValues,
+                                   BM_coverageType * covType,
+                                   uint32_t contigLength
+                                  ) {
+    return BM_variance(pileupValues, contigLength, -1);
 }
