@@ -1,8 +1,7 @@
 from distutils.core import setup
-from distutils.command.install import INSTALL_SCHEMES
 import sys
 from subprocess import call
-from os.path import join, abspath
+from os.path import join, abspath, exists
 from os import chdir, getcwd, rename, remove
 
 xtra_opts = {"--with-libcfu-inc":"libcfu headers at this location",
@@ -45,10 +44,12 @@ else:
         print "  %s  %s"%(opt,xtra_opts[opt])
     print
 
+exec(open('bamm/version.py').read()) # loads __version__
+
 # return to regular viewing
 setup(
     name='BamM',
-    version='1.4.2',
+    version=__version__,
     author='Michael Imelfort',
     author_email='mike@mikeimelfort.com',
     packages=['bamm'],
@@ -61,4 +62,6 @@ setup(
 )
 
 # remove the library
-remove(join('bamm', 'libBamM.a'))
+to_remove = join('bamm', 'libBamM.a') 
+if exists(to_remove):
+    remove(to_remove)

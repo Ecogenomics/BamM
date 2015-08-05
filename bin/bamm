@@ -28,7 +28,6 @@ __author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
 __copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort","Ben Woodcroft", "Donovan Parks"]
 __license__ = "LGPLv3"
-__version__ = "1.5.0"
 __maintainer__ = "Michael Imelfort"
 __email__ = "mike@mikeimelfort.com"
 __status__ = "Beta"
@@ -51,6 +50,7 @@ try:
 except ImportError:
     sys.path.append(os.path.join(os.path.dirname(os.path.realpath(__file__)),'..'))
 
+from bamm import __version__
 from bamm.bamParser import BamParser
 from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamScheduler
@@ -429,7 +429,7 @@ if __name__ == '__main__':
 
  Produce a sorted, indexed BAM file with reads mapped onto contigs.fa using 40 threads
    bamm make -d contigs.fa -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -c reads3_1.fq.gz reads3_2.fq.gz -t 40
-   
+
  Produce a 3 sorted, indexed BAM files with reads mapped onto contigs.fa.gz
    bamm make -d contigs.fa.gz -i reads1_interleaved.fq.gz reads2_interleaved.fq.gz -s reads4_singles.fq.gz
 
@@ -505,13 +505,13 @@ ESPECIALLY if you are providing access to multiple / unknown users.
 
  Calculate insert distribution, print to STDOUT
    bamm parse -b my.bam
-  
+
  Calculate contig-wise coverage
    bamm parse -b my.bam -c output_coverage.tsv
-  
+
  Calculate linking information on 2 bam files
    bamm parse -b first.bam second.bam -l output_links.tsv
-                                        
+
 Coverage calculation modes:
 * opmean:    outlier pileup coverage: average of reads overlapping each base,
              after bases with coverage outside mean +/- 1 standard deviation
