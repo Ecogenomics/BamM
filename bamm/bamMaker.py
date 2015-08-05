@@ -137,10 +137,6 @@ class BamScheduler:
         self.tmpdir = tmpdir
         self.showCommands = showCommands
 
-        if self.maxMemory is None:
-            # default to 2GBs per number of threads
-            self.maxMemory = str(self.numThreads*2)+'G'
-
         # --kept sanity check
         if checkForDatabase(self.database):
             # dbs are there, has the user specified 'kept'
@@ -435,8 +431,9 @@ class BamMaker:
         self.numThreads = int(numThreads)
         self.maxMemory = maxMemory
         if self.maxMemory is None:
-            # default to 2GBs per number of threads
-            self.maxMemory = str(self.numThreads*2)+'G'
+            # default to 2GB per number of threads, but samtools sort takes
+            # an argument that is per-thread anyway.
+            self.maxMemory = '2G'
 
         # handle extra arguments
         self.extraArguments = {}

@@ -23,7 +23,6 @@
 #    License along with this library.                                         #
 #                                                                             #
 ###############################################################################
-import tempfile
 
 __author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
 __copyright__ = "Copyright 2014,2015"
@@ -487,7 +486,7 @@ ESPECIALLY if you are providing access to multiple / unknown users.
     make_opt_args.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
 
     make_opt_args.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
-    make_opt_args.add_argument("-m", "--memory", default=None, help="maximum amount of memory to use per bwa process (default 2GB*number of threads). Suffix K/M/G recognized")
+    make_opt_args.add_argument("-m", "--memory", default=None, help="maximum amount of memory to use per samtools sort thread (default 2GB). Suffix K/M/G recognized")
     make_opt_args.add_argument("--temporary_directory", default=None, help="temporary directory for working with BAM files (default do not use)")
     make_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
