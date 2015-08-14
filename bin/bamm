@@ -606,8 +606,8 @@ second is the upper. If only one value is supplied then lower == upper.'''
     filter_opt_args.add_argument('--mapping_quality', help="mapping quality threshold", type=int, default=0)
     filter_opt_args.add_argument('--max_distance', type=int, default=1000, help="maximum allowable edit distance from query to reference")
     filter_opt_args.add_argument('--length', help="minimum allowable query length", type=int, default=0)
-    filter_opt_args.add_argument('--percentage_id', help="minimum allowable percentage base identity of a mapped read (int between 0 and 100)", type=float, default=0.)
-    filter_opt_args.add_argument('--percentage_aln', help="minimum allowable percentage read bases mapped (int between 0 and 100)", type=float, default=0.)
+    filter_opt_args.add_argument('--percentage_id', help="minimum allowable percentage base identity of a mapped read (between 0 and 1)", type=float, default=0.)
+    filter_opt_args.add_argument('--percentage_aln', help="minimum allowable percentage read bases mapped (between 0 and 1)", type=float, default=0.)
     filter_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
     filter_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
 
