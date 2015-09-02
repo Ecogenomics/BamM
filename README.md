@@ -20,8 +20,8 @@ http://ecogenomics.github.io/BamM/manual/BamM_manual.pdf
 
 If you're running 'bamm make' you'll need to have bwa and samtools installed. Installation of these tools is really straightforward. You can find the code and instructions at:
 
-Samtools:   https://github.com/samtools/samtools  (tested with version: 1.2)
-BWA:        https://github.com/lh3/bwa            (tested with version: 0.7.12)
+* Samtools:   http://sourceforge.net/projects/samtools  (tested with version: 1.2)
+* BWA:        https://github.com/lh3/bwa            (tested with version: 0.7.12)
 
 BamM depends on two libraries: htslib and libcfu. Several users have reported difficulty installing these dependencies so they are now packaged with the BamM source. It it still possible to use your local version of these libraries, see the manual for more details.
 
