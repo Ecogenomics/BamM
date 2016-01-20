@@ -112,7 +112,11 @@ class TestBamFilter:
 
 
     def generate_bam(self, name, args):
-        cmd = "bamm filter -b %s -o %s %s" % (self.bamFiles[name], self.dataDir, " ".join(args))
+        cmd = " ".join(["bamm filter -b",
+                        self.bamFiles[name],
+                        "-o",
+                        self.dataDir,
+                        " ".join(args)])
         subprocess.check_call(cmd, shell=True)
 
 
@@ -139,11 +143,65 @@ class TestBamFilter:
             except StopIteration:
                 out_read = None
 
-            if expected_read is None and out_read is None:
+            if expected_read is None:
+                assert_true(out_read is None, 'Filtered file "%s" contains expected number of reads.' %out)
                 break
 
-            assert_true(expected_read is not None and out_read is not None, 'Filtered file "%s" contains expected number of reads.' %out)
             assert_true(expected_read.compare(out_read) == 0, 'Filtered file "%s" queries match expected queries.' % out)
+
+    def assert_equal_together_query_sequences(self, (out_a, out_b), expected):
+        try:
+            aln_expected = pysam.AlignmentFile(expected, "rb")
+        except:
+            raise
+            raise AssertionError('File of expected reads "%s" exists and is readable.' % expected)
+
+        try:
+            aln_out_a = pysam.AlignmentFile(out_a, "rb")
+        except:
+            raise AssertionError('File of filtered reads "%s" exists and is readable.' % out_a)
+
+        try:
+            aln_out_b = pysam.AlignmentFile(out_b, "rb")
+        except:
+            raise AssertionError('File of filtered reads "%s" exists and is readable.' % out_b)
+
+        current_is_a = True
+        out_read_b = aln_out_b.next()
+        while True:
+            try:
+                expected_read = aln_expected.next()
+            except StopIteration:
+                expected_read = None
+
+            match = False
+            if current_is_a:
+                try:
+                    out_read_a = aln_out_a.next()
+                except StopIteration:
+                    out_read_a = None
+                    
+                match = out_read_a is not None and expected_read.compare(out_read_a)
+                if not match:
+                    current_is_a = False
+                    match = out_read_b is not None and expected_read.compare(out_read_b)
+            else:
+                try:
+                    out_read_b = aln_out_b.next()
+                except StopIteration:
+                    out_read_b = None
+                    
+                match = out_read_b is not None and expected_read.compare(out_read_b)
+                if not match:
+                    current_is_a = True
+                    match = out_read_a is not None and expected_read.compare(out_read_a)
+            
+
+            if expected_read is None:
+                assert(out_a_read is None and out_b_read is None, 'Filtered file "%s" contains expected number of reads.' %out)
+                break
+
+            assert_true(match, 'Filtered file "%s" queries match expected queries.' % out)
 
 
     def testFilter(self):
@@ -155,6 +213,17 @@ class TestBamFilter:
                 test = os.path.join(self.testDataDirs[bamName], "%s_%s.bam" % (bamName, testName))
                 self.assert_equal_query_sequences(out, test)
                 #self.rmTestFile(bamName)
+                
+    def testInverseFilter(self):
+        for bamName in self.bamNames:
+            
+            for (testName, args) in self.params.iteritems():
+                args = args + ["-v"]
+                self.generate_bam(bamName, args)
+                out = os.path.join(self.dataDir, self.outputBamFnames[bamName])
+                test = os.path.join(self.testDataDirs[bamName], "%s_%s.bam" % (bamName, testName))
+                orig = os.path.join(self.dataDir, self.bamFiles[bamName])
+                self.assert_equal_together_query_sequences((out, test), orig)
 
 
 ###############################################################################

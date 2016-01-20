@@ -53,6 +53,7 @@ extern "C" {
  * @param  maxMisMatches        maximum number of mismatches to accept (NM flag)
  * @param  minPcId              minimum percentage identity to accept (int between 0 and 100)
  * @param  minPcAln             minimum percentage alignment to accept (int between 0 and 100)
+ * @param  invertMatch == 1 -> remove mapped reads
  * @param  ignoreSuppAlignments == 1 -> ignore supplmentary alignments
  * @param  ignoreSecondaryAlignments  == 1 -> ignore secondary alignments
  * @return 0 for success
@@ -65,6 +66,7 @@ void filterReads(char * bamFile,
                  int maxMisMatches,
                  float minPcId,
                  float minPcAln,
+                 int invertMatch,
                  int ignoreSuppAlignments,
                  int ignoreSecondaryAlignments);
 

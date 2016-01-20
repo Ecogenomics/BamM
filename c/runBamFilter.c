@@ -14,9 +14,9 @@ int main( int argc, char *argv[] ) {
     }
     else {
         filterReads(argv[1], "out.bam", 0, 0, 1000, 0.9, 0.9, 0, 0, 0);
-        if ((result = remove("out.bam"))
+        if ((result = remove("out.bam")))
             return result;
-        filterReads(argv[1], "out.bam", 0, 0, 1000, 0.9. 0.9, 1, 0, 0);
+        filterReads(argv[1], "out.bam", 0, 0, 1000, 0.9, 0.9, 1, 0, 0);
         return remove("out.bam");
     }
 }

@@ -86,7 +86,7 @@ void filterReads(char * inBamFile,
         bam_hdr_destroy(h);
 
         int line = 0;
-        int matches, mismatches, qLen, mapped;
+        int matches, mismatches, qLen, unmapped;
         float pcAln, pcId;
         int showStats = 0;
 
@@ -103,42 +103,46 @@ void filterReads(char * inBamFile,
             }
             
             // only high quality
-            if ((unmapped = b->core.qual < minMapQual)) {
+            if (b->core.qual < minMapQual) {
                 if (showStats)
                     fprintf(stdout, "Rejected %d, quality: %d\n", line, b->core.qual);
+                unmapped = 1;
             }
-            
             if (unmapped == 0) {
                 // not too many absolute mismatches
-                mismatches = bam_aux2i(bam_aux_get(b, "NM"))
-                if ((unmapped = mismatches > maxMisMatches)) {
+                mismatches = bam_aux2i(bam_aux_get(b, "NM"));
+                if (mismatches > maxMisMatches) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, mismatches: %d\n", line, mismatches);
+                    unmapped = 1;
                 }
             }
             if (unmapped == 0) {
                 // not too short
-                qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b))
-                if ((unmapped = qlen < minLen)) {
+                qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
+                if (qLen < minLen) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, length: %d\n", line, qLen);
+                    unmapped = 1;
                 }
             }
             if (unmapped == 0) {
                 // only high percent identity
                 matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b));
                 pcId = (matches - mismatches) / (float)matches; // percentage as float between 0 to 1
-                if ((unmapped = pcId < minPcId)) {
+                if (pcId < minPcId) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, identity pc: %.4f\n", line, pcId);
+                    unmapped = 1;
                 }
             }
             if (unmapped == 0) {
                 // only high percent alignment
                 pcAln = matches / (float)qLen; // percentage as float between 0 to 1
-                if ((unmapped = pcAln < minPcAln)) {
+                if (pcAln < minPcAln) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, alignment pc: %.4f\n", line, pcAln);
+                    unmapped = 1;
                 }
             }
 
