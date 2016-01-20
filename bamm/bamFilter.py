@@ -55,6 +55,7 @@ class BamFilter:
                  maxMisMatches=1000,
                  minPcId=0.,
                  minPcAln=0.,
+                 invertMatch=False,
                  useSuppAlignments=False,
                  useSecondaryAlignments=False,
                  ):
@@ -101,6 +102,11 @@ class BamFilter:
             self.ignoreSecondaryAlignments = 0
         else:
             self.ignoreSecondaryAlignments = 1
+            
+        if invertMatch:
+            self.invertMatch = 1
+        else:
+            self.invertMatch = 0
 
 
     def filter(self):
@@ -151,6 +157,7 @@ class BamFilter:
                         max_mismatches_c,
                         min_percentage_id_c,
                         min_percentage_aln_c,
+                        self.invertMatch,
                         self.ignoreSuppAlignments,
                         self.ignoreSecondaryAlignments)
 
