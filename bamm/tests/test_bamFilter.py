@@ -147,6 +147,7 @@ class TestBamFilter:
                 assert_true(out_read is None, 'Filtered file "%s" contains expected number of reads.' %out)
                 break
 
+            assert_true(out_read is not None, 'Filtered file "%s" contains expected number of reads.' %out)
             assert_true(expected_read.compare(out_read) == 0, 'Filtered file "%s" queries match expected queries.' % out)
 
     def assert_equal_together_query_sequences(self, (out_a, out_b), expected):
@@ -166,52 +167,43 @@ class TestBamFilter:
         except:
             raise AssertionError('File of filtered reads "%s" exists and is readable.' % out_b)
 
-        current_is_a = True
         try:
             out_read_b = aln_out_b.next()
         except StopIteration:
             out_read_b = None
             
+        current_is_a = True
         while True:
+            # get next expected read
             try:
                 expected_read = aln_expected.next()
             except StopIteration:
                 expected_read = None
-                
-            if current_is_a:
-                print out_read_b
-            else:
-                print out_read_a
 
-            match = False
+            # get next read for the filtered file that has the last match
             if current_is_a:
                 try:
                     out_read_a = aln_out_a.next()
                 except StopIteration:
                     out_read_a = None
-                    
-                match = out_read_a is not None and expected_read.compare(out_read_a) == 0
-                if not match:
-                    current_is_a = False
-                    match = out_read_b is not None and expected_read.compare(out_read_b) == 0
             else:
                 try:
                     out_read_b = aln_out_b.next()
                 except StopIteration:
                     out_read_b = None
-                    
-                match = out_read_b is not None and expected_read.compare(out_read_b) == 0
-                if not match:
-                    current_is_a = True
-                    match = out_read_a is not None and expected_read.compare(out_read_a) == 0
             
-
+            # check if we at the end
             if expected_read is None:
-                assert(out_read_a is None and out_read_b is None, 'Filtered files "%s", "%s" contain expected number of reads.' % (out_a, out_b))
+                assert_true(out_read_a is None and out_read_b is None, 'Filtered files "%s", "%s" contain expected number of combined reads.' % (out_a, out_b))
                 break
-                
-                
-            assert_true(match, 'Filtered files "%s", "%s" queries match expected queries.' % (out_a, out_b))
+            
+            assert_true(out_read_a is not None or out_read_b is not None, 'Filtered files "%s", "%s" contain expected number of combined reads.' % (out_a, out_b))
+            
+            # check each current read to see if it matches expected read
+            current_is_a = out_read_a is not None and expected_read.compare(out_read_a) == 0
+            if not current_is_a:
+                if out_read_b is None or expected_read.compare(out_read_b) != 0:
+                    raise AssertionError('Filtered files "%s", "%s" queries combined match expected queries.' % (out_a, out_b))
 
 
     def testFilter(self):
