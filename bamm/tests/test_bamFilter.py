@@ -124,7 +124,6 @@ class TestBamFilter:
         try:
             aln_expected = pysam.AlignmentFile(expected, "rb")
         except:
-            raise
             raise AssertionError('File of expected reads "%s" exists and is readable.' % expected)
 
         try:
@@ -154,7 +153,6 @@ class TestBamFilter:
         try:
             aln_expected = pysam.AlignmentFile(expected, "rb")
         except:
-            raise
             raise AssertionError('File of expected reads "%s" exists and is readable.' % expected)
 
         try:
