@@ -648,7 +648,7 @@ class BamMaker:
         if self.keepUnmapped:
             view_args = '-Subh'
         else:
-            view_args = ' -SubhF 4'
+            view_args = '-SubhF 4'
         cmdline +=  ' '.join([' | samtools view',
             view_args,
             '-',
