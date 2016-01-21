@@ -198,7 +198,7 @@ class TestBamFilter:
             
 
             if expected_read is None:
-                assert(out_a_read is None and out_b_read is None, 'Filtered file "%s" contains expected number of reads.' %out)
+                assert(out_read_a is None and out_read_b is None, 'Filtered file "%s" contains expected number of reads.' %out)
                 break
 
             assert_true(match, 'Filtered file "%s" queries match expected queries.' % out)

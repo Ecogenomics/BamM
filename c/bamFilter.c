@@ -86,7 +86,7 @@ void filterReads(char * inBamFile,
         bam_hdr_destroy(h);
 
         int line = 0;
-        int matches, mismatches, qLen, mapped;
+        int matches, mismatches, qLen, unmapped;
         float pcAln, pcId;
         int showStats = 0;
 
@@ -110,7 +110,7 @@ void filterReads(char * inBamFile,
             
             if (unmapped == 0) {
                 // not too many absolute mismatches
-                mismatches = bam_aux2i(bam_aux_get(b, "NM"))
+                mismatches = bam_aux2i(bam_aux_get(b, "NM"));
                 if ((unmapped = mismatches > maxMisMatches)) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, mismatches: %d\n", line, mismatches);
@@ -118,8 +118,8 @@ void filterReads(char * inBamFile,
             }
             if (unmapped == 0) {
                 // not too short
-                qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b))
-                if ((unmapped = qlen < minLen)) {
+                qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
+                if ((unmapped = qLen < minLen)) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, length: %d\n", line, qLen);
                 }
