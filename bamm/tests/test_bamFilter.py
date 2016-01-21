@@ -167,12 +167,21 @@ class TestBamFilter:
             raise AssertionError('File of filtered reads "%s" exists and is readable.' % out_b)
 
         current_is_a = True
-        out_read_b = aln_out_b.next()
+        try:
+            out_read_b = aln_out_b.next()
+        except StopIteration:
+            out_read_b = None
+            
         while True:
             try:
                 expected_read = aln_expected.next()
             except StopIteration:
                 expected_read = None
+                
+            if current_is_a:
+                print out_read_b
+            else:
+                print out_read_a
 
             match = False
             if current_is_a:
@@ -181,32 +190,32 @@ class TestBamFilter:
                 except StopIteration:
                     out_read_a = None
                     
-                match = out_read_a is not None and expected_read.compare(out_read_a)
+                match = out_read_a is not None and expected_read.compare(out_read_a) == 0
                 if not match:
                     current_is_a = False
-                    match = out_read_b is not None and expected_read.compare(out_read_b)
+                    match = out_read_b is not None and expected_read.compare(out_read_b) == 0
             else:
                 try:
                     out_read_b = aln_out_b.next()
                 except StopIteration:
                     out_read_b = None
                     
-                match = out_read_b is not None and expected_read.compare(out_read_b)
+                match = out_read_b is not None and expected_read.compare(out_read_b) == 0
                 if not match:
                     current_is_a = True
-                    match = out_read_a is not None and expected_read.compare(out_read_a)
+                    match = out_read_a is not None and expected_read.compare(out_read_a) == 0
             
 
             if expected_read is None:
-                assert(out_read_a is None and out_read_b is None, 'Filtered file "%s" contains expected number of reads.' %out)
+                assert(out_read_a is None and out_read_b is None, 'Filtered files "%s", "%s" contain expected number of reads.' % (out_a, out_b))
                 break
-
-            assert_true(match, 'Filtered file "%s" queries match expected queries.' % out)
+                
+                
+            assert_true(match, 'Filtered files "%s", "%s" queries match expected queries.' % (out_a, out_b))
 
 
     def testFilter(self):
         for bamName in self.bamNames:
-
             for (testName, args) in self.params.iteritems():
                 self.generate_bam(bamName, args)
                 out = os.path.join(self.dataDir, self.outputBamFnames[bamName])
@@ -216,9 +225,8 @@ class TestBamFilter:
                 
     def testInverseFilter(self):
         for bamName in self.bamNames:
-            
-            for (testName, args) in self.params.iteritems():
-                args = args + ["-v"]
+            for testName in ["aln_only_90", "aln_only_101", "id_only_90"]:
+                args = self.params[testName] + ["-v"]
                 self.generate_bam(bamName, args)
                 out = os.path.join(self.dataDir, self.outputBamFnames[bamName])
                 test = os.path.join(self.testDataDirs[bamName], "%s_%s.bam" % (bamName, testName))
