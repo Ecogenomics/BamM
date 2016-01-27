@@ -128,7 +128,7 @@ def doWork( args ):
                               keptFiles=args.kept,
                               keepFiles=args.keep,
                               outputTam=args.output_tam,
-                              keepUnmapped=args.unmapped,
+                              keepUnmapped=args.keep_unmapped,
                               numThreads=args.threads,
                               maxMemory=args.memory,
                               forceOverwriting=args.force,
