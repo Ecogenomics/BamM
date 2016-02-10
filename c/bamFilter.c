@@ -43,6 +43,7 @@ void filterReads(char * inBamFile,
                  int maxMisMatches,
                  float minPcId,
                  float minPcAln,
+                 int invertMatch,
                  int ignoreSuppAlignments,
                  int ignoreSecondaryAlignments) {
     //
@@ -85,65 +86,70 @@ void filterReads(char * inBamFile,
         bam_hdr_destroy(h);
 
         int line = 0;
-        int matches, mismatches, qLen;
+        int matches, mismatches, qLen, unmapped;
         float pcAln, pcId;
         int showStats = 0;
 
         // fetch alignments
         while ((result = bam_read1(in, b)) >= 0) {
             line += 1;
-
+            unmapped = 0;
+            
             // only primary mappings
-            if ((b->core.flag & supp_check) != 0) {
+            if ((b->core.flag & supp_check) != 0) { 
                 if (showStats)
                     fprintf(stdout, "Rejected %d, non-primary\n", line);
                 continue;
             }
-
+            
             // only high quality
-            if (b->core.qual < minMapQual) {
+            if ((unmapped = b->core.qual < minMapQual)) {
                 if (showStats)
                     fprintf(stdout, "Rejected %d, quality: %d\n", line, b->core.qual);
-                continue;
+            }
+            
+            if (unmapped == 0) {
+                // not too many absolute mismatches
+                mismatches = bam_aux2i(bam_aux_get(b, "NM"));
+                if ((unmapped = mismatches > maxMisMatches)) {
+                    if (showStats)
+                        fprintf(stdout, "Rejected %d, mismatches: %d\n", line, mismatches);
+                }
+            }
+            if (unmapped == 0) {
+                // not too short
+                qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
+                if ((unmapped = qLen < minLen)) {
+                    if (showStats)
+                        fprintf(stdout, "Rejected %d, length: %d\n", line, qLen);
+                }
+            }
+            if (unmapped == 0) {
+                // only high percent identity
+                matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b));
+                pcId = (matches - mismatches) / (float)matches; // percentage as float between 0 to 1
+                if ((unmapped = pcId < minPcId)) {
+                    if (showStats)
+                        fprintf(stdout, "Rejected %d, identity pc: %.4f\n", line, pcId);
+                }
+            }
+            if (unmapped == 0) {
+                // only high percent alignment
+                pcAln = matches / (float)qLen; // percentage as float between 0 to 1
+                if ((unmapped = pcAln < minPcAln)) {
+                    if (showStats)
+                        fprintf(stdout, "Rejected %d, alignment pc: %.4f\n", line, pcAln);
+                }
             }
 
-            // not too many absolute mismatches
-            mismatches = bam_aux2i(bam_aux_get(b, "NM"));
-            if (mismatches > maxMisMatches) {
-                if (showStats)
-                    fprintf(stdout, "Rejected %d, mismatches: %d\n", line, mismatches);
-                continue;
-            }
-
-            // not too short
-            qLen = bam_cigar2qlen((&b->core)->n_cigar, bam_get_cigar(b));
-            if (qLen < minLen) {
-                if (showStats)
-                    fprintf(stdout, "Rejected %d, length: %d\n", line, qLen);
-                continue;
-            }
-
-            // only high percent identity
-            matches = bam_cigar2matches((&b->core)->n_cigar, bam_get_cigar(b));
-            pcId = (matches - mismatches) / (float)matches; // percentage as float between 0 to 1
-            if (pcId < minPcId) {
-                if (showStats)
-                    fprintf(stdout, "Rejected %d, identity pc: %.4f\n", line, pcId);
-                continue;
-            }
-
-            // only high percent alignment
-            pcAln = matches / (float)qLen; // percentage as float between 0 to 1
-            if (pcAln < minPcAln) {
-                if (showStats)
-                    fprintf(stdout, "Rejected %d, alignment pc: %.4f\n", line, pcAln);
-                continue;
-            }
-
-            if ((outResult = bam_write1(out, b)) < -1) {
-                fprintf(stderr,
-                        "ERROR: Attempt to write read no. %d to file \"%s\" failed with code %d.\n",
-                        line, outBamFile, outResult);
+            // write mapped reads (unmapped==0) when invertMatch==0
+            // write unmapped reads (unmapped==1) when invertMatch==1
+            if (unmapped == invertMatch) {
+                if ((outResult = bam_write1(out, b)) < -1) {
+                    fprintf(stderr,
+                            "ERROR: Attempt to write read no. %d to file \"%s\" failed with code %d.\n",
+                            line, outBamFile, outResult);
+                }
             }
         }
         if (result < -1) {

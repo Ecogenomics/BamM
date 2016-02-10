@@ -80,6 +80,7 @@ class BamScheduler:
                  keptFiles=False,
                  keepFiles=False,
                  outputTam=False,
+                 keepUnmapped=False,
                  prefix='',
                  numThreads=1,
                  maxMemory=None,
@@ -130,6 +131,7 @@ class BamScheduler:
         self.numThreads = int(numThreads)
         self.maxMemory = maxMemory
         self.outputTam = outputTam
+        self.keepUnmapped = keepUnmapped
         self.forceOverwriting = forceOverwriting
         self.extraArguments = extraArguments
         self.quiet = quiet
@@ -193,6 +195,7 @@ class BamScheduler:
                           keptFiles=True,       # always keep these
                           keepFiles=True,
                           outputTam=self.outputTam,
+                          keepUnmapped=self.keepUnmapped,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
                           forceOverwriting=self.forceOverwriting,
@@ -227,6 +230,7 @@ class BamScheduler:
                           keptFiles=True,
                           keepFiles=True,
                           outputTam=self.outputTam,
+                          keepUnmapped=self.keepUnmapped,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
                           forceOverwriting=self.forceOverwriting,
@@ -260,6 +264,7 @@ class BamScheduler:
                           keptFiles=True,
                           keepFiles=True,
                           outputTam=self.outputTam,
+                          keepUnmapped=self.keepUnmapped,
                           numThreads=self.numThreads,
                           maxMemory=self.maxMemory,
                           forceOverwriting=self.forceOverwriting,
@@ -359,6 +364,7 @@ class BamMaker:
                  keptFiles=False,
                  keepFiles=False,
                  outputTam=False,
+                 keepUnmapped=False,
                  numThreads=1,
                  maxMemory=None,
                  forceOverwriting=False,
@@ -384,6 +390,7 @@ class BamMaker:
          keptFiles - == True -> indexes for the db already exist,
          keepFiles - == True -> don't delete indexes at the end,
          outputTam - == True -> you love text files to bits,
+         keepUnmapped - == True -> don't drop unmapped reads from BAM
          numThreads - int, the maximum number of threads to use
          maxMemory - string, maximum memory program will use (samtools style)
          forceOverwriting - == True -> force overwriting index files,
@@ -427,6 +434,7 @@ class BamMaker:
 
         self.keptFiles = keptFiles
         self.keepFiles = keepFiles
+        self.keepUnmapped = keepUnmapped
 
         self.numThreads = int(numThreads)
         self.maxMemory = maxMemory
@@ -637,7 +645,13 @@ class BamMaker:
         # move the sorted file to the correct location upon completion.
         # It is maybe faster to do that, but people may run out of disk space
         # so don't use temporary directory by default.
-        cmdline +=  ' '.join([' | samtools view -SubhF 4 -',
+        if self.keepUnmapped:
+            view_args = '-Subh'
+        else:
+            view_args = '-SubhF 4'
+        cmdline +=  ' '.join([' | samtools view',
+            view_args,
+            '-',
             self.errorOutput,
             '| samtools sort -m',
             self.maxMemory,

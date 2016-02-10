@@ -129,6 +129,7 @@ def doWork( args ):
                               keptFiles=args.kept,
                               keepFiles=args.keep,
                               outputTam=args.output_tam,
+                              keepUnmapped=args.keep_unmapped,
                               numThreads=args.threads,
                               maxMemory=args.memory,
                               forceOverwriting=args.force,
@@ -286,6 +287,7 @@ def doWork( args ):
                     maxMisMatches=args.max_distance,
                     minPcId=args.percentage_id,
                     minPcAln=args.percentage_aln,
+                    invertMatch=args.invert_match,
                     useSuppAlignments=args.use_supplementary,
                     useSecondaryAlignments=args.use_secondary
           ).filter()
@@ -485,6 +487,7 @@ ESPECIALLY if you are providing access to multiple / unknown users.
                            help="force overwriting of index files if they are present")
 
     make_opt_args.add_argument("--output_tam", action="store_true", default=False, help="output TAM file instead of BAM file")
+    make_opt_args.add_argument("-u", "--keep_unmapped", action="store_true", default=False, help="Keep unmapped reads in BAM output")
 
     make_opt_args.add_argument("-t", "--threads", type=int, default=1, help="maximum number of threads to use")
     make_opt_args.add_argument("-m", "--memory", default=None, help="maximum amount of memory to use per samtools sort thread (default 2GB). Suffix K/M/G recognized")
@@ -611,6 +614,7 @@ second is the upper. If only one value is supplied then lower == upper.'''
     filter_opt_args.add_argument('--percentage_aln', help="minimum fraction of read mapped (between 0 and 1)", type=float, default=0.)
     filter_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
     filter_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
+    filter_opt_args.add_argument('-v', '--invert_match', action="store_true", default=False, help="select unmapped reads")
 
     filter_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
