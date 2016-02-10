@@ -77,6 +77,7 @@ class TestBamParser:
         self.peBamFile = ['contigs.pe.1.bam', 'contigs.pe.1.bam.bai']
         self.mpBamFile = ['contigs.mp.bam', 'contigs.mp.bam.bai']
         self.upBamFile = ['contigs.up.bam', 'contigs.up.bam.bai']
+        self.bamIndices = ['contigs.fa.amb', 'contigs.fa.ann', 'contigs.fa.bwt', 'contigs.fa.pac', 'contigs.fa.sa']
 
         # predicted outputs is a hash with three keys:
         self.pOutKeys = ['coverages', 'links', 'extracts']
@@ -109,15 +110,20 @@ class TestBamParser:
         self.rmTestFile(self.mpBamFile[1])
         self.rmTestFile(self.upBamFile[0])
         self.rmTestFile(self.upBamFile[1])
+        self.rmTestFile(self.bamIndices[0], sure_exists=False)
+        self.rmTestFile(self.bamIndices[1], sure_exists=False)
+        self.rmTestFile(self.bamIndices[2], sure_exists=False)
+        self.rmTestFile(self.bamIndices[3], sure_exists=False)
+        self.rmTestFile(self.bamIndices[4], sure_exists=False)
         self.rmTestFile("covs")
         self.rmTestFile("links")
 
     @classmethod
-    def rmTestFile(self, file):
+    def rmTestFile(self, file, sure_exists=True):
         full_path = os.path.join(self.model_dir, file)
         if os.path.exists(full_path):
             os.remove(full_path)
-        else:
+        elif sure_exists:
             sys.stderr.write("No file: %s\n" % full_path)
 
     def test_A_make(self):

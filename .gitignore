@@ -52,6 +52,7 @@ c/libcfu-0.03/install-sh
 c/libcfu-0.03/lib
 c/libcfu-0.03/libtool
 c/libcfu-0.03/ltmain.sh
+c/libcfu-0.03/m4/
 c/libcfu-0.03/missing
 c/libcfu-0.03/src/*.o
 c/libcfu-0.03/src/.deps/

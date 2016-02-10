@@ -656,13 +656,13 @@ class BamMaker:
             '| samtools sort -m',
             self.maxMemory,
             '-@',
-            str(self.numThreads),
-            '-'])
+            str(self.numThreads)])
         if self.tmpdir:
             with tempfile.NamedTemporaryFile(prefix="bamm_make",
                                              dir=self.tmpdir) as f:
-                cmdline += ' '+' '.join([f.name,
-                                   self.errorOutput])
+                cmdline += ' '+' '.join(['-o',
+                                         f.name+'.bam',
+                                         self.errorOutput])
                 self._run_cmd(cmdline)
             
                 # It would be preferable to use samtools sort -f, but that seems
@@ -671,8 +671,9 @@ class BamMaker:
                             "%s.bam" % self.outFileName)
         else:
             # no temporary directory specified, use regular output
-            cmdline += ' '+' '.join([self.outFileName,
-                               self.errorOutput])
+            cmdline += ' '+' '.join(['-o',
+                                     self.outFileName+'.bam',
+                                     self.errorOutput])
             self._run_cmd(cmdline)
             
             
