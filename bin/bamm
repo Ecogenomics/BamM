@@ -24,7 +24,7 @@
 #                                                                             #
 ###############################################################################
 
-__author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks"
+__author__ = "Michael Imelfort, Ben Woodcroft, Donovan Parks, Tim Lamberton"
 __copyright__ = "Copyright 2014,2015"
 __credits__ = ["Michael Imelfort","Ben Woodcroft", "Donovan Parks",
                "Tim Lamberton"]
