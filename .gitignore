@@ -1,4 +1,3 @@
-MANIFEST
 bamm/*.pyc
 bamm/libBamM.a
 bamm/tests/*.pyc
@@ -27,9 +26,6 @@ c/libcfu-0.03/src/*.o
 c/libcfu-0.03/src/.deps/
 c/libcfu-0.03/src/Makefile
 c/libcfu-0.03/src/libcfu.a
-c/htslib-1.2.1/AUTHORS
-c/htslib-1.2.1/ChangeLog
-c/htslib-1.2.1/COPYING
 c/htslib-1.2.1/cram/*.o
 c/htslib-1.2.1/cram/*.pico
 c/htslib-1.2.1/*.o
