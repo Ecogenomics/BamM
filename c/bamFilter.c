@@ -88,7 +88,7 @@ void filterReads(char * inBamFile,
         int line = 0;
         int matches, mismatches, qLen, unmapped;
         float pcAln, pcId;
-        int showStats = 1;
+        int showStats = 0;
         uint8_t *aux_mismatches;
 
         // fetch alignments
