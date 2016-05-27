@@ -88,14 +88,15 @@ void filterReads(char * inBamFile,
         int line = 0;
         int matches, mismatches, qLen, unmapped;
         float pcAln, pcId;
-        int showStats = 0;
+        int showStats = 1;
+        uint8_t *aux_mismatches;
 
         // fetch alignments
         while ((result = bam_read1(in, b)) >= 0) {
             line += 1;
             unmapped = 0;
             
-            // only primary mappings
+            // only primary mappings even if inverting matches
             if ((b->core.flag & supp_check) != 0) { 
                 if (showStats)
                     fprintf(stdout, "Rejected %d, non-primary\n", line);
@@ -109,8 +110,12 @@ void filterReads(char * inBamFile,
             }
             
             if (unmapped == 0) {
+                // bam_aux_get returns 0 if optional NM tag is missing
+                if ((aux_mismatches = bam_aux_get(b, "NM")))
+                   mismatches = bam_aux2i(aux_mismatches);
+                else
+                    mismatches = 0;
                 // not too many absolute mismatches
-                mismatches = bam_aux2i(bam_aux_get(b, "NM"));
                 if ((unmapped = mismatches > maxMisMatches)) {
                     if (showStats)
                         fprintf(stdout, "Rejected %d, mismatches: %d\n", line, mismatches);
