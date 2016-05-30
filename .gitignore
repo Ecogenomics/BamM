@@ -11,7 +11,6 @@ c/config.log
 c/config.status
 c/config.h
 c/config.mk
-c/configure
 c/htslib-1.2.1/cram/*.o
 c/htslib-1.2.1/cram/*.pico
 c/htslib-1.2.1/*.o
