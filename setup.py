@@ -1,6 +1,6 @@
 from distutils.core import setup
 import sys
-from subprocess import call
+from subprocess import check_call
 from os.path import join, abspath, exists
 from os import chdir, getcwd, rename, remove
 
@@ -28,10 +28,9 @@ if '-help' not in sys.argv and \
         # configure and make the c portion of the program
         cur_dir = getcwd()
         chdir(join(cur_dir, 'c'))
-        call(join(getcwd(), "autogen.sh"))
-        call([join(getcwd(), "configure")] + configure_args)
-        call(['make','clean'])
-        call(['make'])
+        check_call([join(getcwd(), "configure")] + configure_args)
+        check_call(['make','clean'])
+        check_call(['make'])
         chdir(cur_dir)
         # move the compiled library into the bamm folder so it's
         # picked up by distutils

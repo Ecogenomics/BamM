@@ -1,1 +1,1 @@
-aclocal --system-acdir=m4 && autoreconf
+autoreconf -I $(pwd)/m4 
