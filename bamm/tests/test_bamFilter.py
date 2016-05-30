@@ -29,7 +29,14 @@ from nose.tools import assert_equals, assert_true
 import sys
 import os
 import subprocess
-import pysam
+
+try:
+    import pysam
+except ImportError:
+    print """ERROR: Some tests for bamFilter.py requires that pysam be installed.
+    See 'http://pysam.readthedocs.io/en/latest/installation.html#installation' for 
+    installation details."""
+    raise
 
 ###############################################################################
 ###############################################################################
