@@ -36,7 +36,6 @@ c/htslib-1.2.1/test/test-vcf-sweep
 c/htslib-1.2.1/test/test_view
 c/htslib-1.2.1/version.h
 c/libcfu-0.03/Makefile
-c/libcfu-0.03/Makefile.in
 c/libcfu-0.03/aclocal.m4
 c/libcfu-0.03/autom4te.cache/
 c/libcfu-0.03/config.log
