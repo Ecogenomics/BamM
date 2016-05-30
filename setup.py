@@ -28,7 +28,7 @@ if '-help' not in sys.argv and \
         # configure and make the c portion of the program
         cur_dir = getcwd()
         chdir(join(cur_dir, 'c'))
-        call(join(getcwd(), "autogen.sh"))
+        call(join(getcwd(), "autoreconf"))
         call([join(getcwd(), "configure")] + configure_args)
         call(['make','clean'])
         call(['make'])
