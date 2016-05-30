@@ -58,7 +58,6 @@ c/libcfu-0.03/missing
 c/libcfu-0.03/src/*.o
 c/libcfu-0.03/src/.deps/
 c/libcfu-0.03/src/Makefile
-c/libcfu-0.03/src/Makefile.in
 c/libcfu-0.03/src/libcfu.a
 c/missing
 dist/
