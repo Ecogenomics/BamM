@@ -33,7 +33,7 @@ import subprocess
 try:
     import pysam
 except ImportError:
-    print """ERROR: Some tests for bamFilter.py requires that pysam be installed.
+    print """ERROR: Some tests for `bamm filter` requires that pysam be installed.
     See 'http://pysam.readthedocs.io/en/latest/installation.html#installation' for 
     installation details."""
     raise
