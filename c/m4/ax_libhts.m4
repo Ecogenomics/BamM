@@ -81,7 +81,7 @@ AC_DEFUN([AX_LIBHTS],
         libhts_ldflags="-L$libhts_lib_dir"
     else
         saved_dir=$(pwd)
-        HTS_SRC_DIR=$saved_dir/"htslib-1.2.1"
+        HTS_SRC_DIR=$saved_dir/"htslib-1.3.1"
         AC_MSG_RESULT([htslib location not specified - building from local version])
         cd $HTS_SRC_DIR
         ./configure
