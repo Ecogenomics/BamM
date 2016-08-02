@@ -15,7 +15,7 @@ CFLAGS = -std=gnu99 -g -fPIC -pthread -O2 -Wall $(LIBHTS_CPPFLAGS) $(LIBCFU_CPPF
 LIB_FLAGS = -static-libgcc -shared -Wl,-rpath,$(LIBHTS_LIB_DIR)
 LIBS =  -lm $(LIBCFU_LDFLAGS) $(LIBCFU_LIBS) $(LIBHTS_LDFLAGS) $(LIBHTS_LIBS)
 
-HTS_DIR = htslib-1.2.1
+HTS_DIR = htslib-1.3.1
 CFU_DIR = libcfu-0.03
 BMM_LIB = libBamM.a
 

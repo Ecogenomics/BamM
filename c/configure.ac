@@ -34,7 +34,7 @@ AM_CONDITIONAL([LIBHTS_FOUND], [test $HAVE_LIBHTS = yes])
 fi
 
 dnl Add the default location for libcfu and htslib
-AC_CONFIG_SUBDIRS([libcfu-0.03 htslib-1.2.1])
+AC_CONFIG_SUBDIRS([libcfu-0.03 htslib-1.3.1])
 
 dnl Write #defines to config.h file.
 dnl You need to generate config.h.in, for example using autoheader.
