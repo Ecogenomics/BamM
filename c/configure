@@ -647,7 +647,7 @@ CPPFLAGS
 CXX
 CXXFLAGS
 CCC'
-ac_subdirs_all='libcfu-0.03 htslib-1.2.1'
+ac_subdirs_all='libcfu-0.03 htslib-1.3.1'
 
 # Initialize some variables set by options.
 ac_init_help=
@@ -3152,7 +3152,7 @@ fi
         libhts_ldflags="-L$libhts_lib_dir"
     else
         saved_dir=$(pwd)
-        HTS_SRC_DIR=$saved_dir/"htslib-1.2.1"
+        HTS_SRC_DIR=$saved_dir/"htslib-1.3.1"
         { $as_echo "$as_me:${as_lineno-$LINENO}: result: htslib location not specified - building from local version" >&5
 $as_echo "htslib location not specified - building from local version" >&6; }
         cd $HTS_SRC_DIR
@@ -3315,7 +3315,7 @@ ac_configure="$SHELL $ac_aux_dir/configure"  # Please don't use this var.
 
 
 
-subdirs="$subdirs libcfu-0.03 htslib-1.2.1"
+subdirs="$subdirs libcfu-0.03 htslib-1.3.1"
 
 
 ac_config_headers="$ac_config_headers config.h"
