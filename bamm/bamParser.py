@@ -51,6 +51,7 @@ from cWrapper import (CWrapper,
                       CT)
 from bamLink import BM_linkPair
 from bamFile import BM_bamFile, BM_bamType, BM_fileInfo, BM_coverageType
+from bamMaker import BamValidator
 from bammExceptions import (InvalidNumberOfTypesException,
                             BAMFileNotFoundException,
                             BAMIndexNotFoundException,
@@ -342,6 +343,7 @@ class BamParser:
         self.doLinks = doLinks
         self.doCovs = doCovs
 
+        BV = BamValidator(silent=not verbose)
         # check that the bam files and their indexes exist
         for bam in bamFiles:
             if not os.path.isfile(bam):
@@ -349,6 +351,7 @@ class BamParser:
             elif not os.path.isfile("%s.bai" % bam):
                 raise BAMIndexNotFoundException("Index file %s not found" % \
                                                 ("%s.bai" % bam))
+            BV.validate_bam(bam)
 
         # start running the parser in multithreaded mode
         parse_queue = mp.Queue()
@@ -402,7 +405,7 @@ class BamParser:
 
             # dismal failure
             return 1
-
+            
     def _parseOneBam(self, bid):
         '''Parse a single BAM file and append the result
         to the internal mapping results list

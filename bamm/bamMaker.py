@@ -41,7 +41,8 @@ import tempfile
 import shutil
 
 # local imports
-from bammExceptions import InvalidParameterSetException
+from bammExceptions import (InvalidParameterSetException,
+                           DuplicateSequenceNameException)
 
 ###############################################################################
 ###############################################################################
@@ -626,6 +627,10 @@ class BamMaker:
                 self.mem_single_to_sorted_indexed_bam()
             else:
                 self.mem_to_sorted_indexed_bam()
+        
+        BV = BamValidator(silent=self.quiet or self.silent);
+        BV.validate_bam("%s.bam" % self.outFileName)
+        
                 
     def _sam_to_sorted_and_run(self, cmdline):
         '''Given a cmdline that generates a SAM file on stdout, run that through
@@ -934,7 +939,7 @@ class BamMaker:
                         sortedBamFile+'.bam',
                         self.errorOutput])
         self._run_cmd(cmd)
-
+        
     #---------------------------------------------------------------
     # utilities
 
@@ -984,3 +989,41 @@ class BamMaker:
             (self.database, self.outFileName, suffix, self.numThreads)
         str += "  Alignment algorithm: %s" % self.alignmentAlgorithm
         return str
+        
+
+class BamValidator:
+    def __init__(self,
+                 silent=False):
+        self.silent = silent
+                     
+        self.errorOutput = ''
+        if self.silent:
+            self.errorOutput = '2> /dev/null'
+        
+    #---------------------------------------------------------------
+    # validate a bam file
+
+    def validate_bam(self, sortedBamFile):
+        '''call samtools index on a sorted BAM file
+
+        Inputs:
+         sortedBamFile - full path to sorted bam file
+
+        Outputs:
+         None
+         
+        Raises 'DuplicateSequenceNameException' error if sequence names are duplicated.
+        '''
+        # samtools index cannot be piped, so a tmpfile is required
+        cmd = ' '.join(['samtools view',
+                        sortedBamFile,
+                        '-H',
+                        '| grep ^@SQ | cut -f2 | sed s/^SN:// | sort | uniq -D',
+                        self.errorOutput])
+        out = subprocess.check_output(cmd, shell=True)
+        if out!="":
+            raise DuplicateSequenceNameException(
+                ('Duplicate reference sequence names found in bam file \'%s\'. Please check '
+                'that reference sequence names used to generate bam file are unique. '
+                'Found duplicates:\n' %sortedBamFile) + out
+            )

@@ -33,6 +33,7 @@ __email__ = "mike@mikeimelfort.com"
 ###############################################################################
 
 # system imports
+import subprocess
 import os
 import ctypes as c
 
@@ -58,6 +59,8 @@ class BamFilter:
                  invertMatch=False,
                  useSuppAlignments=False,
                  useSecondaryAlignments=False,
+                 showCommands=False,
+                 silent=False,
                  ):
         '''
         Default constructor.
@@ -107,7 +110,13 @@ class BamFilter:
             self.invertMatch = 1
         else:
             self.invertMatch = 0
-
+        
+        self.showCommands = showCommands
+        self.silent = silent
+        
+        self.errorOutput = ''
+        if self.silent:
+            self.errorOutput = '2> /dev/null'
 
     def filter(self):
         '''Start extracting reads from the BAM files
@@ -130,8 +139,9 @@ class BamFilter:
         bamfile_c = c.c_char_p()
         bamfile_c = self.bamFile
 
+        outputFile = os.path.join(os.path.abspath(self.outFolder), "%s_%s.bam" % (self.prettyBamFileName, 'filtered'))
         outfile_c = c.c_char_p()
-        outfile_c = os.path.join(os.path.abspath(self.outFolder), "%s_%s.bam" % (self.prettyBamFileName, 'filtered'))
+        outfile_c = outputFile
 
         min_mapping_quality_c = c.c_uint32()
         min_mapping_quality_c = self.minMapQual
@@ -160,6 +170,8 @@ class BamFilter:
                         self.invertMatch,
                         self.ignoreSuppAlignments,
                         self.ignoreSecondaryAlignments)
+                        
+        self.samtoolsIndex(outputFile)
 
     def makeSurePathExists(self, path):
         '''Make sure that a path exists, make it if necessary
@@ -176,6 +188,30 @@ class BamFilter:
             import errno
             if exception.errno != errno.EEXIST:
                 raise
+                
+    def _run_cmd(self, cmd):
+        if self.showCommands and not self.silent:
+            print "BamM: Running command: '%s'" % cmd
+            sys.stdout.flush()
+        subprocess.check_call(cmd, shell=True)
+                
+    #---------------------------------------------------------------
+    # index a bam file
+
+    def samtoolsIndex(self, sortedBamFile):
+        '''call samtools index on a sorted BAM file
+
+        Inputs:
+         sortedBamFile - full path to sorted bam file
+
+        Outputs:
+         None
+        '''
+        # samtools index cannot be piped, so a tmpfile is required
+        cmd = ' '.join(['samtools index',
+                        sortedBamFile,
+                        self.errorOutput])
+        self._run_cmd(cmd)
 
 ###############################################################################
 ###############################################################################

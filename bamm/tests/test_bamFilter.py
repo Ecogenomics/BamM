@@ -29,7 +29,14 @@ from nose.tools import assert_equals, assert_true
 import sys
 import os
 import subprocess
-import pysam
+
+try:
+    import pysam
+except ImportError:
+    print """ERROR: Some tests for `bamm filter` requires that pysam be installed.
+    See 'http://pysam.readthedocs.io/en/latest/installation.html#installation' for 
+    installation details."""
+    raise
 
 ###############################################################################
 ###############################################################################
@@ -54,7 +61,9 @@ class TestBamFilter:
 
         # generated files
         self.outputBamFnames = dict(zip(self.bamNames,
-                                           ["%s_filtered.bam" % name for name in self.bamNames]))
+                                        ["%s_filtered.bam" % name for name in self.bamNames]))
+        self.outputBaiFnames = dict(zip(self.bamNames,
+                                        ["%s_filtered.bam.bai" % name for name in self.bamNames]))
 
 
         # if True tests should fail
@@ -63,6 +72,8 @@ class TestBamFilter:
                                      [os.path.join(self.dataDir, "f.bam") for _ in self.bamNames]))
             self.outputBamFnames = dict(zip(self.bamNames,
                                            ["f_filtered.bam" for _ in self.bamNames]))
+            self.outputBaiFnames = dict(zip(self.bamNames,
+                                            ["f_filtered.bam.bai" for _ in self.bamNames]))
 
 
         # test parameters
@@ -104,11 +115,14 @@ class TestBamFilter:
 
     @classmethod
     def rmTestFile(self, name):
-        path = os.path.join(self.dataDir, self.outputBamFnames[name])
-        if os.path.exists(path):
-            os.remove(path)
-        else:
-            sys.stderr.write("No file: %s\n" % path)
+        paths = [os.path.join(self.dataDir, self.outputBamFnames[name]),
+                 os.path.join(self.dataDir, self.outputBaiFnames[name])
+                ]
+        for path in paths:
+            if os.path.exists(path):
+                os.remove(path)
+            else:
+                sys.stderr.write("No file: %s\n" % path)
 
 
     def generate_bam(self, name, args):
@@ -119,6 +133,10 @@ class TestBamFilter:
                         " ".join(args)])
         subprocess.check_call(cmd, shell=True)
 
+        
+    def assert_file_exists(self, filename):
+        if not os.path.isfile(filename):
+            raise AssertionError('Bam index file exists "%s".' % filename)
 
     def assert_equal_query_sequences(self, out, expected):
         try:
@@ -209,6 +227,8 @@ class TestBamFilter:
             for (testName, args) in self.params.iteritems():
                 self.generate_bam(bamName, args)
                 out = os.path.join(self.dataDir, self.outputBamFnames[bamName])
+                index = os.path.join(self.dataDir, self.outputBaiFnames[bamName])
+                self.assert_file_exists(index)
                 test = os.path.join(self.testDataDirs[bamName], "%s_%s.bam" % (bamName, testName))
                 self.assert_equal_query_sequences(out, test)
                 #self.rmTestFile(bamName)
@@ -219,6 +239,8 @@ class TestBamFilter:
                 args = self.params[testName] + ["-v"]
                 self.generate_bam(bamName, args)
                 out = os.path.join(self.dataDir, self.outputBamFnames[bamName])
+                index = os.path.join(self.dataDir, self.outputBaiFnames[bamName])
+                self.assert_file_exists(index)
                 test = os.path.join(self.testDataDirs[bamName], "%s_%s.bam" % (bamName, testName))
                 orig = os.path.join(self.dataDir, self.bamFiles[bamName])
                 self.assert_equal_together_query_sequences((out, test), orig)
