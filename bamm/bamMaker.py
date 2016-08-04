@@ -1024,7 +1024,7 @@ class BamValidator:
         if out!="":
             dups = sorted(set(out.splitlines()))
             if len(dups) > 5:
-                outstr = '\n'.join(dups[:5]+['...', 'and %d more' % (len(dups) - 4)])
+                outstr = '\n'.join(dups[:5]+['...', 'and %d more.' % (len(dups) - 4)])
             else:
                 outstr = '\n'.join(dups)
             raise DuplicateSequenceNameException(
