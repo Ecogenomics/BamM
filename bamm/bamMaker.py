@@ -1022,8 +1022,13 @@ class BamValidator:
                         self.errorOutput])
         out = subprocess.check_output(cmd, shell=True)
         if out!="":
+            dups = sorted(set(out.splitlines()))
+            if len(dups) > 5:
+                outstr = '\n'.join(dups[:5]+['...', 'and %d more' % (len(dups) - 4)])
+            else:
+                outstr = '\n'.join(dups)
             raise DuplicateSequenceNameException(
                 ('Duplicate reference sequence names found in bam file \'%s\'. Please check '
                 'that reference sequence names used to generate bam file are unique. '
-                'Found duplicates:\n' %sortedBamFile) + out
+                'Found duplicates:\n' %sortedBamFile) + outstr
             )
