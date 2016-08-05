@@ -54,12 +54,13 @@ class TestBamParser:
         self.mpFile = 'mp.fa'                   # interleaved
         self.upFile = 'up.fa'                   # single
         self.contigsFile = 'contigs.fa'         # contigs
+        self.badContigsFile = 'contigs_bad.fa'  # contigs with invalid names
         self.poFile = "predicted_outputs.json"  # predicted outputs
 
         # we need to make some test data based on out test model
         self.model_dir = os.path.join(os.path.split(__file__)[0], "modeling")
         self.model_data_dir = os.path.join(self.model_dir, "data")
-        os.system("%s -o %s -r %s -f %s -g %s %s" % \
+        os.system("%s --bad -o %s -r %s -f %s -g %s %s" % \
                   (os.path.join(self.model_dir,"makeTestData.py"),
                    self.model_dir,
                    os.path.join(self.model_data_dir, self.readKey),
@@ -78,6 +79,11 @@ class TestBamParser:
         self.mpBamFile = ['contigs.mp.bam', 'contigs.mp.bam.bai']
         self.upBamFile = ['contigs.up.bam', 'contigs.up.bam.bai']
         self.bamIndices = ['contigs.fa.amb', 'contigs.fa.ann', 'contigs.fa.bwt', 'contigs.fa.pac', 'contigs.fa.sa']
+        
+        # these files should not exist after mapping is done
+        self.badBamFile = ['contigs_bad.up.bam', 'contigs_bad.up.bam.bai']
+        self.badBamIndices = ['contigs_bad.fa.amb', 'contigs_bad.fa.ann', 'contigs_bad.fa.bwt', 'contigs_bad.fa.pac', 'contigs_bad.fa.sa']
+        
 
         # predicted outputs is a hash with three keys:
         self.pOutKeys = ['coverages', 'links', 'extracts']
@@ -115,6 +121,14 @@ class TestBamParser:
         self.rmTestFile(self.bamIndices[2], sure_exists=False)
         self.rmTestFile(self.bamIndices[3], sure_exists=False)
         self.rmTestFile(self.bamIndices[4], sure_exists=False)
+        self.rmTestFile(self.badContigsFile)
+        self.rmTestFile(self.badBamFile[0])
+        self.rmTestFile(self.badBamFile[1])
+        self.rmTestFile(self.badBamIndices[0], sure_exists=False)
+        self.rmTestFile(self.badBamIndices[1], sure_exists=False)
+        self.rmTestFile(self.badBamIndices[2], sure_exists=False)
+        self.rmTestFile(self.badBamIndices[3], sure_exists=False)
+        self.rmTestFile(self.badBamIndices[4], sure_exists=False)
         self.rmTestFile("covs")
         self.rmTestFile("links")
 
@@ -148,7 +162,7 @@ class TestBamParser:
                                           self.upBamFile[0])))
         assert_true(os.path.exists(os.path.join(self.model_dir,
                                           self.upBamFile[1])))
-
+                                          
     def squishLink(self, link):
         return ",".join([str(i) for i in link])
 
@@ -264,6 +278,14 @@ class TestBamParser:
                                 assert_equals(headers[i], test_headers[i])
 
                             self.rmTestFile(file)
+                            
+    def test_D_make_bad(self):
+        cmd = 'bamm make --silent -d %s -s %s -o %s' % \
+            (os.path.join(self.model_dir, self.badContigsFile),
+             os.path.join(self.model_dir, self.upFile),
+             self.model_dir)
+        if subprocess.call(cmd, shell=True) == 0:
+            raise AssertionError('bamm make reports error if output bam is invalid')
 
 if __name__ == "__main__":
     unittest.main()

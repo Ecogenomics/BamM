@@ -1018,17 +1018,21 @@ class BamValidator:
         cmd = ' '.join(['samtools view',
                         sortedBamFile,
                         '-H',
-                        '| grep ^@SQ | cut -f2 | sed s/^SN:// | sort | uniq -D',
+                        #'| grep ^@SQ | cut -f2 | sed s/^SN:// | sort | uniq -D',
+                        '| grep ^@SQ | cut -f2 | sed s/^SN:// | sort | uniq -c | sort -nr | grep -v "^ \+1 "',
                         self.errorOutput])
-        out = subprocess.check_output(cmd, shell=True)
-        if out!="":
-            dups = sorted(set(out.splitlines()))
-            if len(dups) > 5:
-                outstr = '\n'.join(dups[:5]+['...', 'and %d more.' % (len(dups) - 4)])
-            else:
-                outstr = '\n'.join(dups)
-            raise DuplicateSequenceNameException(
-                ('Duplicate reference sequence names found in bam file \'%s\'. Please check '
-                'that reference sequence names used to generate bam file are unique. '
-                'Found duplicates:\n' %sortedBamFile) + outstr
-            )
+        try:
+            out = subprocess.check_output(cmd, shell=True)
+        except:
+            # grep has non-zero return for no matches, which is what we want
+            return
+        dups = out.splitlines()
+        if len(dups) > 5:
+            outstr = '\n'.join(dups[:5]+['...', 'and %d more.' % (len(dups) - 4)])
+        else:
+            outstr = '\n'.join(dups)
+        raise DuplicateSequenceNameException(
+            ('Duplicate reference sequence names found in bam file \'%s\'. Please check '
+            'that reference sequence names used to generate bam file are unique. '
+            'Found duplicates:\n' %sortedBamFile) + outstr
+        )
