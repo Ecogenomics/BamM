@@ -451,6 +451,7 @@ class CWrapper:
         # load the c library
         #---------------------------------
         c_lib = os.path.abspath(resource_filename('bamm', 'libBamM.a'))
+        print c_lib
         if UT:
             # unit tests are run from within the install dir which confuses
             # pkg_resources as there is a folder there called bamm
@@ -459,6 +460,7 @@ class CWrapper:
                 for d in dist:
                     if d == 'bamm':
                         c_lib = os.path.join(dist_path, d, 'libBamM.a')
+                        print c_lib
 
         try:
             self.libPMBam = c.cdll.LoadLibrary(c_lib)
