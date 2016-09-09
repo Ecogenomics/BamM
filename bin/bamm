@@ -186,6 +186,12 @@ def doWork( args ):
                 cr = [BM_def_outlier_range]
         elif args.coverage_mode == 'pvariance':
             ct = CT.P_VARIANCE
+        elif args.coverage_mode == "ppc":
+            ct = CT.MAPPED_MEAN
+        elif args.coverage_mode == "tppc":
+            ct = CT.MAPPED_MEAN_TRIMMED
+            if cr is None:
+                cr = [BM_def_trimmed_range]
 
         # set this to 0 here so we don't confuse matters downstream
         if cr is None:
@@ -548,7 +554,7 @@ second is the upper. If only one value is supplied then lower == upper.'''
 
     parser_opt_args.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
     parser_opt_args.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean',
-        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian', 'pvariance'])
+        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian', 'pvariance', 'ppc', 'tppc'])
     parser_opt_args.add_argument('-r', '--cutoff_range', nargs='+', type=float, help="range used to calculate upper and lower bounds when calculating coverage", default=None)
 
     parser_opt_args.add_argument('--length', help="minimum Q length", type=int, default=50)

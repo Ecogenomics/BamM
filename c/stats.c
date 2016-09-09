@@ -41,6 +41,16 @@ float BM_mean(uint32_t * values, uint32_t size)
     return (float)sum/(float)size;
 }
 
+float BM_nzmean(uint32_t * values, uint32_t size)
+{
+    uint32_t sum = 0;
+    int i = 0;
+    for( i = 0; i < size; ++i) {
+        sum += *(values + i) > 0;
+    }
+    return (float)sum/(float)size;
+}
+
 float BM_stdDev(uint32_t * values, uint32_t size, float m)
 {
     return sqrt(BM_variance(values, size, m));

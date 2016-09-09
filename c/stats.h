@@ -38,6 +38,15 @@ extern "C" {
 float BM_mean(uint32_t * values, uint32_t size);
 
 /*!
+ * @abstract Calculate the mean number of non-zero array values
+ *
+ * @param  values       array of (integer) values
+ * @param  size         size of values array
+ * @return float        the caluclated mean
+ */
+float BM_nzmean(uint32_t * values, uint32_t size);
+
+/*!
  * @abstract Calculate the standard deviations of an array values
  *
  * @param  values       array of (integer) values
