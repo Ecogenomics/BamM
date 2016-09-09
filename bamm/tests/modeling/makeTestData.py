@@ -63,7 +63,8 @@ contigs = {'A':[17, '', {'PE':[], 'MP':[], 'UP':[]}, {'PE':0, 'MP':0, 'UP':0}],
            'C':[17, '', {'PE':[], 'MP':[], 'UP':[]}, {'PE':0, 'MP':0, 'UP':0}],
            'E':[16, '', {'PE':[], 'MP':[], 'UP':[]}, {'PE':0, 'MP':0, 'UP':0}],
            'Z':[17, '', {'PE':[], 'MP':[], 'UP':[]}, {'PE':0, 'MP':0, 'UP':0}]}
-
+           
+           
 # the reads we make
 pe= []
 mp = []
@@ -98,6 +99,8 @@ out_fnames = {'PE': ["pe.1.fa", "pe.2.fa"], # coupled
 bam_fnames = {'PE': "contigs.pe.1",         # the .1 remains
               'MP': "contigs.mp",
               'UP': "contigs.up"}
+              
+bad_contigs_filename = "contigs_bad.fa"
 
 ###############################################################################
 ###############################################################################
@@ -157,6 +160,7 @@ def doWork( args ):
         except:
             print "Error opening file:", group_name, sys.exc_info()[0]
             raise
+        
 
     # parse fasta file
     seq = []
@@ -484,6 +488,12 @@ def doWork( args ):
     with open(os.path.join(args.outdir, out_fnames['UP']), "w") as up_fh:
         for (rid, r1) in up:
             up_fh.write(">%s_UP\n%s\n" % (rid, r1))
+            
+    if args.bad:        
+        with open(os.path.join(args.outdir, bad_contigs_filename), "w") as bad_con_fh:
+            for cid in contigs.keys():
+                if cid != 'Z':
+                    bad_con_fh.write(">%s\n%s\n" % ('AA', contigs[cid][1]))
 
     return 0
 
@@ -498,6 +508,7 @@ if __name__ == '__main__':
     parser.add_argument('-r', '--readkey', help="describes how reads should be made")
     parser.add_argument('-f', '--fasta', help="fasta file to cut contigs from")
     parser.add_argument('-g', '--groups', nargs='+', help="groups files")
+    parser.add_argument('--bad', action="store_true", help="simulate invalid reference input")
     parser.add_argument('-o',
                         '--outdir',
                         default='.',

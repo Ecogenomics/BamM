@@ -61,6 +61,6 @@ setup(
 )
 
 # remove the library
-to_remove = join('bamm', 'libBamM.a') 
-if exists(to_remove):
-    remove(to_remove)
+#to_remove = join('bamm', 'libBamM.a') 
+#if exists(to_remove):
+#    remove(to_remove)
