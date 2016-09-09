@@ -79,6 +79,15 @@ void estimateCoverages(float * coverageValues,
         case CT_P_VARIANCE:
             cf = estimate_P_VARIANCE_Coverage;
             break;
+        case CT_MAPPED_COUNT:
+            cf = estimate_MAPPED_COUNT_Coverage;
+            break;
+        case CT_MAPPED_MEAN:
+            cf = estimate_MAPPED_MEAN_Coverage;
+            break;
+        case CT_MAPPED_MEAN_TRIMMED:
+            cf = estimate_MAPPED_MEAN_TRIMMED_Coverage;
+            break;
         case CT_NONE:
         default:
             return;
@@ -216,4 +225,65 @@ float estimate_P_VARIANCE_Coverage(uint32_t * pileupValues,
                                    uint32_t contigLength
                                   ) {
     return BM_variance(pileupValues, contigLength, -1);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_MAPPED_COUNT_Coverage(uint32_t * pileupValues,
+                                     BM_coverageType * covType,
+                                     uint32_t contigLength
+                                    ) {
+    int pos = 0;
+    uint32_t rc_sum = 0;
+    for(pos = 0; pos < contigLength; ++pos) {
+        rc_sum += pileupValues[pos] > 0;
+    }
+    return (float)(rc_sum);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_MAPPED_MEAN_Coverage(uint32_t * pileupValues,
+                                    BM_coverageType * covType,
+                                    uint32_t contigLength
+                                   ) {
+    return BM_nzmean(pileupValues, contigLength);
+}
+
+//------------------------------------------------------------------------------
+//
+float estimate_MAPPED_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
+                                            BM_coverageType * covType,
+                                            uint32_t contigLength
+                                           ) {
+    // Convert the top and bottom percentages to an absolute number
+    // of pileups to remove and keep, respectively.
+    uint32_t numToRemoveOffBottom = (uint32_t) (covType->lowerCut/100*contigLength);
+    uint32_t numToRemoveOffTop = (uint32_t) (covType->upperCut/100*contigLength);
+
+    uint32_t divisor = contigLength-numToRemoveOffBottom-numToRemoveOffTop;
+
+    int pos = 0;
+    uint32_t plp_sum;
+
+    // to avoid dividing by zero or a negative number
+    if (numToRemoveOffBottom+numToRemoveOffTop >= contigLength) {
+        return NAN;
+    } else {
+        // usual sensible length contig
+        // pqsort the coverage array around the upper and lower limits
+        my_uint32_t_pqsort(pileupValues,
+                           contigLength,
+                           numToRemoveOffBottom,
+                           contigLength-numToRemoveOffTop);
+
+        // calculate the mean of those values between the limits
+        plp_sum = 0;
+        for(pos = numToRemoveOffBottom; \
+            pos < contigLength-numToRemoveOffTop; \
+            ++pos) {
+            plp_sum += pileupValues[pos] > 0;
+        }
+        return (float)(plp_sum) / divisor;
+    }
 }
