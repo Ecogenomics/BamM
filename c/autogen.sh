@@ -1,2 +1,2 @@
 #!/bin/sh
-autoreconf --force --install -I $(pwd)/m4 
+autoreconf --verbose --force --install -I $(pwd)/m4 
