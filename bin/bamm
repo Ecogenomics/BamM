@@ -538,6 +538,8 @@ Coverage calculation modes:
              base
 * pvariance: variance of pileup coverage: variance of number of reads
              overlapping each base
+* ppc:       percentage of bases covered by pileup
+* tppc:      percentage of trimmed bases coverged by pileup (see tpmean)
 
 The 'cutoff_range' variable is used for trimmed mean and outlier mean. This
 parameter takes at most two values. The first is the lower cutoff and the
