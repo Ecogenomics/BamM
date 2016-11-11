@@ -329,14 +329,17 @@ class BM_bamFile_C(c.Structure):
 #
 # NOTE: This CT definition corresponds to the definition in coverageEstimators.h
 #
-# CT_NONE            do not calculate coverage
-# CT_COUNT           read counts, unaffected by contig length
-# CT_C_MEAN          read counts, divided by contig length
-# CT_P_MEAN          mean pileup depth
-# CT_P_MEDIAN        median pileup depth
-# CT_P_MEAN_TRIMMED  pileup mean trancated based on upper lower %
-# CT_P_MEAN_OUTLIER  pileup mean trancated based on distributions
-# P_VARIANCE         Variance of pileup depth
+# CT_NONE             do not calculate coverage
+# CT_COUNT            read counts, unaffected by contig length
+# CT_C_MEAN           read counts, divided by contig length
+# CT_P_MEAN           mean pileup depth
+# CT_P_MEDIAN         median pileup depth
+# CT_P_MEAN_TRIMMED   pileup mean trancated based on upper lower %
+# CT_P_MEAN_OUTLIER   pileup mean trancated based on distributions
+# P_VARIANCE          Variance of pileup depth
+# MAPPED_COUNT        reference positions mapped
+# MAPPED_MEAN         percentage reference positions mapped
+# MAPPED_MEAN_TRIMMED percentage reference positions mapped excluding upper lower %
 
 global CT
 CT = enum('NONE',
