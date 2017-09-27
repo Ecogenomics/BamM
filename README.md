@@ -1,4 +1,4 @@
-#BamM
+# BamM
 
 ## Overview
 
@@ -9,6 +9,14 @@ Do you want all the links that join two contigs in a BAM? Do you need to get cov
 Then BamM is for you!
 
 ## Installation
+
+There are 3 ways to install BamM:
+
+1. [![install with bioconda](https://img.shields.io/badge/install%20with-bioconda-brightgreen.svg?style=flat-square)](http://bioconda.github.io/recipes/bamm/README.html)
+2. Through GNU Guix with `guix package --install bamm`
+3. From source
+
+### Instructions for installation from source
 
 Dependencies:
 
@@ -43,4 +51,4 @@ This software is currently unpublished
 
 ## Copyright
 
-Copyright (c) Michael Imelfort, See LICENSE.txt for further details.
+Copyright (c) Ben Woodcroft, Tim Lamberton, Michael Imelfort, See LICENSE.txt for further details.
