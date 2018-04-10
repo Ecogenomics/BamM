@@ -502,6 +502,15 @@ class CWrapper:
 
         #----------------
 
+        self._profileReads = self.libPMBam.profileReads
+        self._profileReads.argtypes = [c.POINTER(c.c_char),
+                                       c.c_int,
+                                       c.c_int]
+        self._profileReads.restype = None
+
+        #----------------
+
+        
         self._mergeBFI = self.libPMBam.mergeBFIs
 
         #-----------------

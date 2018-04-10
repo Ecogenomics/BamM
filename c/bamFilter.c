@@ -173,6 +173,8 @@ int bam_cigar2matches(int n_cigar, const uint32_t *cigar)
 {
     int k, l;
     for (k = l = 0; k < n_cigar; ++k)
+        // bam_cigar_type bit flag == 3 implies a match to both
+        // the reference and query
         if (bam_cigar_type(bam_cigar_op(cigar[k]))==3)
             l += bam_cigar_oplen(cigar[k]);
     return l;
