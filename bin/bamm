@@ -57,6 +57,7 @@ from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bamFilter import BamFilter
+from bamm.bamProfiler import BamProfiler
 from bamm.bammExceptions import printError, printShortUsage, \
     InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
@@ -186,6 +187,12 @@ def doWork( args ):
                 cr = [BM_def_outlier_range]
         elif args.coverage_mode == 'pvariance':
             ct = CT.P_VARIANCE
+        elif args.coverage_mode == "ppc":
+            ct = CT.MAPPED_MEAN
+        elif args.coverage_mode == "tppc":
+            ct = CT.MAPPED_MEAN_TRIMMED
+            if cr is None:
+                cr = [BM_def_trimmed_range]
 
         # set this to 0 here so we don't confuse matters downstream
         if cr is None:
@@ -280,7 +287,7 @@ def doWork( args ):
             sys.exit(1)
 
         try:
-            BamFilter(args.bamfile,
+            BF = BamFilter(args.bamfile,
                     outFolder=args.out_folder,
                     minMapQual=args.mapping_quality,
                     minLength=args.length,
@@ -289,14 +296,33 @@ def doWork( args ):
                     minPcAln=args.percentage_aln,
                     invertMatch=args.invert_match,
                     useSuppAlignments=args.use_supplementary,
-                    useSecondaryAlignments=args.use_secondary
-          ).filter()
+                    useSecondaryAlignments=args.use_secondary)
+            BF.filter()
 
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['filter'].print_help()
             sys.exit(1)
+                
+    elif(args.subparser_name == 'profile'):
 
+        if args.bamfile is None:
+            printError("You must supply a bam file to profile")
+            subparsers.choices['profile'].print_help()
+            sys.exit(1)
+
+        try:
+            BP = BamProfiler(args.bamfile,
+                    useSuppAlignments=args.use_supplementary,
+                    useSecondaryAlignments=args.use_secondary)
+                                        
+            BP.profile()
+
+        except InvalidParameterSetException as e:
+            printError(e)
+            subparsers.choices['profile'].print_help()
+            sys.exit(1)
+                                
     else:
         printError("Programming error: unexpected args subparser '%s' encountered" % args.subparser_name)
         sys.exit(1)
@@ -532,6 +558,8 @@ Coverage calculation modes:
              base
 * pvariance: variance of pileup coverage: variance of number of reads
              overlapping each base
+* ppc:       percentage of bases covered by pileup
+* tppc:      percentage of trimmed bases coverged by pileup (see tpmean)
 
 The 'cutoff_range' variable is used for trimmed mean and outlier mean. This
 parameter takes at most two values. The first is the lower cutoff and the
@@ -548,7 +576,7 @@ second is the upper. If only one value is supplied then lower == upper.'''
 
     parser_opt_args.add_argument('-n', '--num_types', nargs='+', help="number of insert/orientation types per BAM", type=int)
     parser_opt_args.add_argument('-m', '--coverage_mode', help="how to calculate coverage (requires --coverages)", default='pmean',
-        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian', 'pvariance'])
+        choices=['pmean', 'opmean', 'tpmean', 'counts', 'cmean', 'pmedian', 'pvariance', 'ppc', 'tppc'])
     parser_opt_args.add_argument('-r', '--cutoff_range', nargs='+', type=float, help="range used to calculate upper and lower bounds when calculating coverage", default=None)
 
     parser_opt_args.add_argument('--length', help="minimum Q length", type=int, default=50)
@@ -617,6 +645,22 @@ second is the upper. If only one value is supplied then lower == upper.'''
     filter_opt_args.add_argument('-v', '--invert_match', action="store_true", default=False, help="select unmapped reads")
 
     filter_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
+
+    #-------------------------------------------------
+    # read profiler
+    profile_parser = subparsers.add_parser('profile',
+                                        formatter_class=CustomHelpFormatter,
+                                        help='profile bamfile',
+                                        add_help=False,
+                                        description='Show quality metrics for Bam file reads')
+    profile_req_args = profile_parser.add_argument_group('required arguments')
+    profile_req_args.add_argument('-b', '--bamfile', default="", help="bam file to filter", required=True)
+
+    profile_opt_args = profile_parser.add_argument_group('optional arguments')
+    profile_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
+    profile_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
+
+    profile_opt_args.add_argument('-h', '--help', action="help", help="show this help message and exit")
 
     #-------------------------------------------------
     # get and check options

@@ -47,7 +47,7 @@ from cWrapper import CWrapper
 ###############################################################################
 
 class BamFilter:
-    '''Class used to manage filtering reads from multiple BAM files'''
+    '''Class used to manage filtering reads from a BAM file'''
     def __init__(self,
                  bamFile,
                  outFolder=".",
@@ -68,7 +68,7 @@ class BamFilter:
         Set all the instance variables, make ReadSets, organise output files
 
         Inputs:
-         bamFiles - string, list of bamfiles to extract reads from
+         bamFile - BAM file name to extract reads from
          outFolder - path, write output to this folder
          minMapQual - int, skip all reads with a lower mapping quality score
          minLength - int
@@ -118,22 +118,10 @@ class BamFilter:
         if self.silent:
             self.errorOutput = '2> /dev/null'
 
+		
     def filter(self):
-        '''Start extracting reads from the BAM files
-
-        This function is responsible for starting and stopping all threads and
-        processes used in bamm extract. Due to python multiprocessing's need to
-        pickle everything the actual work of extraction is carried out in the
-        first level function called externalExtractWrapper. See there for actual
-        extraction details. This function is primarily concerned with thread
-        and process management.
-
-        Inputs:
-         threads - int, the number of threads / processes to use
-         verbose - bool, True if lot's of stuff should be printed to screen
-
-        Outputs:
-         None
+        '''Start filtering reads from BAM files according to
+		configured quality metrics.
         '''
         # first we need to C-ify variables
         bamfile_c = c.c_char_p()

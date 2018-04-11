@@ -329,14 +329,17 @@ class BM_bamFile_C(c.Structure):
 #
 # NOTE: This CT definition corresponds to the definition in coverageEstimators.h
 #
-# CT_NONE            do not calculate coverage
-# CT_COUNT           read counts, unaffected by contig length
-# CT_C_MEAN          read counts, divided by contig length
-# CT_P_MEAN          mean pileup depth
-# CT_P_MEDIAN        median pileup depth
-# CT_P_MEAN_TRIMMED  pileup mean trancated based on upper lower %
-# CT_P_MEAN_OUTLIER  pileup mean trancated based on distributions
-# P_VARIANCE         Variance of pileup depth
+# CT_NONE             do not calculate coverage
+# CT_COUNT            read counts, unaffected by contig length
+# CT_C_MEAN           read counts, divided by contig length
+# CT_P_MEAN           mean pileup depth
+# CT_P_MEDIAN         median pileup depth
+# CT_P_MEAN_TRIMMED   pileup mean trancated based on upper lower %
+# CT_P_MEAN_OUTLIER   pileup mean trancated based on distributions
+# P_VARIANCE          Variance of pileup depth
+# MAPPED_COUNT        reference positions mapped
+# MAPPED_MEAN         percentage reference positions mapped
+# MAPPED_MEAN_TRIMMED percentage reference positions mapped excluding upper lower %
 
 global CT
 CT = enum('NONE',
@@ -346,7 +349,10 @@ CT = enum('NONE',
           'P_MEDIAN',
           'P_MEAN_TRIMMED',
           'P_MEAN_OUTLIER',
-          'P_VARIANCE')
+          'P_VARIANCE',
+          'MAPPED_COUNT',
+          'MAPPED_MEAN',
+          'MAPPED_MEAN_TRIMMED')
 
 def CT2Str(ct):
     '''Convert a CT into a human readable string
@@ -373,6 +379,12 @@ def CT2Str(ct):
         return 'Mean_outlier_pileup_depth'
     elif ct == CT.P_VARIANCE:
         return 'Variance_pileup_depth'
+    elif ct == CT.MAPPED_COUNT:
+        return 'Length_mapped'
+    elif ct == CT.MAPPED_COUNT_MEAN:
+        return 'Percent_mapped'
+    elif ct == CT.MAPPED_COUNT_MEAN_TRIMMED:
+        return 'Trimmed_percent_mapped'
 
 ###############################################################################
 ###############################################################################
@@ -490,6 +502,15 @@ class CWrapper:
 
         #----------------
 
+        self._profileReads = self.libPMBam.profileReads
+        self._profileReads.argtypes = [c.POINTER(c.c_char),
+                                       c.c_int,
+                                       c.c_int]
+        self._profileReads.restype = None
+
+        #----------------
+
+        
         self._mergeBFI = self.libPMBam.mergeBFIs
 
         #-----------------
@@ -596,7 +617,19 @@ class CWrapper:
         self._estimate_P_VARIANCE_Coverage = self.libPMBam.estimate_P_VARIANCE_Coverage
         self._estimate_P_VARIANCE_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
         self._estimate_P_VARIANCE_Coverage.restype = c.c_float
-
+        """        
+        self._estimate_MAPPED_COUNT_Coverage = self.libPMBam.estimate_MAPPED_COUNT_Coverage
+        self._estimate_MAPPED_COUNT_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_MAPPED_COUNT_Coverage.restype = c.c_float
+        
+        self._estimate_MAPPED_MEAN_Coverage = self.libPMBam.estimate_MAPPED_MEAN_Coverage
+        self._estimate_MAPPED_MEAN_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_MAPPED_MEAN_Coverage.restype = c.c_float
+        
+        self._estimate_MAPPED_MEAN_TRIMMED_Coverage = self.libPMBam.estimate_MAPPED_MEAN_TRIMMED_Coverage
+        self._estimate_MAPPED_MEAN_TRIMMED_Coverage.argtypes = [c.POINTER(c.c_uint32), c.POINTER(BM_coverageType_C), c.c_uint32]
+        self._estimate_MAPPED_MEAN_TRIMMED_Coverage.restype = c.c_float
+        """
         self._BM_median = self.libPMBam.BM_median
         self._BM_median.argtypes = [c.POINTER(c.c_uint32), c.c_uint32]
         self._BM_median.restype = c.c_float

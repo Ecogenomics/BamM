@@ -19,8 +19,8 @@ HTS_DIR = htslib-1.3.1
 CFU_DIR = libcfu-0.03
 BMM_LIB = libBamM.a
 
-LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c stats.c bamFilter.c
-LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o stats.o bamFilter.o
+LIBBAMM_SOURCES = bamExtractor.c bamParser.c pairedLink.c bamRead.c coverageEstimators.c stats.c bamFilter.c bamProfiler.c
+LIBBAMM_OBJS = bamExtractor.o bamParser.o pairedLink.o bamRead.o coverageEstimators.o stats.o bamFilter.o bamProfiler.o
 
 all: lib_only
 

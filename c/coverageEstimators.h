@@ -47,6 +47,9 @@ typedef enum {CT_NONE,           // do not calculate coverage
               CT_P_MEAN_TRIMMED, // pileup mean trancated based on upper lower %
               CT_P_MEAN_OUTLIER, // pileup mean trancated based on distributions
               CT_P_VARIANCE,     // variance of pileup depth
+              CT_MAPPED_COUNT,   // number of covered contig positions
+              CT_MAPPED_MEAN,    // number of covered contig positions, divided by contig length
+              CT_MAPPED_MEAN_TRIMMED, // percentage covered positions truncated based on upper lower % 
               } CT;
 
 /*! @typedef
@@ -115,7 +118,7 @@ float estimate_C_MEAN_Coverage(uint32_t * readStarts,
  * @abstract Estimate the mean pileup coverage along a single contig given
  *           pileup information
  *
- * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
  * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
  * @return float that is the calculated coverage
@@ -130,7 +133,7 @@ float estimate_P_MEAN_Coverage(uint32_t * pileupValues,
  * @abstract Estimate the median pileup coverage along a single contig given
  *           pileup information
  *
- * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
  * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
  * @return float that is the calculated coverage
@@ -146,7 +149,7 @@ float estimate_P_MEDIAN_Coverage(uint32_t * pileupValues,
  *           outlier coverage) along a single contig given pileup information
  *           and percentage of the data to exclude at the upper and lower limits
  *
- * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
  * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
  * @return float that is the calculated coverage
@@ -160,7 +163,7 @@ float estimate_P_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
  * @abstract Estimate truncated mean (outlier) pileup coverage along a single
  *           contig given pileup information and a symetric stdev cutoff
  *
- * @param  pileupValues     array of int read starts (len == contigLength)
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
  * @param  BM_coverageType  BM_coverageType struct with initialised values
  * @param  contigLength     Length of the contig being assesed
  * @return float that is the calculated coverage
@@ -172,7 +175,7 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
   /*
  * @abstract Return variance of pileup coverage along a single contig
  *
- * @param pileupValues array of int read starts (len == contigLength)
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
  * @param BM_coverageType BM_coverageType struct with initialised values
  * @param contigLength Length of the contig being assesed
  * @return float that is the calculated coverage
@@ -180,6 +183,44 @@ float estimate_P_MEAN_OUTLIER_Coverage(uint32_t * pileupValues,
   float estimate_P_VARIANCE_Coverage(uint32_t * pileupValues,
                                      BM_coverageType * covType,
                                      uint32_t contigLength);
+                                     
+  /*
+ * @abstract Return length of a contig covered by pileup
+ *
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
+ * @param BM_coverageType BM_coverageType struct with initialised values
+ * @param contigLength Length of the contig being assesed
+ * @return float that is the calculated coverage
+*/
+  float estimate_MAPPED_COUNT_Coverage(uint32_t * pileupValues,
+                                       BM_coverageType * covType,
+                                       uint32_t contigLength);
+                                     
+  /*
+ * @abstract Return percentage of a contig covered by pileup
+ *
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
+ * @param BM_coverageType BM_coverageType struct with initialised values
+ * @param contigLength Length of the contig being assesed
+ * @return float that is the calculated coverage
+*/
+  float estimate_MAPPED_MEAN_Coverage(uint32_t * pileupValues,
+                                      BM_coverageType * covType,
+                                      uint32_t contigLength);
+                                     
+  /*
+ * @abstract Return percentage of a contig covered by pileup (not truncated,
+ *           outlier coverage) given pileup information and percentage of
+ *           the data to exclude at the upper and lower limits
+ *
+ * @param  pileupValues     array of int pileup depths (len == contigLength)
+ * @param BM_coverageType BM_coverageType struct with initialised values
+ * @param contigLength Length of the contig being assesed
+ * @return float that is the calculated coverage
+*/
+  float estimate_MAPPED_MEAN_TRIMMED_Coverage(uint32_t * pileupValues,
+                                              BM_coverageType * covType,
+                                              uint32_t contigLength);
 
 #ifdef __cplusplus
 }
