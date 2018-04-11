@@ -111,9 +111,19 @@ class TestBamProfiler:
             raise AssertionError('Generated profile "%s" exists and is readable.' % out)
 
         count = 0;
+        
+        try:
+            out_header = prf_out.next().split()
+        except StopIteration:
+            raise AssertionError('Generated profile "%s" is not an empty file.' % out) 
+
+        assert_equals(out_header,
+                      "line\tsupp\tsecondary\tmapQ\tmismatches\tmatches\tqLen\tpcId\tpcAln".split())
+
         while True:
             try:
                 read = aln.next()
+                count += 1
             except StopIteration:
                 read = None
 
@@ -127,31 +137,35 @@ class TestBamProfiler:
                 break
                 
             assert_true(out_vals is not None, 'Profile of "%s" contains expected number of reads.' %out)
-            assert_true(len(out_vals) == 9, 'Profile "%s" contains 9 fields' % out)
-            assert_true(out_vals[0] == count, '"Line" field of "%s" matches expected value.' % out)
-            assert_true(out_vals[1] == read.is_supplementary, '"Supplementary" field of "%s" matches expected value.' %out)
-            assert_true(out_vals[2] == read.is_secondary, '"Secondary" field of "%s" matches expected value.' % out)
-            assert_true(out_vals[3] == read.mapping_quality, '"mapQ" field of "%s" matches expected value.' % out)
+
+            assert_equals(len(out_vals), 9, 'Profile "%s" contains 9 fields' % out)
+            assert_equals(out_vals[0], '%d'%count, '"Line" field of %d read from "%s" matches expected value.' % (count, out))
+            assert_equals(out_vals[1], '%d'%read.is_supplementary, '"Supplementary" field of %d read of "%s" matches expected value.' % (count,out))
+            assert_equals(out_vals[2], '%d'%read.is_secondary, '"Secondary" field of %d read of "%s" matches expected value.' % (count,out))
+            assert_equals(out_vals[3], '%d'%read.mapping_quality, '"mapQ" field of %d read of "%s" matches expected value.' % (count,out))
             
-            # mismatches (NM tag)    
-            mismatches = read.get_cigar_stats()[0][10]
-            assert_true(out_vals[4] == mismatches, '"mismatches" field of "%s" matches expected value.' % out)
+            # mismatches (NM tag)
+            cigar = read.get_cigar_stats()[0]
+            mismatches = cigar[10]
+            assert_equals(out_vals[4], '%d'%mismatches, '"mismatches" field of %d read of "%s" matches expected value.' % (count,out))
             
-            # matches
-            matches = read.get_overlap()
-            assert_true(out_vals[5] == matches, '"matches" field of "%s" matches expected value.' % out)
+            # matches (CMATCH+CEQUAL+CDIFF)
+            matches = cigar[0]+cigar[7]+cigar[8]
+            assert_equals(out_vals[5], '%d'%matches, '"matches" field of %d read of "%s" matches expected value.' % (count,out))
             
             # qLen
             qLen = read.infer_query_length()
-            assert_true(out_vals[6] == qLen, '"qLen" field of "%s" matches expected value.' % out)
+            assert_equals(out_vals[6], '%d'%qLen, '"qLen" field of %d read of "%s" matches expected value.' % (count,out))
             
             # pcId
-            pcId = (matches - mismatches) / matches;
-            assert_true(out_vals[7] == pcId, '"pcId" field of "%s" matches expected value.' % out)
+            pcId = float(matches - mismatches) / matches;
+            assert_almost_equals(float(out_vals[7]), pcId, '"pcId" field of %d read of "%s" matches expected value.' % (count,out))
             
             # pcAln
-            pcAln = matches / qLen;
-            assert_true(out_vals[8] == pcAln, '"pcAln" field of "%s" matches expected value.' % out)
+            pcAln = float(matches) / qLen;
+            assert_almost_equals(float(out_vals[8]), pcAln, '"pcAln" field of %d read of "%s" matches expected value.' % (count,out))
+
+    
             
 
     def testProfiler(self):
@@ -162,6 +176,12 @@ class TestBamProfiler:
                 out = os.path.join(self.dataDir, self.outputProfiles[bamName])
                 self.assert_profile(out, bam)
 
+
+
+def assert_almost_equals(a, b, msg=None):
+    if msg==None:
+        msg = "%s != %s" % (a, b)
+    return assert_true(abs(a - b) < 0.001, msg)
 
 ###############################################################################
 ###############################################################################
