@@ -57,6 +57,7 @@ from bamm.bamFile import BM_coverageType
 from bamm.bamMaker import BamScheduler
 from bamm.bamExtractor import BamExtractor
 from bamm.bamFilter import BamFilter
+from bamm.bamProfiler import BamProfiler
 from bamm.bammExceptions import printError, printShortUsage, \
     InvalidParameterSetException, BAMFileNotFoundException
 from bamm.cWrapper import CT
@@ -296,13 +297,13 @@ def doWork( args ):
                     invertMatch=args.invert_match,
                     useSuppAlignments=args.use_supplementary,
                     useSecondaryAlignments=args.use_secondary)
-			BF.filter()
+            BF.filter()
 
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['filter'].print_help()
             sys.exit(1)
-		
+                
     elif(args.subparser_name == 'profile'):
 
         if args.bamfile is None:
@@ -314,14 +315,14 @@ def doWork( args ):
             BP = BamProfiler(args.bamfile,
                     useSuppAlignments=args.use_supplementary,
                     useSecondaryAlignments=args.use_secondary)
-					
-			BF.profiler()
+                                        
+            BP.profile()
 
         except InvalidParameterSetException as e:
             printError(e)
             subparsers.choices['profile'].print_help()
             sys.exit(1)
-				
+                                
     else:
         printError("Programming error: unexpected args subparser '%s' encountered" % args.subparser_name)
         sys.exit(1)
@@ -655,7 +656,7 @@ second is the upper. If only one value is supplied then lower == upper.'''
     profile_req_args = profile_parser.add_argument_group('required arguments')
     profile_req_args.add_argument('-b', '--bamfile', default="", help="bam file to filter", required=True)
 
-    filter_opt_args = filter_parser.add_argument_group('optional arguments')
+    profile_opt_args = profile_parser.add_argument_group('optional arguments')
     profile_opt_args.add_argument('--use_secondary', action="store_true", default=False, help="use reads marked with the secondary flag")
     profile_opt_args.add_argument('--use_supplementary', action="store_true", default=False, help="use reads marked with the supplementary flag")
 

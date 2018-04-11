@@ -43,7 +43,6 @@ void profileReads(char* bamFile,
                   int ignoreSecondaryAlignments) {
     //
     int result = -1;
-    int outResult = -1;
 
     int supp_check = 0x0;
     if (ignoreSuppAlignments) {
@@ -62,17 +61,12 @@ void profileReads(char* bamFile,
     if ((in = bgzf_open(bamFile, "r")) == 0) {
         fprintf(stderr,
                "ERROR: Failed to open \"%s\" for reading.\n",
-               inBamFile);
+               bamFile);
     }
     else if ((h = bam_hdr_read(in)) == 0) { // read header
         fprintf(stderr,
                 "ERROR: Failed to read BAM header of file \"%s\".\n",
-                inBamFile);
-    }
-    else if ((out = bgzf_open(outBamFile, "w")) == 0) {
-        fprintf(stderr,
-               "ERROR: Failed to open \"%s\" for writing.\n",
-               outBamFile);
+                bamFile);
     }
     else {
         // destroy header
@@ -82,13 +76,13 @@ void profileReads(char* bamFile,
         
         int supplementary, secondary;
         int mapQual;
-        int matches, mismatches, qLen, unmapped;
+        int matches, mismatches, qLen;
         float pcAln, pcId;
         int showStats = 0;
         uint8_t *aux_mismatches;
         
         // print header
-        printf("line\tsupp\tsecondary\tmapQ\tmismatches\tmatches\tqLen\tpcId\tpcAln")
+        printf("line\tsupp\tsecondary\tmapQ\tmismatches\tmatches\tqLen\tpcId\tpcAln\n");
 
         // fetch alignments
         while ((result = bam_read1(in, b)) >= 0) {
@@ -101,10 +95,10 @@ void profileReads(char* bamFile,
                     fprintf(stdout, "Rejected %d, non-primary\n", line);
                 continue;
             }
-            supplementary = b->core.flag & (1 | BAM_FSUPPLEMENTARY) != 0
-            secondary = b->core.flag & (1 | BAM_FSECONDARY) != 0
+            supplementary = (b->core.flag & (1 | BAM_FSUPPLEMENTARY)) != 0;
+            secondary = (b->core.flag & (1 | BAM_FSECONDARY)) != 0;
             // quality
-            mapQual = b->core.qual
+            mapQual = b->core.qual;
             // bam_aux_get returns 0 if optional NM tag is missing
             if ((aux_mismatches = bam_aux_get(b, "NM")))
                mismatches = bam_aux2i(aux_mismatches);
@@ -119,14 +113,14 @@ void profileReads(char* bamFile,
             pcAln = matches / (float)qLen; // percentage as float between 0 to 1
             
             // print read values
-            printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.4f\t%.4f",
+            printf("%d\t%d\t%d\t%d\t%d\t%d\t%d\t%.4f\t%.4f\n",
                    line, supplementary, secondary, mapQual, mismatches, matches,
-                   qLen, pcId, pcAln)
+                   qLen, pcId, pcAln);
         }
         if (result < -1) {
             fprintf(stderr,
                     "ERROR: retrieval of read no. %d from file \"%s\" failed with code %d.\n",
-                    line, inBamFile, result);
+                    line, bamFile, result);
         }
     }
     if (in) bgzf_close(in);

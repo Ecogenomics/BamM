@@ -81,7 +81,8 @@ class TestBamProfiler:
 
     @classmethod
     def rmTestFile(self, name):
-        paths = os.path.join(self.dataDir, self.outputProfiles[name])
+        paths = [os.path.join(self.dataDir, self.outputProfiles[name])]
+        print(paths);
         for path in paths:
             if os.path.exists(path):
                 os.remove(path)
@@ -94,7 +95,7 @@ class TestBamProfiler:
                         self.bamFiles[name],
                         " ".join(args),
                         " > ",
-                        self.outputProfiles[name]])
+                        os.path.join(self.dataDir, self.outputProfiles[name])])
         subprocess.check_call(cmd, shell=True)
         
 
@@ -150,10 +151,10 @@ class TestBamProfiler:
             
             # pcAln
             pcAln = matches / qLen;
-            assert_true(out_vals[8] == pcAln, '"pcAln" field of "%s" matches expected value.' % out
+            assert_true(out_vals[8] == pcAln, '"pcAln" field of "%s" matches expected value.' % out)
             
-            
-    def testFilter(self):
+
+    def testProfiler(self):
         for bamName in self.bamNames:
             for (testName, args) in self.params.iteritems():
                 self.generate_profile(bamName, args)

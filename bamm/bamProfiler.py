@@ -65,7 +65,6 @@ class BamProfiler:
         '''
 
         self.bamFile = bamFile
-        self.prettyBamFileName = os.path.basename(self.bamFile).replace(".bam", "")
 
         if useSuppAlignments:
             self.ignoreSuppAlignments = 0

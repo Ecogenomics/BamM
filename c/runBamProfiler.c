@@ -7,7 +7,6 @@
 
 
 int main( int argc, char *argv[] ) {
-    int result;
     if ( argc != 2 ) {
         printf( "USAGE: %s BAM_FILE\n", argv[0]);
         return 1;
