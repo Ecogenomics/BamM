@@ -1,4 +1,12 @@
-# BamM
+
+
+**_DEPRECATION NOTICE_**
+
+BamM is no longer being maintained. Instead try [CoverM](https://github.com/wwood/CoverM) which is easier to both install and use, and is faster.
+
+
+
+# BamM (deprecated)
 
 ## Overview
 
